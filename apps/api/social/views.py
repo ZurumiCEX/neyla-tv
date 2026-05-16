@@ -37,14 +37,13 @@ def follow_status(request: Request, username: str) -> Response:
 @permission_classes([IsAuthenticated])
 def my_followings(request: Request) -> Response:
     """Liste les chaînes que je suis (ordonnées par date follow desc)."""
-    follows = (
-        request.user.following.select_related("followee__channel__category", "followee")
-        .order_by("-created_at")
-        .all()
+    followee_ids = list(
+        request.user.following.order_by("-created_at").values_list("followee_id", flat=True)
     )
-    followee_ids = [f.followee_id for f in follows]
+    if not followee_ids:
+        return Response({"results": []})
     channels = Channel.objects.select_related("user", "category").filter(user_id__in=followee_ids)
-    # Préserve l'ordre des follows.
+    # Préserve l'ordre des follows (la requête DB ne le garantit pas).
     by_user = {c.user_id: c for c in channels}
     ordered = [by_user[uid] for uid in followee_ids if uid in by_user]
     return Response({"results": PublicChannelSerializer(ordered, many=True).data})
