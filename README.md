@@ -47,25 +47,43 @@ La page d'accueil affiche l'état de l'API, Postgres et Redis.
 
 ```
 apps/
-  api/         # Django 5 (config, accounts, health)
-  web/         # Next.js 14 (App Router, Tailwind)
+  api/                 # Django 5 (accounts, channels_app, chat, catalog, social, health)
+  web/                 # Next.js 14 (App Router, Tailwind)
 infra/
-  docker/      # Dockerfiles api + web
-  compose/     # docker-compose.yml dev
-  nginx/       # confs nginx (Phase 6)
+  docker/              # Dockerfiles api + web + nginx + backup (multi-stage dev/prod)
+  compose/             # docker-compose.yml (dev) + docker-compose.prod.yml
+  nginx/               # config nginx prod
+  scripts/             # backup-postgres.sh
 docs/
-  adr/         # Architecture Decision Records
-  runbooks/    # Procédures ops
+  adr/                 # Architecture Decision Records (001 → 007)
+  runbooks/            # deploy, restore-postgres, incident-response, cloudflare-webhooks
 ```
 
 ## Premières étapes après bootstrap
 
 1. Créer un superuser : `docker compose -f infra/compose/docker-compose.yml exec api python manage.py createsuperuser`
-2. Ouvrir http://localhost:8000/admin/ et vérifier le login.
-3. Vérifier la home http://localhost:3000 : 3 pastilles vertes attendues.
+2. Charger le seed des jeux : `docker compose -f infra/compose/docker-compose.yml exec api python manage.py loaddata catalog/fixtures/games_seed.json`
+3. Ouvrir http://localhost:8000/admin/ et vérifier le login.
+4. Vérifier la home http://localhost:3000 : pastilles santé vertes attendues.
 
-## Phases suivantes
+## Production
 
-Le découpage et les périmètres sont décrits dans le prompt projet
-(Phase 1 → auth, Phase 2 → Cloudflare Stream, etc.). À chaque phase :
-plan validé → code → tests verts → ADR éventuel → démo locale.
+- **Topologie** : un Droplet DigitalOcean + Docker Compose, Cloudflare en
+  proxy orange (TLS + WAF). Détails et compromis dans
+  [`docs/adr/007-prod-deployment.md`](docs/adr/007-prod-deployment.md).
+- **Deploy** : automatique sur push `main` via GitHub Actions SSH.
+  Étape-par-étape dans [`docs/runbooks/deploy.md`](docs/runbooks/deploy.md).
+- **Backups** : dump Postgres quotidien vers DigitalOcean Spaces.
+  Restauration : [`docs/runbooks/restore-postgres.md`](docs/runbooks/restore-postgres.md).
+- **Incident** : checklist 5 min dans
+  [`docs/runbooks/incident-response.md`](docs/runbooks/incident-response.md).
+
+## ADR
+
+1. [`001-stack-mvp.md`](docs/adr/001-stack-mvp.md) — Stack figée
+2. [`002-jwt-strategy.md`](docs/adr/002-jwt-strategy.md) — JWT + refresh cookie
+3. [`003-cloudflare-stream.md`](docs/adr/003-cloudflare-stream.md) — Cloudflare Stream + mode FAKE
+4. [`004-live-status-strategy.md`](docs/adr/004-live-status-strategy.md) — Poll HTTP pour le badge LIVE
+5. [`005-chat-architecture.md`](docs/adr/005-chat-architecture.md) — Chat Redis-only + JWT query param
+6. [`006-discovery-and-social.md`](docs/adr/006-discovery-and-social.md) — Follow, découverte, recherche
+7. [`007-prod-deployment.md`](docs/adr/007-prod-deployment.md) — Déploiement prod

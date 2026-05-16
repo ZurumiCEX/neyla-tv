@@ -1,0 +1,37 @@
+name: Deploy prod
+
+# Déploie automatiquement sur push `main` (après merge de PR).
+# Pas de registry : le Droplet fait `git pull && docker compose build`.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: SSH deploy
+        uses: appleboy/ssh-action@v1.1.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || 22 }}
+          script: |
+            set -e
+            cd ${{ secrets.DEPLOY_PATH }}
+            git fetch --prune
+            git checkout main
+            git pull --ff-only
+            docker compose -f infra/compose/docker-compose.prod.yml --env-file .env build
+            docker compose -f infra/compose/docker-compose.prod.yml --env-file .env up -d
+            docker compose -f infra/compose/docker-compose.prod.yml --env-file .env \
+                exec -T api python manage.py migrate --noinput
+            docker system prune -f

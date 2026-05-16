@@ -1,0 +1,4 @@
+# Dump Postgres tous les jours à 03:00 UTC.
+0 3 * * * /usr/local/bin/backup-postgres >> /proc/1/fd/1 2>&1
+# Une ligne vide finale est requise par crond.
+
