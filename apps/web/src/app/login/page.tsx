@@ -1,17 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { apiFetch } from "@/lib/api";
-
-type LoginResponse = {
-  access: string;
-  user: { id: number; email: string; username: string; display_name: string };
-};
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
 
 export default function LoginPage() {
+  const router = useRouter();
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [result, setResult] = useState<LoginResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -19,15 +16,9 @@ export default function LoginPage() {
     e.preventDefault();
     setBusy(true);
     setError(null);
-    setResult(null);
     try {
-      const data = await apiFetch<LoginResponse>("/api/auth/login", {
-        method: "POST",
-        body: JSON.stringify({ email, password }),
-      });
-      setResult(data);
-      // Phase 1 démo : on stocke l'access en mémoire seulement.
-      // Le refresh est déjà posé en cookie HttpOnly par le backend.
+      await login(email, password);
+      router.push("/dashboard");
     } catch (err) {
       const e = err as { data?: { detail?: string } };
       setError(e.data?.detail ?? "Échec de la connexion.");
@@ -69,15 +60,11 @@ export default function LoginPage() {
         </button>
       </form>
       {error && <p className="mt-4 text-sm text-red-300">{error}</p>}
-      {result && (
-        <div className="mt-6 rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-4 text-sm">
-          <p className="font-semibold text-emerald-200">Connecté en tant que @{result.user.username}</p>
-          <p className="mt-2 break-all text-neutral-400">Access (15min) : {result.access}</p>
-          <p className="mt-1 text-neutral-400">Refresh : posé en cookie HttpOnly.</p>
-        </div>
-      )}
       <p className="mt-6 text-sm text-neutral-400">
-        Pas de compte ? <a href="/register" className="text-emerald-300 underline">Inscription</a>
+        Pas de compte ?{" "}
+        <a href="/register" className="text-emerald-300 underline">
+          Inscription
+        </a>
       </p>
     </main>
   );

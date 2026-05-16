@@ -1,55 +1,67 @@
-// Page d'accueil Phase 0 : appelle /api/healthz côté serveur et affiche l'état.
-type HealthPayload = {
-  status: "ok" | "degraded";
-  db: boolean;
-  redis: boolean;
-};
+import Link from "next/link";
+import { LiveCard, type LiveChannel } from "@/components/LiveCard";
+import { apiFetchServer } from "@/lib/api";
 
-async function fetchHealth(): Promise<HealthPayload | null> {
-  const base = process.env.API_URL_INTERNAL ?? "http://api:8000";
+type LiveListResp = { results: LiveChannel[]; total: number };
+type Category = { slug: string; name: string; live_count: number };
+type CategoryListResp = { results: Category[] };
+
+async function safeFetch<T>(path: string, fallback: T): Promise<T> {
   try {
-    const res = await fetch(`${base}/api/healthz`, { cache: "no-store" });
-    return (await res.json()) as HealthPayload;
+    return await apiFetchServer<T>(path);
   } catch {
-    return null;
+    return fallback;
   }
 }
 
-function Pill({ ok, label }: { ok: boolean; label: string }) {
-  return (
-    <span
-      className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm ${
-        ok ? "bg-emerald-500/15 text-emerald-300" : "bg-red-500/15 text-red-300"
-      }`}
-    >
-      <span className={`h-2 w-2 rounded-full ${ok ? "bg-emerald-400" : "bg-red-400"}`} />
-      {label}
-    </span>
-  );
-}
-
 export default async function HomePage() {
-  const health = await fetchHealth();
+  const [lives, cats] = await Promise.all([
+    safeFetch<LiveListResp>("/api/discover/live?limit=12", {
+      results: [],
+      total: 0,
+    }),
+    safeFetch<CategoryListResp>("/api/discover/categories?limit=8", {
+      results: [],
+    }),
+  ]);
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col justify-center gap-6 p-8">
-      <h1 className="text-4xl font-bold">Neyla TV</h1>
-      <p className="text-neutral-400">
-        MVP de plateforme de streaming jeux vidéo. Phase 0 : bootstrap.
-      </p>
-
-      <section className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-6">
-        <h2 className="mb-4 text-xl font-semibold">État des services</h2>
-        {health ? (
-          <div className="flex flex-wrap gap-3">
-            <Pill ok={health.status === "ok"} label={`API : ${health.status}`} />
-            <Pill ok={health.db} label="Postgres" />
-            <Pill ok={health.redis} label="Redis" />
+    <main className="mx-auto max-w-6xl px-4 py-8">
+      <section>
+        <h1 className="text-2xl font-bold">En direct</h1>
+        <p className="mt-1 text-sm text-neutral-400">
+          {lives.total === 0
+            ? "Aucun stream en cours pour le moment."
+            : `${lives.total} chaîne(s) en live.`}
+        </p>
+        {lives.results.length > 0 && (
+          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {lives.results.map((c) => (
+              <LiveCard key={c.slug} channel={c} />
+            ))}
           </div>
-        ) : (
-          <p className="text-red-300">API injoignable.</p>
         )}
       </section>
+
+      {cats.results.length > 0 && (
+        <section className="mt-12">
+          <h2 className="text-xl font-bold">Catégories populaires</h2>
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+            {cats.results.map((g) => (
+              <Link
+                key={g.slug}
+                href={`/categories/${g.slug}`}
+                className="rounded-lg border border-neutral-800 bg-neutral-900/60 px-4 py-3 text-sm transition hover:border-neutral-700"
+              >
+                <p className="font-semibold">{g.name}</p>
+                <p className="mt-1 text-xs text-neutral-500">
+                  {g.live_count} live{g.live_count > 1 ? "s" : ""}
+                </p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
     </main>
   );
 }

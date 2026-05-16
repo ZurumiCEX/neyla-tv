@@ -30,7 +30,11 @@ INSTALLED_APPS = [
     "channels",
     # Local
     "accounts",
+    "catalog",
+    "channels_app",
+    "chat",
     "health",
+    "social",
 ]
 
 MIDDLEWARE = [
@@ -158,6 +162,15 @@ CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="redis://redis:6379/1")
 CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND", default="redis://redis:6379/2")
 CELERY_TASK_ALWAYS_EAGER = False
 CELERY_TIMEZONE = TIME_ZONE
+
+# --- Cloudflare Stream ---
+# Si CLOUDFLARE_API_TOKEN est vide, on bascule sur un client FAKE en dev/tests
+# qui retourne des URLs rtmps://fake.local pour développer hors-ligne.
+CLOUDFLARE_ACCOUNT_ID = env("CLOUDFLARE_ACCOUNT_ID", default="")
+CLOUDFLARE_API_TOKEN = env("CLOUDFLARE_API_TOKEN", default="")
+CLOUDFLARE_WEBHOOK_SECRET = env("CLOUDFLARE_WEBHOOK_SECRET", default="dev-webhook-secret")
+# Tolérance de fraîcheur de la signature webhook (anti-rejeu).
+WEBHOOK_TIMESTAMP_TOLERANCE_SECONDS = 5 * 60
 
 # --- Logs JSON simples ---
 LOGGING = {

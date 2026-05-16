@@ -1,4 +1,4 @@
-"""Entrée ASGI : HTTP via Django + WebSocket via Channels (vide en Phase 0)."""
+"""Entrée ASGI : HTTP via Django + WebSocket via Channels (chat routing)."""
 
 import os
 
@@ -9,9 +9,13 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.dev")
 
 django_asgi_app = get_asgi_application()
 
+# Imports après get_asgi_application() pour garantir que les apps Django sont prêtes.
+from chat.middleware import TokenAuthMiddleware  # noqa: E402
+from chat.routing import websocket_urlpatterns  # noqa: E402
+
 application = ProtocolTypeRouter(
     {
         "http": django_asgi_app,
-        "websocket": URLRouter([]),
+        "websocket": TokenAuthMiddleware(URLRouter(websocket_urlpatterns)),
     }
 )
