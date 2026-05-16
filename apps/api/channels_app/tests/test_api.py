@@ -61,3 +61,19 @@ def test_public_channel_excludes_rtmps_credentials(api_client):
 def test_public_channel_404_when_unknown(api_client):
     response = api_client.get(reverse("channel-public", kwargs={"slug": "ghost"}))
     assert response.status_code == 404
+
+
+def test_channel_status_returns_minimal_payload(api_client):
+    user = UserFactory(username="status1")
+    Channel.objects.filter(user=user).update(is_live=True)
+    response = api_client.get(reverse("channel-status", kwargs={"slug": "status1"}))
+    assert response.status_code == 200
+    data = response.json()
+    assert set(data.keys()) == {"is_live", "last_live_started_at"}
+    assert data["is_live"] is True
+    assert response.headers.get("Cache-Control") == "public, max-age=5"
+
+
+def test_channel_status_404_when_unknown(api_client):
+    response = api_client.get(reverse("channel-status", kwargs={"slug": "ghost"}))
+    assert response.status_code == 404

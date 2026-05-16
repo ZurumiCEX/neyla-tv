@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { apiFetch } from "@/lib/api";
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
 
 type MyChannel = {
   slug: string;
@@ -16,41 +18,38 @@ type MyChannel = {
 };
 
 export default function DashboardPage() {
-  const [accessToken, setAccessToken] = useState<string>("");
+  const router = useRouter();
+  const { user, loading, authFetch } = useAuth();
   const [channel, setChannel] = useState<MyChannel | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [rotating, setRotating] = useState(false);
   const [revealKey, setRevealKey] = useState(false);
 
-  async function fetchChannel(token: string) {
+  const load = useCallback(async () => {
     setError(null);
     try {
-      const data = await apiFetch<MyChannel>("/api/channels/me", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const data = await authFetch<MyChannel>("/api/channels/me");
       setChannel(data);
     } catch (err) {
-      const e = err as { status?: number; data?: { detail?: string } };
-      setError(
-        e.status === 401
-          ? "Token expiré ou invalide. Reconnecte-toi via /login."
-          : (e.data?.detail ?? "Échec du chargement de la chaîne."),
-      );
+      const e = err as { data?: { detail?: string } };
+      setError(e.data?.detail ?? "Échec du chargement de la chaîne.");
     }
-  }
+  }, [authFetch]);
 
   useEffect(() => {
-    if (!accessToken) return;
-    fetchChannel(accessToken);
-  }, [accessToken]);
+    if (loading) return;
+    if (!user) {
+      router.replace("/login");
+      return;
+    }
+    load();
+  }, [loading, user, load, router]);
 
   async function rotate() {
-    if (!accessToken) return;
     setRotating(true);
     try {
-      const data = await apiFetch<MyChannel>("/api/channels/me/key/rotate", {
+      const data = await authFetch<MyChannel>("/api/channels/me/key/rotate", {
         method: "POST",
-        headers: { Authorization: `Bearer ${accessToken}` },
       });
       setChannel(data);
     } catch (err) {
@@ -61,25 +60,13 @@ export default function DashboardPage() {
     }
   }
 
+  if (loading || (!user && !error)) {
+    return <main className="p-8 text-neutral-500">Chargement…</main>;
+  }
+
   return (
     <main className="mx-auto max-w-3xl p-8">
       <h1 className="mb-6 text-2xl font-bold">Dashboard streamer</h1>
-
-      <section className="mb-6 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-4">
-        <label className="block text-sm">
-          <span className="mb-1 block text-neutral-300">Access token (depuis /login)</span>
-          <textarea
-            value={accessToken}
-            onChange={(e) => setAccessToken(e.target.value.trim())}
-            rows={3}
-            placeholder="Colle ici l'access token retourné par /login"
-            className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 font-mono text-xs text-neutral-100 outline-none focus:border-emerald-500"
-          />
-        </label>
-        <p className="mt-2 text-xs text-neutral-500">
-          Phase 1/2 démo : le frontend complet (cookie + auto-refresh) arrive en Phase 3.
-        </p>
-      </section>
 
       {error && (
         <p className="mb-4 rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-300">
@@ -91,20 +78,12 @@ export default function DashboardPage() {
         <section className="space-y-4 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-6">
           <header className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">@{channel.slug}</h2>
-            <span
-              className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs ${
-                channel.is_live
-                  ? "bg-red-500/15 text-red-300"
-                  : "bg-neutral-800 text-neutral-400"
-              }`}
+            <Link
+              href={`/c/${channel.slug}`}
+              className="text-sm text-emerald-300 underline"
             >
-              <span
-                className={`h-2 w-2 rounded-full ${
-                  channel.is_live ? "bg-red-400 animate-pulse" : "bg-neutral-500"
-                }`}
-              />
-              {channel.is_live ? "EN DIRECT" : "Hors-ligne"}
-            </span>
+              Page publique →
+            </Link>
           </header>
 
           <Field label="Statut provisioning">
@@ -141,7 +120,9 @@ export default function DashboardPage() {
           </Field>
 
           <Field label="URL de lecture HLS">
-            <code className="break-all text-neutral-300">{channel.hls_playback_url || "—"}</code>
+            <code className="break-all text-neutral-300">
+              {channel.hls_playback_url || "—"}
+            </code>
           </Field>
 
           <button

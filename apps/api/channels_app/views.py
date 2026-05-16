@@ -56,3 +56,23 @@ def public_channel(request: Request, slug: str) -> Response:  # noqa: ARG001
     if channel is None:
         raise NotFound("Chaîne introuvable.")
     return Response(PublicChannelSerializer(channel).data, status=status.HTTP_200_OK)
+
+
+@api_view(["GET"])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def channel_status(request: Request, slug: str) -> Response:  # noqa: ARG001
+    """Payload léger pour le badge LIVE (poll 5s, cacheable côté CDN)."""
+    channel = (
+        Channel.objects.filter(slug=slug.lower()).only("is_live", "last_live_started_at").first()
+    )
+    if channel is None:
+        raise NotFound("Chaîne introuvable.")
+    response = Response(
+        {
+            "is_live": channel.is_live,
+            "last_live_started_at": channel.last_live_started_at,
+        }
+    )
+    response["Cache-Control"] = "public, max-age=5"
+    return response
