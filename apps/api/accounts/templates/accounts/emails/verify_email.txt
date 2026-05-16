@@ -1,0 +1,11 @@
+Bonjour {{ user.username }},
+
+Bienvenue sur Neyla TV. Pour activer ton compte, clique sur le lien ci-dessous :
+
+{{ frontend_url }}/verify-email/{{ token }}
+
+Ce lien expire dans 24 heures.
+
+Si tu n'es pas à l'origine de cette inscription, ignore ce message.
+
+— L'équipe Neyla TV
