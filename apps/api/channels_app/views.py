@@ -62,16 +62,21 @@ def public_channel(request: Request, slug: str) -> Response:  # noqa: ARG001
 @authentication_classes([])
 @permission_classes([AllowAny])
 def channel_status(request: Request, slug: str) -> Response:  # noqa: ARG001
-    """Payload léger pour le badge LIVE (poll 5s, cacheable côté CDN)."""
+    """Payload léger pour le badge LIVE + viewers (poll 5s, cacheable côté CDN)."""
     channel = (
-        Channel.objects.filter(slug=slug.lower()).only("is_live", "last_live_started_at").first()
+        Channel.objects.filter(slug=slug.lower())
+        .only("id", "is_live", "last_live_started_at")
+        .first()
     )
     if channel is None:
         raise NotFound("Chaîne introuvable.")
+    from chat.redis_store import get_viewers_count
+
     response = Response(
         {
             "is_live": channel.is_live,
             "last_live_started_at": channel.last_live_started_at,
+            "viewers": get_viewers_count(channel.id),
         }
     )
     response["Cache-Control"] = "public, max-age=5"

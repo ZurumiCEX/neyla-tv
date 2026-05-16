@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { ChatPanel } from "@/components/ChatPanel";
 import { HlsPlayer } from "@/components/HlsPlayer";
 import { LiveBadge } from "@/components/LiveBadge";
 import { apiFetchServer } from "@/lib/api";
@@ -50,23 +51,26 @@ export default async function ChannelPage({
   const displayName = channel.streamer.display_name || `@${channel.slug}`;
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-6">
-      <HlsPlayer src={channel.hls_playback_url} poster={channel.thumbnail_url} />
-
-      <header className="mt-4 flex items-start justify-between gap-4">
+    <main className="mx-auto max-w-6xl px-4 py-6">
+      <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
         <div>
-          <h1 className="text-xl font-bold">{channel.title || "Aucun titre"}</h1>
-          <p className="mt-1 text-sm text-neutral-400">
-            par <span className="text-neutral-200">{displayName}</span>{" "}
-            <span className="text-neutral-500">@{channel.slug}</span>
-          </p>
+          <HlsPlayer src={channel.hls_playback_url} poster={channel.thumbnail_url} />
+          <header className="mt-4 flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-xl font-bold">{channel.title || "Aucun titre"}</h1>
+              <p className="mt-1 text-sm text-neutral-400">
+                par <span className="text-neutral-200">{displayName}</span>{" "}
+                <span className="text-neutral-500">@{channel.slug}</span>
+              </p>
+            </div>
+            <LiveBadge slug={channel.slug} initial={{ is_live: channel.is_live }} />
+          </header>
         </div>
-        <LiveBadge slug={channel.slug} initial={{ is_live: channel.is_live }} />
-      </header>
 
-      <section className="mt-8 rounded-xl border border-dashed border-neutral-800 p-6 text-center text-sm text-neutral-500">
-        Chat live — disponible en Phase 4.
-      </section>
+        <aside>
+          <ChatPanel slug={channel.slug} isLive={channel.is_live} />
+        </aside>
+      </div>
     </main>
   );
 }

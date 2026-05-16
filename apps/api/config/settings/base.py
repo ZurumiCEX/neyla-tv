@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     # Local
     "accounts",
     "channels_app",
+    "chat",
     "health",
 ]
 

@@ -69,7 +69,7 @@ def test_channel_status_returns_minimal_payload(api_client):
     response = api_client.get(reverse("channel-status", kwargs={"slug": "status1"}))
     assert response.status_code == 200
     data = response.json()
-    assert set(data.keys()) == {"is_live", "last_live_started_at"}
+    assert set(data.keys()) == {"is_live", "last_live_started_at", "viewers"}
     assert data["is_live"] is True
     assert response.headers.get("Cache-Control") == "public, max-age=5"
 
