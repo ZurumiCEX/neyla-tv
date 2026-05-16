@@ -101,6 +101,24 @@ def get_viewers_count(channel_id: int) -> int:
         return 0
 
 
+def bulk_viewers_count(channel_ids: list[int]) -> dict[int, int]:
+    if not channel_ids:
+        return {}
+    client = redis.Redis.from_url(settings.REDIS_URL, decode_responses=True)
+    try:
+        keys = [_key("viewers", cid) for cid in channel_ids]
+        values = client.mget(keys)
+        result: dict[int, int] = {}
+        for cid, raw in zip(channel_ids, values, strict=True):
+            try:
+                result[cid] = max(int(raw), 0) if raw else 0
+            except (TypeError, ValueError):
+                result[cid] = 0
+        return result
+    except redis.RedisError:
+        return dict.fromkeys(channel_ids, 0)
+
+
 def get_history(channel_id: int, limit: int = MAX_MESSAGES) -> list[dict[str, Any]]:
     client = redis.Redis.from_url(settings.REDIS_URL, decode_responses=True)
     try:

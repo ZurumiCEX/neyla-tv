@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import type { Metadata } from "next";
 import { ChatPanel } from "@/components/ChatPanel";
+import { FollowButton } from "@/components/FollowButton";
 import { HlsPlayer } from "@/components/HlsPlayer";
 import { LiveBadge } from "@/components/LiveBadge";
 import { apiFetchServer } from "@/lib/api";
@@ -13,6 +15,7 @@ type PublicChannel = {
   is_live: boolean;
   last_live_started_at: string | null;
   streamer: { username: string; display_name: string; avatar_url: string };
+  category: { slug: string; name: string } | null;
 };
 
 async function getChannel(slug: string): Promise<PublicChannel | null> {
@@ -62,8 +65,19 @@ export default async function ChannelPage({
                 par <span className="text-neutral-200">{displayName}</span>{" "}
                 <span className="text-neutral-500">@{channel.slug}</span>
               </p>
+              {channel.category && (
+                <Link
+                  href={`/categories/${channel.category.slug}`}
+                  className="mt-2 inline-block rounded-full border border-neutral-700 px-3 py-0.5 text-xs text-neutral-300 hover:border-emerald-500"
+                >
+                  {channel.category.name}
+                </Link>
+              )}
             </div>
-            <LiveBadge slug={channel.slug} initial={{ is_live: channel.is_live }} />
+            <div className="flex items-center gap-3">
+              <LiveBadge slug={channel.slug} initial={{ is_live: channel.is_live }} />
+              <FollowButton username={channel.slug} />
+            </div>
           </header>
         </div>
 

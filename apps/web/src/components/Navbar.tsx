@@ -1,17 +1,38 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 
 export function Navbar() {
   const { user, loading, logout } = useAuth();
+  const router = useRouter();
+  const [search, setSearch] = useState("");
+
+  function submitSearch(e: React.FormEvent) {
+    e.preventDefault();
+    const trimmed = search.trim();
+    if (!trimmed) return;
+    router.push(`/search?q=${encodeURIComponent(trimmed)}`);
+  }
 
   return (
     <nav className="border-b border-neutral-800 bg-neutral-950/90 backdrop-blur">
-      <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
         <Link href="/" className="text-lg font-bold tracking-tight">
           Neyla<span className="text-emerald-400">.tv</span>
         </Link>
+
+        <form onSubmit={submitSearch} className="hidden flex-1 max-w-sm md:block">
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Rechercher une chaîne ou un jeu…"
+            className="w-full rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-100 outline-none focus:border-emerald-500"
+          />
+        </form>
 
         <div className="flex items-center gap-4 text-sm">
           {loading ? (
@@ -27,7 +48,7 @@ export function Navbar() {
               >
                 Ma chaîne
               </Link>
-              <span className="text-neutral-500">@{user.username}</span>
+              <span className="hidden text-neutral-500 sm:inline">@{user.username}</span>
               <button
                 type="button"
                 onClick={() => logout()}

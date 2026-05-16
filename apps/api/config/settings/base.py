@@ -30,9 +30,11 @@ INSTALLED_APPS = [
     "channels",
     # Local
     "accounts",
+    "catalog",
     "channels_app",
     "chat",
     "health",
+    "social",
 ]
 
 MIDDLEWARE = [

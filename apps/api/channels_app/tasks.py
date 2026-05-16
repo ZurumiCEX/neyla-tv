@@ -23,5 +23,21 @@ def provision_live_input_task(self, channel_id: int) -> None:  # noqa: ARG001
 
 @shared_task
 def notify_followers_live_started(channel_id: int) -> None:
-    # Stub Phase 2 : la diffusion réelle aux followers arrive en Phase 5.
-    logger.info("notify_followers_live_started channel=%s (stub Phase 2)", channel_id)
+    """Phase 5 : on logue les followers concernés. L'envoi réel (email/push web)
+    est reporté à une phase ultérieure — cf. ADR 006."""
+    from social.models import Follow
+
+    channel = Channel.objects.select_related("user").filter(pk=channel_id).first()
+    if channel is None:
+        return
+    follower_ids = list(
+        Follow.objects.filter(followee=channel.user).values_list("follower_id", flat=True)
+    )
+    if not follower_ids:
+        return
+    logger.info(
+        "notify_followers_live_started channel=%s streamer=%s followers=%s",
+        channel_id,
+        channel.user.username,
+        len(follower_ids),
+    )

@@ -3,7 +3,10 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+
+type Category = { slug: string; name: string };
 
 type MyChannel = {
   slug: string;
@@ -15,21 +18,30 @@ type MyChannel = {
   is_live: boolean;
   is_provisioned: boolean;
   last_live_started_at: string | null;
+  category: Category | null;
 };
 
 export default function DashboardPage() {
   const router = useRouter();
   const { user, loading, authFetch } = useAuth();
   const [channel, setChannel] = useState<MyChannel | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [rotating, setRotating] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [revealKey, setRevealKey] = useState(false);
+
+  // Form state mirror.
+  const [title, setTitle] = useState("");
+  const [categorySlug, setCategorySlug] = useState("");
 
   const load = useCallback(async () => {
     setError(null);
     try {
       const data = await authFetch<MyChannel>("/api/channels/me");
       setChannel(data);
+      setTitle(data.title);
+      setCategorySlug(data.category?.slug ?? "");
     } catch (err) {
       const e = err as { data?: { detail?: string } };
       setError(e.data?.detail ?? "Échec du chargement de la chaîne.");
@@ -43,7 +55,29 @@ export default function DashboardPage() {
       return;
     }
     load();
+    apiFetch<{ results: Category[] }>("/api/discover/categories?limit=100")
+      .then((d) => setCategories(d.results))
+      .catch(() => undefined);
   }, [loading, user, load, router]);
+
+  async function save() {
+    setSaving(true);
+    try {
+      const data = await authFetch<MyChannel>("/api/channels/me", {
+        method: "PATCH",
+        body: JSON.stringify({
+          title,
+          category_slug: categorySlug || null,
+        }),
+      });
+      setChannel(data);
+    } catch (err) {
+      const e = err as { data?: { detail?: string } };
+      setError(e.data?.detail ?? "Échec de l'enregistrement.");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function rotate() {
     setRotating(true);
@@ -75,7 +109,7 @@ export default function DashboardPage() {
       )}
 
       {channel && (
-        <section className="space-y-4 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-6">
+        <section className="space-y-6 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-6">
           <header className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">@{channel.slug}</h2>
             <Link
@@ -85,6 +119,39 @@ export default function DashboardPage() {
               Page publique →
             </Link>
           </header>
+
+          <div className="space-y-3 border-b border-neutral-800 pb-6">
+            <Field label="Titre du stream">
+              <input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                maxLength={140}
+                className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-emerald-500"
+              />
+            </Field>
+            <Field label="Catégorie">
+              <select
+                value={categorySlug}
+                onChange={(e) => setCategorySlug(e.target.value)}
+                className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-emerald-500"
+              >
+                <option value="">— aucune —</option>
+                {categories.map((c) => (
+                  <option key={c.slug} value={c.slug}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <button
+              type="button"
+              onClick={save}
+              disabled={saving}
+              className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
+            >
+              {saving ? "Enregistrement…" : "Enregistrer"}
+            </button>
+          </div>
 
           <Field label="Statut provisioning">
             {channel.is_provisioned ? (

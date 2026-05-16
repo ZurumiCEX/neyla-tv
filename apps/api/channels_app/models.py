@@ -15,6 +15,13 @@ class Channel(models.Model):
     slug = models.SlugField(max_length=30, unique=True, db_index=True)
     title = models.CharField(max_length=140, blank=True)
     thumbnail_url = models.URLField(blank=True)
+    category = models.ForeignKey(
+        "catalog.Game",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="channels",
+    )
 
     # Cloudflare Stream Live Input.
     live_input_uid = models.CharField(max_length=64, blank=True, db_index=True)
