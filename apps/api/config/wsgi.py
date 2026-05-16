@@ -1,4 +1,5 @@
 """Entrée WSGI (fallback non utilisé en dev, prêt pour gunicorn)."""
+
 import os
 
 from django.core.wsgi import get_wsgi_application

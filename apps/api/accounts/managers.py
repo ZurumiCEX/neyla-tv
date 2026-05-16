@@ -1,4 +1,5 @@
 """Manager User avec email comme identifiant unique (pas de username)."""
+
 from __future__ import annotations
 
 from typing import Any

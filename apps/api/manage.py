@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 """Entrée standard Django : délègue aux commandes selon DJANGO_SETTINGS_MODULE."""
+
 import os
 import sys
 

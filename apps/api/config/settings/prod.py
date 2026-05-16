@@ -1,4 +1,5 @@
 """Settings de production : DEBUG off, headers sécurité, CSRF derrière proxy."""
+
 from .base import *  # noqa: F401,F403
 from .base import env
 

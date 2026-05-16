@@ -1,4 +1,5 @@
 """Entrée ASGI : HTTP via Django + WebSocket via Channels (vide en Phase 0)."""
+
 import os
 
 from channels.routing import ProtocolTypeRouter, URLRouter
