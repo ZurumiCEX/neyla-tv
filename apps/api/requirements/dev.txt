@@ -3,6 +3,7 @@ pytest==8.3.3
 pytest-django==4.9.0
 pytest-asyncio==0.24.0
 factory-boy==3.3.1
+responses==0.25.3
 black==24.8.0
 ruff==0.6.9
 isort==5.13.2
