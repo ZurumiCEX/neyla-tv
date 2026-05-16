@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     # Third-party
     "rest_framework",
+    "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
     "channels",
     # Local
@@ -83,7 +84,10 @@ PASSWORD_HASHERS = [
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "OPTIONS": {"min_length": 10},
+    },
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
@@ -98,12 +102,40 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# --- DRF / JWT (squelette, complété en Phase 1) ---
+# --- DRF / JWT ---
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
+    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
 }
+
+from datetime import timedelta  # noqa: E402
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "USER_ID_FIELD": "id",
+    "USER_ID_CLAIM": "user_id",
+}
+
+# Cookie pour stocker le refresh token côté navigateur (HttpOnly, SameSite=Lax).
+REFRESH_COOKIE_NAME = "neyla_refresh"
+REFRESH_COOKIE_MAX_AGE = int(SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"].total_seconds())
+REFRESH_COOKIE_SECURE = not DEBUG
+REFRESH_COOKIE_SAMESITE = "Lax"
+REFRESH_COOKIE_PATH = "/api/auth/"
+
+# --- Emails ---
+EMAIL_BACKEND = env(
+    "DJANGO_EMAIL_BACKEND",
+    default="django.core.mail.backends.console.EmailBackend",
+)
+DEFAULT_FROM_EMAIL = env("DJANGO_DEFAULT_FROM_EMAIL", default="no-reply@neyla.tv")
+FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:3000")
 
 # --- CORS ---
 CORS_ALLOWED_ORIGINS = env.list(
