@@ -1,4 +1,5 @@
 """User custom : email comme identifiant. Profil enrichi en Phase 1."""
+
 from __future__ import annotations
 
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin

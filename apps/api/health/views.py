@@ -1,4 +1,5 @@
 """Healthcheck : ping Postgres + Redis. Renvoie 200 si tout est OK, 503 sinon."""
+
 from __future__ import annotations
 
 import redis

@@ -1,4 +1,5 @@
 """Settings de développement : DEBUG, hosts permissifs."""
+
 from .base import *  # noqa: F401,F403
 
 DEBUG = True

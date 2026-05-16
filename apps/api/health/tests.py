@@ -1,4 +1,5 @@
 """Tests du healthcheck : on mocke Redis pour ne pas dépendre du broker en CI."""
+
 from __future__ import annotations
 
 from unittest.mock import patch

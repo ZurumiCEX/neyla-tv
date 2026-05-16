@@ -1,4 +1,5 @@
 """Settings communs à tous les environnements (Phase 0 : minimum vital)."""
+
 from __future__ import annotations
 
 from pathlib import Path

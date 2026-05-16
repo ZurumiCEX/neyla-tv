@@ -1,4 +1,5 @@
 """Bootstrap Celery : lit les settings Django, autodiscover des tâches."""
+
 import os
 
 from celery import Celery

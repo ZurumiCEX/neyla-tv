@@ -1,4 +1,5 @@
 """Migration initiale du User custom (générée à la main pour démarrage propre)."""
+
 import django.contrib.auth.models
 import django.utils.timezone
 from django.db import migrations, models
@@ -17,14 +18,33 @@ class Migration(migrations.Migration):
             fields=[
                 ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False)),
                 ("password", models.CharField(max_length=128, verbose_name="password")),
-                ("last_login", models.DateTimeField(blank=True, null=True, verbose_name="last login")),
+                (
+                    "last_login",
+                    models.DateTimeField(blank=True, null=True, verbose_name="last login"),
+                ),
                 ("is_superuser", models.BooleanField(default=False)),
                 ("email", models.EmailField(max_length=254, unique=True)),
                 ("is_staff", models.BooleanField(default=False)),
                 ("is_active", models.BooleanField(default=True)),
                 ("date_joined", models.DateTimeField(default=django.utils.timezone.now)),
-                ("groups", models.ManyToManyField(blank=True, related_name="user_set", related_query_name="user", to="auth.group")),
-                ("user_permissions", models.ManyToManyField(blank=True, related_name="user_set", related_query_name="user", to="auth.permission")),
+                (
+                    "groups",
+                    models.ManyToManyField(
+                        blank=True,
+                        related_name="user_set",
+                        related_query_name="user",
+                        to="auth.group",
+                    ),
+                ),
+                (
+                    "user_permissions",
+                    models.ManyToManyField(
+                        blank=True,
+                        related_name="user_set",
+                        related_query_name="user",
+                        to="auth.permission",
+                    ),
+                ),
             ],
             options={"ordering": ["-date_joined"]},
             managers=[("objects", django.contrib.auth.models.UserManager())],
