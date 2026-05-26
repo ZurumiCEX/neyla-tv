@@ -3,6 +3,11 @@
 Déploiement de Neyla TV en PaaS via la spec [`.do/app.yaml`](../../.do/app.yaml).
 Pour la topologie et les compromis : [ADR 008](../adr/008-app-platform.md).
 
+> ⚠️ **L'assistant "Create App from source" de la console ne lit PAS la spec.**
+> Il fait de l'auto-détection (cherche un manifeste à la racine) et échoue sur
+> ce monorepo ("No components detected"). Toujours déployer **à partir de la
+> spec** : `doctl apps create --spec ...` (ou Settings → App Spec en console).
+
 ## Prérequis
 
 - Compte DigitalOcean + facturation active.
@@ -10,6 +15,10 @@ Pour la topologie et les compromis : [ADR 008](../adr/008-app-platform.md).
   installé et authentifié : `doctl auth init`.
 - Dépôt GitHub `ZurumiCEX/neyla-tv` **connecté** à DigitalOcean
   (Settings → GitHub) pour le `deploy_on_push`.
+
+> 🔒 **Repo privé non lisible par DO ?** Si l'erreur "Make sure we have
+> permission to read your repo" persiste malgré l'autorisation de l'app
+> GitHub, voir l'[Annexe — Déploiement sans intégration GitHub](#annexe--déploiement-sans-intégration-github).
 
 ## 1. Préparer les secrets
 
@@ -93,3 +102,56 @@ gère le certificat TLS. `${APP_DOMAIN}` / `${APP_URL}` se mettent à jour ;
 Console → app → **Activity** → sélectionner un déploiement antérieur →
 **Rollback**. Pour un rollback de migration DB, préférer `git revert` du commit
 fautif + redeploy (cf. [restore-postgres.md](restore-postgres.md) si dump requis).
+
+---
+
+## Annexe — Déploiement sans intégration GitHub
+
+Quand DigitalOcean ne peut pas lire le repo privé (erreur *"No components
+detected / permission to read your repo"*) et que réautoriser l'app GitHub n'y
+change rien, on contourne en clonant une **URL git publique**. La spec
+[`.do/app.git.yaml`](../../.do/app.git.yaml) utilise une source `git:` au lieu
+de `github:`.
+
+> Compromis : la source `git:` **n'a pas d'auto-deploy sur push**. On redéploie
+> à la main (`doctl apps create-deployment <APP_ID>`). Une fois l'accès GitHub
+> résolu, repasser à `.do/app.yaml` pour retrouver le `deploy_on_push`.
+
+### Étapes
+
+1. **Rendre le repo public** (temporairement) :
+   GitHub → repo → **Settings → General → Danger Zone → Change repository
+   visibility → Public**.
+   > Les secrets de Neyla TV vivent dans les variables d'environnement, pas
+   > dans le code, donc une exposition courte est acceptable. Vérifier malgré
+   > tout qu'aucun secret n'a été commité dans l'historique.
+
+2. **Installer `doctl`** (binaire unique, pas besoin de Docker) :
+   ```bash
+   # macOS
+   brew install doctl
+   # Linux (snap)
+   sudo snap install doctl
+   # ou télécharger : https://github.com/digitalocean/doctl/releases
+   doctl auth init   # coller un token API DO (read+write)
+   ```
+
+3. **Créer l'app depuis la spec git** :
+   ```bash
+   doctl apps create --spec .do/app.git.yaml
+   doctl apps list                          # noter l'APP_ID
+   ```
+
+4. **Repasser le repo en privé** une fois le build terminé :
+   GitHub → **Settings → General → Change visibility → Private**.
+   (L'app reste déployée ; le code est déjà cloné côté DO.)
+
+5. **Redéploiements ultérieurs** (le repo étant repassé privé, il faut le
+   remettre public le temps du build, ou résoudre l'accès GitHub et basculer
+   sur `.do/app.yaml`) :
+   ```bash
+   doctl apps create-deployment <APP_ID>
+   ```
+
+La suite (secrets, seed, superuser, vérifications) est identique aux sections
+1, 3 et 4 ci-dessus.
