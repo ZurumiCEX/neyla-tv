@@ -17,6 +17,10 @@ CMD ["npm", "run", "dev"]
 # --- builder : compile l'app ---
 FROM deps AS builder
 COPY apps/web/ ./
+# NEXT_PUBLIC_* est figé dans le bundle client au build : il faut donc le
+# fournir ici. DO App Platform passe les env build-time en --build-arg.
+ARG NEXT_PUBLIC_API_URL=http://localhost:8000
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
