@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ssl
 from pathlib import Path
 
 import environ
@@ -40,6 +41,9 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    # WhiteNoise sert les fichiers statiques (admin/DRF) sans nginx — requis
+    # sur les PaaS type DigitalOcean App Platform. Doit suivre SecurityMiddleware.
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -76,6 +80,9 @@ DATABASES = {
         "PASSWORD": env("POSTGRES_PASSWORD", default="neyla"),
         "HOST": env("POSTGRES_HOST", default="postgres"),
         "PORT": env("POSTGRES_PORT", default="5432"),
+        # Postgres managé (DO App Platform) impose TLS : POSTGRES_SSLMODE=require.
+        # En local, "prefer" se rabat sur du non-TLS sans erreur.
+        "OPTIONS": {"sslmode": env("POSTGRES_SSLMODE", default="prefer")},
     }
 }
 
@@ -147,8 +154,22 @@ CORS_ALLOWED_ORIGINS = env.list(
     default=["http://localhost:3000"],
 )
 
+
 # --- Redis / Channels ---
-REDIS_URL = env("REDIS_URL", default="redis://redis:6379/0")
+def _with_cert_reqs(url: str) -> str:
+    """Redis managé (rediss://) utilise un certificat signé par une CA privée.
+
+    redis-py et channels-redis lisent ``ssl_cert_reqs`` depuis la query string
+    (valeurs : none/optional/required). On chiffre sans vérifier la chaîne CA,
+    suffisant pour un trafic interne au datacenter (cf. ADR 008).
+    """
+    if url.startswith("rediss://") and "ssl_cert_reqs" not in url:
+        sep = "&" if "?" in url else "?"
+        return f"{url}{sep}ssl_cert_reqs=none"
+    return url
+
+
+REDIS_URL = _with_cert_reqs(env("REDIS_URL", default="redis://redis:6379/0"))
 
 CHANNEL_LAYERS = {
     "default": {
@@ -162,6 +183,11 @@ CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="redis://redis:6379/1")
 CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND", default="redis://redis:6379/2")
 CELERY_TASK_ALWAYS_EAGER = False
 CELERY_TIMEZONE = TIME_ZONE
+# Celery/kombu attendent la config TLS via un dict dédié (pas via la query URL).
+if CELERY_BROKER_URL.startswith("rediss://"):
+    CELERY_BROKER_USE_SSL = {"ssl_cert_reqs": ssl.CERT_NONE}
+if CELERY_RESULT_BACKEND.startswith("rediss://"):
+    CELERY_REDIS_BACKEND_USE_SSL = {"ssl_cert_reqs": ssl.CERT_NONE}
 
 # --- Cloudflare Stream ---
 # Si CLOUDFLARE_API_TOKEN est vide, on bascule sur un client FAKE en dev/tests

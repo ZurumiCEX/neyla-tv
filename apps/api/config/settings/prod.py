@@ -9,7 +9,20 @@ from .base import *  # noqa: F401,F403
 from .base import env
 
 DEBUG = False
-ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS")
+# default=[] : permet le `collectstatic` au build de l'image (aucun host
+# requis), tout en restant fail-closed au runtime si la variable est absente.
+ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=[])
+
+# Origines de confiance pour le CSRF (admin Django derrière HTTPS).
+CSRF_TRUSTED_ORIGINS = env.list("DJANGO_CSRF_TRUSTED_ORIGINS", default=[])
+
+# WhiteNoise : compression + manifest hashé. Servi sous /django-static/ pour
+# ne pas entrer en collision avec les assets Next.js (/_next/...).
+STATIC_URL = "/django-static/"
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
+}
 
 # Cloudflare termine TLS et nous parle en HTTP, mais ajoute X-Forwarded-Proto.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

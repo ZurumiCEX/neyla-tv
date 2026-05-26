@@ -1,0 +1,189 @@
+# DigitalOcean App Platform — spec de déploiement Neyla TV.
+#
+# Déploiement :
+#   doctl apps create --spec .do/app.yaml
+#   doctl apps update <APP_ID> --spec .do/app.yaml   # mises à jour
+#
+# Avant de créer l'app :
+#   1. Connecter le dépôt GitHub `ZurumiCEX/neyla-tv` à DigitalOcean.
+#   2. Remplacer la valeur de DJANGO_SECRET_KEY (placeholder ci-dessous).
+#   3. Renseigner CLOUDFLARE_* en console pour quitter le mode FAKE (live réel).
+#
+# Détails et compromis : docs/adr/008-app-platform.md
+#                         docs/runbooks/deploy-app-platform.md
+
+name: neyla-tv
+region: fra
+
+# --- Bases de données managées -------------------------------------------
+databases:
+  - name: db
+    engine: PG
+    version: "16"
+    production: false # tier "dev" (1 noeud). Passer à true pour la HA.
+  - name: redis
+    engine: REDIS
+    version: "7"
+    production: true # Redis/Valkey n'a pas de tier dev : noeud managé requis.
+
+# --- Variables partagées (api, worker, beat, job migrate) ----------------
+envs:
+  - key: DJANGO_SETTINGS_MODULE
+    value: config.settings.prod
+    scope: RUN_AND_BUILD_TIME
+  - key: DJANGO_DEBUG
+    value: "0"
+    scope: RUN_TIME
+  - key: DJANGO_SECRET_KEY
+    value: REPLACE_ME_WITH_A_50_CHAR_RANDOM_SECRET
+    type: SECRET
+    scope: RUN_TIME
+  # ${APP_DOMAIN} = domaine principal ; .ondigitalocean.app couvre le
+  # domaine par défaut utilisé par les health checks de la plateforme.
+  - key: DJANGO_ALLOWED_HOSTS
+    value: ${APP_DOMAIN},.ondigitalocean.app
+    scope: RUN_TIME
+  - key: DJANGO_CSRF_TRUSTED_ORIGINS
+    value: ${APP_URL}
+    scope: RUN_TIME
+  - key: DJANGO_CORS_ALLOWED_ORIGINS
+    value: ${APP_URL}
+    scope: RUN_TIME
+  # Postgres managé : liaison aux attributs de la base "db".
+  - key: POSTGRES_DB
+    value: ${db.DATABASE}
+    scope: RUN_TIME
+  - key: POSTGRES_USER
+    value: ${db.USERNAME}
+    scope: RUN_TIME
+  - key: POSTGRES_PASSWORD
+    value: ${db.PASSWORD}
+    scope: RUN_TIME
+  - key: POSTGRES_HOST
+    value: ${db.HOSTNAME}
+    scope: RUN_TIME
+  - key: POSTGRES_PORT
+    value: ${db.PORT}
+    scope: RUN_TIME
+  - key: POSTGRES_SSLMODE
+    value: require
+    scope: RUN_TIME
+  # Redis managé : une seule URL rediss:// pour channels + celery + chat.
+  - key: REDIS_URL
+    value: ${redis.DATABASE_URL}
+    scope: RUN_TIME
+  - key: CELERY_BROKER_URL
+    value: ${redis.DATABASE_URL}
+    scope: RUN_TIME
+  - key: CELERY_RESULT_BACKEND
+    value: ${redis.DATABASE_URL}
+    scope: RUN_TIME
+  - key: FRONTEND_URL
+    value: ${APP_URL}
+    scope: RUN_TIME
+  - key: DJANGO_DEFAULT_FROM_EMAIL
+    value: no-reply@neyla.tv
+    scope: RUN_TIME
+  # Backend console par défaut. Pour de vrais emails : passer en SMTP
+  # (django.core.mail.backends.smtp.EmailBackend) + variables EMAIL_HOST/...
+  - key: DJANGO_EMAIL_BACKEND
+    value: django.core.mail.backends.console.EmailBackend
+    scope: RUN_TIME
+  # Cloudflare Stream — laisser vide active le mode FAKE (aucun live réel).
+  # Renseigner en console (type chiffré) pour activer l'ingest RTMPS réel.
+  - key: CLOUDFLARE_ACCOUNT_ID
+    value: ""
+    scope: RUN_TIME
+  - key: CLOUDFLARE_API_TOKEN
+    value: ""
+    scope: RUN_TIME
+  - key: CLOUDFLARE_WEBHOOK_SECRET
+    value: change-me-webhook-secret
+    type: SECRET
+    scope: RUN_TIME
+  - key: SENTRY_DSN
+    value: ""
+    scope: RUN_TIME
+
+# --- Services HTTP (exposés via l'ingress) -------------------------------
+services:
+  # API Django/Daphne : HTTP REST + admin + WebSocket chat + statiques.
+  - name: api
+    dockerfile_path: infra/docker/api.Dockerfile
+    source_dir: /
+    github:
+      repo: ZurumiCEX/neyla-tv
+      branch: main
+      deploy_on_push: true
+    http_port: 8000
+    instance_size_slug: apps-s-1vcpu-1gb
+    instance_count: 1
+    health_check:
+      http_path: /api/healthz
+      initial_delay_seconds: 40
+      period_seconds: 15
+      failure_threshold: 5
+    # Routes plus spécifiques que le "/" du web → priorité à l'api.
+    routes:
+      - path: /api
+      - path: /admin
+      - path: /ws
+      - path: /django-static
+
+  # Frontend Next.js (build standalone).
+  - name: web
+    dockerfile_path: infra/docker/web.Dockerfile
+    source_dir: /
+    github:
+      repo: ZurumiCEX/neyla-tv
+      branch: main
+      deploy_on_push: true
+    http_port: 3000
+    instance_size_slug: apps-s-1vcpu-1gb
+    instance_count: 1
+    routes:
+      - path: /
+    envs:
+      # Figé dans le bundle client au build (fetch + WebSocket) : même origine.
+      - key: NEXT_PUBLIC_API_URL
+        value: ${APP_URL}
+        scope: RUN_AND_BUILD_TIME
+      # SSR (Server Components) : appels server-to-server.
+      - key: API_URL_INTERNAL
+        value: ${APP_URL}
+        scope: RUN_TIME
+
+# --- Workers (sans route HTTP) -------------------------------------------
+workers:
+  - name: worker
+    dockerfile_path: infra/docker/api.Dockerfile
+    source_dir: /
+    github:
+      repo: ZurumiCEX/neyla-tv
+      branch: main
+      deploy_on_push: true
+    run_command: celery -A config worker -l info
+    instance_size_slug: apps-s-1vcpu-0.5gb
+    instance_count: 1
+  - name: beat
+    dockerfile_path: infra/docker/api.Dockerfile
+    source_dir: /
+    github:
+      repo: ZurumiCEX/neyla-tv
+      branch: main
+      deploy_on_push: true
+    run_command: celery -A config beat -l info
+    instance_size_slug: apps-s-1vcpu-0.5gb
+    instance_count: 1
+
+# --- Job de pré-déploiement : migrations Django --------------------------
+jobs:
+  - name: migrate
+    kind: PRE_DEPLOY
+    dockerfile_path: infra/docker/api.Dockerfile
+    source_dir: /
+    github:
+      repo: ZurumiCEX/neyla-tv
+      branch: main
+    run_command: python manage.py migrate --noinput
+    instance_size_slug: apps-s-1vcpu-0.5gb
