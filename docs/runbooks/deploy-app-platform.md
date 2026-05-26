@@ -155,3 +155,22 @@ de `github:`.
 
 La suite (secrets, seed, superuser, vérifications) est identique aux sections
 1, 3 et 4 ci-dessus.
+
+### Variante console — shim Dockerfile à la racine
+
+Si DO **peut sélectionner** le repo mais l'auto-détection affiche encore "No
+components detected" (layout monorepo, aucun manifeste à la racine), un
+`Dockerfile` racine sert de "pied dans la porte" :
+
+1. Le repo contient un `Dockerfile` à la racine (shim, identique à l'image API).
+   Le wizard détecte alors **un composant**.
+2. Crée l'app avec ce composant unique (peu importe qu'il soit incomplet).
+3. **Settings → App Spec → Edit** → colle l'intégralité de `.do/app.yaml`
+   (qui pointe vers `infra/docker/*.Dockerfile`) → **Save** → topologie complète.
+4. Le shim racine n'est plus utile : tu peux le **supprimer** (`git rm Dockerfile`)
+   au prochain commit — la spec ne le référence pas.
+
+> ⚠️ Si même avec un `Dockerfile` à la racine le wizard ne détecte rien, c'est
+> que DO **n'a réellement pas accès au repo** (permission). Dans ce cas, seules
+> les voies "source git publique" (ci-dessus) ou la résolution de l'accès
+> GitHub fonctionneront.
