@@ -37,6 +37,20 @@ en console :
 > renseignées **automatiquement** via les liaisons `${db.*}` / `${redis.*}`.
 > Ne pas les surcharger manuellement.
 
+### Base Redis : cluster managé requis
+
+App Platform ne crée pas de **dev DB Redis** (uniquement PG/MySQL). Une base
+`production: true` doit donc **référencer un cluster managé déjà créé** :
+
+1. DO → **Databases → Create Database Cluster → Valkey (Redis)**, région **fra**
+   (même région que l'app), plus petite taille. Nomme-le (ex. `neyla-redis`).
+2. Dans la spec, renseigne `cluster_name:` avec ce nom (placeholder
+   `REPLACE_WITH_YOUR_REDIS_CLUSTER_NAME`).
+
+> 💡 **Alternative sans coût (test)** : retirer le bloc `redis` des `databases`
+> et pointer `REDIS_URL` / `CELERY_BROKER_URL` / `CELERY_RESULT_BACKEND` vers un
+> Redis externe (ex. Upstash, free tier, URL `rediss://`). Le code gère le TLS.
+
 ## 2. Créer l'app
 
 ```bash

@@ -16,15 +16,22 @@ name: neyla-tv
 region: fra
 
 # --- Bases de données managées -------------------------------------------
+# NB : une base "production: true" doit référencer un cluster managé DÉJÀ créé
+# (App Platform s'y attache, il ne le crée pas). Les dev DB (production: false)
+# sont créées automatiquement, mais SEULEMENT pour PG/MySQL (pas Redis).
 databases:
   - name: db
     engine: PG
     version: "16"
-    production: false # tier "dev" (1 noeud). Passer à true pour la HA.
+    production: false # dev DB créée automatiquement. true + cluster_name pour la HA.
   - name: redis
     engine: REDIS
-    version: "7"
-    production: true # Redis/Valkey n'a pas de tier dev : noeud managé requis.
+    production: true
+    # Cluster Valkey/Redis MANAGÉ à pré-créer (DO → Databases → Create, région fra),
+    # puis renseigner son nom ici. Redis n'a pas de tier dev.
+    # Alternative sans coût : supprimer ce bloc et pointer REDIS_URL / CELERY_*
+    # vers un Redis externe (ex. Upstash, rediss://...) dans les envs ci-dessous.
+    cluster_name: REPLACE_WITH_YOUR_REDIS_CLUSTER_NAME
 
 # --- Variables partagées (api, worker, beat, job migrate) ----------------
 envs:
