@@ -17,14 +17,19 @@ name: neyla-tv
 region: fra
 
 databases:
+  # production: true => cluster managé pré-créé (cluster_name requis).
+  # Dev DB auto-créée seulement pour PG/MySQL, pas Redis.
   - name: db
     engine: PG
     version: "16"
     production: false
   - name: redis
     engine: REDIS
-    version: "7"
     production: true
+    # Cluster Valkey/Redis managé à pré-créer (région fra), puis son nom ici.
+    # Alternative gratuite : retirer ce bloc + REDIS_URL/CELERY_* vers un Redis
+    # externe (ex. Upstash, rediss://...).
+    cluster_name: REPLACE_WITH_YOUR_REDIS_CLUSTER_NAME
 
 envs:
   - key: DJANGO_SETTINGS_MODULE
