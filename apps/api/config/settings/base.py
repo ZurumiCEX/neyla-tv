@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     "health",
     "moderation",
     "notifications",
+    "payments",
     "social",
     "streamers",
 ]
@@ -197,6 +198,15 @@ if CELERY_RESULT_BACKEND.startswith("rediss://"):
 
 # --- Streamers : quota quotidien d'approbations (gating, maîtrise des coûts) ---
 STREAMER_DAILY_APPROVAL_QUOTA = env.int("STREAMER_DAILY_APPROVAL_QUOTA", default=100)
+
+# --- Monétisation "Aura" ---
+# Prix d'1 Aura en EUR, part créateur (reste = commission plateforme), provider.
+AURA_UNIT_PRICE_EUR = env("AURA_UNIT_PRICE_EUR", default="0.01")
+CREATOR_SHARE = env.float("CREATOR_SHARE", default=0.70)
+# fake (défaut, confirme tout de suite) | stripe | mobile_money
+PAYMENTS_PROVIDER = env("PAYMENTS_PROVIDER", default="fake")
+STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="")
+STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET", default="")
 
 # --- Cloudflare Stream ---
 # Si CLOUDFLARE_API_TOKEN est vide, on bascule sur un client FAKE en dev/tests

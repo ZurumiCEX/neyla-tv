@@ -178,6 +178,26 @@ Calculées **à la demande** (pas de tâche planifiée). DAU/MAU s'appuient sur
 
 ---
 
+## Monétisation "Aura" — `/api/payments/`
+
+Crédits "Aura" : achat (provider abstrait — **FAKE** par défaut, **Stripe** si
+clé posée, **mobile money** à brancher), tips avec partage **70 % créateur /
+30 % plateforme**, retrait. Toutes les mutations passent par un grand livre
+(`LedgerEntry`) atomique.
+
+| Méthode | Chemin | Auth | Description |
+|---------|--------|------|-------------|
+| `GET` | `/api/payments/wallet` | JWT | `{aura_balance, recent:[ledger…]}`. |
+| `POST` | `/api/payments/purchase` | JWT | `{credits}` → achat. FAKE = crédité tout de suite ; Stripe → `{checkout_url}`. |
+| `POST` | `/api/payments/tip` | JWT | `{channel_slug, aura_amount, message?}` → débit envoyeur, crédit créateur (70 %). |
+| `POST` | `/api/payments/payout` | JWT | `{aura_amount}` → demande de retrait (débit + `Payout`). |
+| `POST` | `/api/payments/webhook/<provider>` | signature provider | Confirme un achat (idempotent) → crédite le wallet. |
+
+Réglages : `AURA_UNIT_PRICE_EUR`, `CREATOR_SHARE`, `PAYMENTS_PROVIDER`,
+`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`.
+
+---
+
 ## Webhooks
 
 | Méthode | Chemin | Sécurité | Description |
