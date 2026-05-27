@@ -9,6 +9,24 @@ from catalog.serializers import GameSerializer
 
 from .models import Channel, StreamSession
 
+# Réseaux sociaux autorisés sur le profil chaîne.
+ALLOWED_SOCIAL_KEYS = frozenset({"twitter", "youtube", "instagram", "tiktok", "discord", "website"})
+
+
+def _clean_social_links(value):
+    if not isinstance(value, dict):
+        raise serializers.ValidationError("Format attendu : objet {réseau: lien}.")
+    cleaned = {}
+    for key, link in value.items():
+        if key not in ALLOWED_SOCIAL_KEYS:
+            raise serializers.ValidationError(f"Réseau non supporté : {key}.")
+        if link in (None, ""):
+            continue
+        if not isinstance(link, str) or len(link) > 200:
+            raise serializers.ValidationError(f"Lien invalide pour {key}.")
+        cleaned[key] = link
+    return cleaned
+
 
 class StreamSessionSerializer(serializers.ModelSerializer):
     duration_seconds = serializers.IntegerField(read_only=True)
@@ -35,6 +53,7 @@ class StreamerSerializer(serializers.Serializer):
     username = serializers.CharField(read_only=True)
     display_name = serializers.CharField(read_only=True)
     avatar_url = serializers.URLField(read_only=True)
+    bio = serializers.CharField(read_only=True)
 
 
 class PublicChannelSerializer(serializers.ModelSerializer):
@@ -47,6 +66,8 @@ class PublicChannelSerializer(serializers.ModelSerializer):
             "slug",
             "title",
             "thumbnail_url",
+            "banner_url",
+            "social_links",
             "hls_playback_url",
             "is_live",
             "last_live_started_at",
@@ -69,6 +90,10 @@ class MyChannelSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True,
     )
+    social_links = serializers.JSONField(required=False)
+
+    def validate_social_links(self, value):
+        return _clean_social_links(value)
 
     class Meta:
         model = Channel
@@ -76,6 +101,8 @@ class MyChannelSerializer(serializers.ModelSerializer):
             "slug",
             "title",
             "thumbnail_url",
+            "banner_url",
+            "social_links",
             "rtmps_url",
             "rtmps_key",
             "hls_playback_url",

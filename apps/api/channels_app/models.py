@@ -16,6 +16,10 @@ class Channel(models.Model):
     slug = models.SlugField(max_length=30, unique=True, db_index=True)
     title = models.CharField(max_length=140, blank=True)
     thumbnail_url = models.URLField(blank=True)
+    banner_url = models.URLField(blank=True, default="")
+    # Liens réseaux sociaux : {"twitter": "...", "youtube": "...", ...}
+    # (clés validées contre une allowlist côté serializer).
+    social_links = models.JSONField(default=dict, blank=True)
     category = models.ForeignKey(
         "catalog.Game",
         null=True,

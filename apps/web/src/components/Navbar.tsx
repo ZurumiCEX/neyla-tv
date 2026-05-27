@@ -54,6 +54,12 @@ export function Navbar() {
               >
                 Ma chaîne
               </Link>
+              <Link
+                href="/settings"
+                className="hidden text-neutral-300 hover:text-emerald-300 sm:inline"
+              >
+                Paramètres
+              </Link>
               <span className="hidden text-neutral-500 sm:inline">@{user.username}</span>
               <button
                 type="button"
