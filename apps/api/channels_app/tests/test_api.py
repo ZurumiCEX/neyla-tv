@@ -7,6 +7,7 @@ from django.urls import reverse
 
 from accounts.factories import UserFactory
 from channels_app.models import Channel
+from channels_app.services import provision_channel
 
 pytestmark = pytest.mark.django_db
 
@@ -16,8 +17,21 @@ def test_my_channel_requires_auth(api_client):
     assert response.status_code == 401
 
 
-def test_my_channel_returns_rtmps_credentials(auth_client_factory):
+def test_my_channel_unprovisioned_has_no_credentials(auth_client_factory):
+    """Sans approbation streamer : chaîne non provisionnée, pas de clé RTMPS."""
     user = UserFactory()
+    client = auth_client_factory(user)
+    response = client.get(reverse("channel-me"))
+    assert response.status_code == 200
+    data = response.json()
+    assert data["is_provisioned"] is False
+    assert data["rtmps_url"] == ""
+    assert data["rtmps_key"] == ""
+
+
+def test_my_channel_provisioned_returns_credentials(auth_client_factory):
+    user = UserFactory()
+    provision_channel(Channel.objects.get(user=user))
     client = auth_client_factory(user)
     response = client.get(reverse("channel-me"))
     assert response.status_code == 200
@@ -39,8 +53,16 @@ def test_patch_my_channel_updates_title(auth_client_factory):
     assert response.json()["title"] == "Speedrun Mario 64"
 
 
-def test_rotate_key_changes_rtmps_key(auth_client_factory):
+def test_rotate_key_forbidden_when_unprovisioned(auth_client_factory):
     user = UserFactory()
+    client = auth_client_factory(user)
+    response = client.post(reverse("channel-rotate-key"))
+    assert response.status_code == 403
+
+
+def test_rotate_key_changes_rtmps_key_when_provisioned(auth_client_factory):
+    user = UserFactory()
+    provision_channel(Channel.objects.get(user=user))
     client = auth_client_factory(user)
     before = client.get(reverse("channel-me")).json()
     rotated = client.post(reverse("channel-rotate-key")).json()

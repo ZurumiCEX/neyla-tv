@@ -16,10 +16,20 @@ from channels_app.services import (
 pytestmark = pytest.mark.django_db
 
 
+def test_new_user_channel_is_not_provisioned():
+    """L'inscription crée une chaîne mais NE provisionne PAS (gating streamer)."""
+    user = UserFactory()
+    channel = Channel.objects.get(user=user)
+    assert channel.live_input_uid == ""
+    assert not channel.is_provisioned
+
+
 def test_provision_is_idempotent():
     user = UserFactory()
     channel = Channel.objects.get(user=user)
+    provision_channel(channel)
     first_uid = channel.live_input_uid
+    assert first_uid  # provisionné
     provision_channel(channel)
     assert channel.live_input_uid == first_uid
 
@@ -27,6 +37,7 @@ def test_provision_is_idempotent():
 def test_rotate_key_changes_credentials():
     user = UserFactory()
     channel = Channel.objects.get(user=user)
+    provision_channel(channel)
     old_uid = channel.live_input_uid
     old_key = channel.rtmps_key
     rotate_stream_key(channel)

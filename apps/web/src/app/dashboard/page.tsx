@@ -153,56 +153,69 @@ export default function DashboardPage() {
             </button>
           </div>
 
-          <Field label="Statut provisioning">
-            {channel.is_provisioned ? (
-              <span className="text-emerald-300">✓ Live Input prêt</span>
-            ) : (
-              <span className="text-amber-300">⏳ Provisioning en cours…</span>
-            )}
-          </Field>
+          {channel.is_provisioned ? (
+            <>
+              <Field label="Statut">
+                <span className="text-emerald-300">✓ Streamer approuvé — Live Input prêt</span>
+              </Field>
 
-          <Field label="Serveur RTMPS">
-            <code className="break-all text-emerald-300">{channel.rtmps_url || "—"}</code>
-          </Field>
+              <Field label="Serveur RTMPS">
+                <code className="break-all text-emerald-300">
+                  {channel.rtmps_url || "—"}
+                </code>
+              </Field>
 
-          <Field label="Stream key">
-            <div className="flex items-center gap-2">
-              <code className="break-all text-emerald-300">
-                {channel.rtmps_key
-                  ? revealKey
-                    ? channel.rtmps_key
-                    : "•".repeat(Math.min(channel.rtmps_key.length, 40))
-                  : "—"}
-              </code>
-              {channel.rtmps_key && (
-                <button
-                  type="button"
-                  onClick={() => setRevealKey((v) => !v)}
-                  className="rounded-md border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:border-neutral-500"
-                >
-                  {revealKey ? "Masquer" : "Afficher"}
-                </button>
-              )}
+              <Field label="Stream key">
+                <div className="flex items-center gap-2">
+                  <code className="break-all text-emerald-300">
+                    {channel.rtmps_key
+                      ? revealKey
+                        ? channel.rtmps_key
+                        : "•".repeat(Math.min(channel.rtmps_key.length, 40))
+                      : "—"}
+                  </code>
+                  {channel.rtmps_key && (
+                    <button
+                      type="button"
+                      onClick={() => setRevealKey((v) => !v)}
+                      className="rounded-md border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:border-neutral-500"
+                    >
+                      {revealKey ? "Masquer" : "Afficher"}
+                    </button>
+                  )}
+                </div>
+              </Field>
+
+              <Field label="URL de lecture HLS">
+                <code className="break-all text-neutral-300">
+                  {channel.hls_playback_url || "—"}
+                </code>
+              </Field>
+
+              <button
+                type="button"
+                onClick={rotate}
+                disabled={rotating}
+                className="rounded-lg bg-amber-500 px-4 py-2 font-semibold text-neutral-950 hover:bg-amber-400 disabled:opacity-50"
+              >
+                {rotating ? "Régénération…" : "Régénérer la stream key"}
+              </button>
+              <p className="text-xs text-neutral-500">
+                Régénérer invalide l&apos;ancienne clé. OBS devra être reconfiguré.
+              </p>
+            </>
+          ) : (
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
+              <p className="font-semibold text-amber-300">Accès streamer requis</p>
+              <p className="mt-1 text-sm text-neutral-300">
+                Le streaming nécessite une validation par l&apos;équipe. Ta clé RTMPS et
+                les outils de diffusion seront débloqués une fois ta candidature approuvée.
+              </p>
+              <p className="mt-2 text-xs text-neutral-500">
+                La candidature en ligne arrive très bientôt.
+              </p>
             </div>
-          </Field>
-
-          <Field label="URL de lecture HLS">
-            <code className="break-all text-neutral-300">
-              {channel.hls_playback_url || "—"}
-            </code>
-          </Field>
-
-          <button
-            type="button"
-            onClick={rotate}
-            disabled={rotating}
-            className="rounded-lg bg-amber-500 px-4 py-2 font-semibold text-neutral-950 hover:bg-amber-400 disabled:opacity-50"
-          >
-            {rotating ? "Régénération…" : "Régénérer la stream key"}
-          </button>
-          <p className="text-xs text-neutral-500">
-            Régénérer invalide l&apos;ancienne clé. OBS devra être reconfiguré.
-          </p>
+          )}
         </section>
       )}
     </main>
