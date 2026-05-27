@@ -14,4 +14,5 @@ urlpatterns = [
     path("api/", include("streamers.urls")),
     path("api/", include("notifications.urls")),
     path("api/", include("moderation.urls")),
+    path("api/", include("analytics.urls")),
 ]

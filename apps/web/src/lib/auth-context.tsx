@@ -22,6 +22,7 @@ export type AuthUser = {
   username: string;
   display_name: string;
   is_email_verified: boolean;
+  is_staff: boolean;
 };
 
 type AuthState = {

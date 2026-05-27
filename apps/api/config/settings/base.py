@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     "channels",
     # Local
     "accounts",
+    "analytics",
     "catalog",
     "channels_app",
     "chat",

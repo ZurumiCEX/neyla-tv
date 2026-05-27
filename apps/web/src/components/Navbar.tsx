@@ -48,6 +48,14 @@ export function Navbar() {
             <span className="text-neutral-500">…</span>
           ) : user ? (
             <>
+              {user.is_staff && (
+                <Link
+                  href="/admin/analytics"
+                  className="hidden text-amber-300 hover:text-amber-200 lg:inline"
+                >
+                  Admin
+                </Link>
+              )}
               <Link
                 href="/become-streamer"
                 className="hidden text-neutral-300 hover:text-emerald-300 lg:inline"

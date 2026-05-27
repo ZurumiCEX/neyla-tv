@@ -37,9 +37,17 @@ class MeSerializer(serializers.ModelSerializer):
             "avatar_url",
             "bio",
             "is_email_verified",
+            "is_staff",
             "date_joined",
         )
-        read_only_fields = ("id", "email", "username", "is_email_verified", "date_joined")
+        read_only_fields = (
+            "id",
+            "email",
+            "username",
+            "is_email_verified",
+            "is_staff",
+            "date_joined",
+        )
 
 
 class EmailSerializer(serializers.Serializer):
