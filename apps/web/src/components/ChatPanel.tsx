@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { EmojiPicker } from "@/components/EmojiPicker";
 
 type ChatMessage = {
   id: string;
@@ -68,9 +69,12 @@ export function ChatPanel({
       try {
         const data = JSON.parse(e.data) as
           | { type: "message"; msg: ChatMessage }
+          | { type: "delete"; id: string }
           | SystemEvent;
         if (data.type === "message") {
           setMessages((prev) => [...prev.slice(-199), data.msg]);
+        } else if (data.type === "delete") {
+          setMessages((prev) => prev.filter((m) => m.id !== data.id));
         } else {
           setSystem(data.detail);
         }
@@ -100,6 +104,15 @@ export function ChatPanel({
     setInput("");
   }, [input]);
 
+  const deleteMessage = useCallback((id: string) => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+    wsRef.current.send(JSON.stringify({ content: `/delete ${id}` }));
+  }, []);
+
+  const addEmoji = useCallback((emoji: string) => {
+    setInput((v) => (v + emoji).slice(0, 500));
+  }, []);
+
   const placeholder = useMemo(() => {
     if (!canConnect) return "Chat indisponible (chaîne hors-ligne).";
     if (!user) return "Connecte-toi pour discuter.";
@@ -124,12 +137,25 @@ export function ChatPanel({
           </p>
         )}
         {messages.map((m) => (
-          <div key={m.id} className="break-words">
-            <span className="font-semibold text-emerald-300">
-              {m.user.display_name || m.user.username}
+          <div key={m.id} className="group flex items-start gap-1 break-words">
+            <span className="min-w-0 flex-1">
+              <span className="font-semibold text-emerald-300">
+                {m.user.display_name || m.user.username}
+              </span>
+              <span className="text-neutral-500"> : </span>
+              <span className="text-neutral-100">{m.content}</span>
             </span>
-            <span className="text-neutral-500"> : </span>
-            <span className="text-neutral-100">{m.content}</span>
+            {isStreamer && (
+              <button
+                type="button"
+                onClick={() => deleteMessage(m.id)}
+                className="hidden shrink-0 text-xs text-neutral-500 hover:text-red-400 group-hover:block"
+                title="Supprimer ce message"
+                aria-label="Supprimer"
+              >
+                ✕
+              </button>
+            )}
           </div>
         ))}
       </div>
@@ -155,6 +181,7 @@ export function ChatPanel({
           maxLength={500}
           className="flex-1 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-100 outline-none focus:border-emerald-500 disabled:opacity-50"
         />
+        <EmojiPicker onSelect={addEmoji} disabled={!canConnect || !user} />
         <button
           type="submit"
           disabled={!canConnect || !user || !input.trim()}

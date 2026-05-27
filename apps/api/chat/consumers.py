@@ -16,6 +16,7 @@ from .redis_store import (
     append_message,
     check_rate_limit,
     decr_viewers,
+    delete_message,
     get_slowmode,
     incr_viewers,
     set_slowmode,
@@ -70,9 +71,17 @@ def _record_peak(channel_id: int, viewers: int) -> None:
     record_session_peak(channel_id, viewers)
 
 
+@database_sync_to_async
+def _load_banned_words() -> set[str]:
+    from moderation.services import get_banned_words
+
+    return get_banned_words()
+
+
 class ChatConsumer(AsyncJsonWebsocketConsumer):
     channel_obj: Channel | None = None
     group_name: str = ""
+    banned_words: set[str] = frozenset()
 
     async def connect(self) -> None:
         slug = self.scope["url_route"]["kwargs"]["slug"]
@@ -103,6 +112,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         self.group_name = f"chat.{self.channel_obj.id}"
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
+        self.banned_words = await _load_banned_words()
         count = await incr_viewers(self.channel_obj.id)
         await _record_peak(self.channel_obj.id, count)
 
@@ -133,6 +143,11 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 )
             return
 
+        # Filtre mots interdits (chargé à la connexion).
+        if self.banned_words and any(w in text.lower() for w in self.banned_words):
+            await self.send_json({"type": "error", "detail": "Message bloqué (terme interdit)."})
+            return
+
         # Rate limit personnel (avec slow-mode si activé).
         slow = await get_slowmode(self.channel_obj.id)
         interval = max(slow, MIN_INTERVAL_S)
@@ -160,6 +175,9 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         if self.scope.get("user") and self.scope["user"].pk == event["user_id"]:
             await self.send_json({"type": "kicked", "detail": event.get("reason", "")})
             await self.close(code=CLOSE_FORBIDDEN)
+
+    async def chat_delete(self, event):
+        await self.send_json({"type": "delete", "id": event["id"]})
 
     async def _handle_command(self, streamer, text: str) -> None:
         parts = text.split(maxsplit=2)
@@ -198,6 +216,13 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             return await self.send_json(
                 {"type": "system", "detail": f"{cmd} @{target.username} ({reason})"}
             )
+
+        if cmd == "/delete" and len(parts) >= 2:
+            await delete_message(self.channel_obj.id, parts[1])
+            await self.channel_layer.group_send(
+                self.group_name, {"type": "chat.delete", "id": parts[1]}
+            )
+            return
 
         if cmd == "/unban" and len(parts) >= 2:
             target = await _resolve_target_user(parts[1])

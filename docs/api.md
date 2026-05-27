@@ -139,15 +139,30 @@ ws(s)://<host>/ws/c/<slug>/chat?token=<JWT_access>
 { "content": "mon message (≤500 car.)" }
 ```
 Commandes streamer (envoyées comme un message) :
-`/slowmode <s>` · `/ban @user` · `/timeout @user [min]` · `/unban @user`
+`/slowmode <s>` · `/ban @user` · `/timeout @user [min]` · `/unban @user` ·
+`/delete <message_id>`
+
+Les messages contenant un **mot interdit** (table `moderation.BannedWord`,
+chargée à la connexion) sont bloqués (`{type:"error"}`).
 
 **Serveur → client**
 ```json
 { "type": "message", "msg": { "id", "user": {"username","display_name"}, "content", "ts" } }
+{ "type": "delete",  "id": "<message_id>" }
 { "type": "system",  "detail": "Slow-mode → 5s" }
 { "type": "error",   "detail": "Tu vas trop vite." }
 { "type": "kicked",  "detail": "raison" }
 ```
+
+---
+
+## Modération — `/api/reports`
+
+| Méthode | Chemin | Auth | Rate-limit | Description |
+|---------|--------|------|-----------|-------------|
+| `POST` | `/api/reports` | JWT | 20 / h / user | Signale `{reason, target_username?, channel_slug?, message_id?, details?}`. `reason` ∈ {spam, harassment, hate, other}. |
+
+Mots interdits (`BannedWord`) et signalements (`Report`) se gèrent dans l'admin Django.
 
 ---
 

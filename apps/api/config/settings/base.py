@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     "channels_app",
     "chat",
     "health",
+    "moderation",
     "notifications",
     "social",
     "streamers",
