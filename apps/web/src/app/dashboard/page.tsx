@@ -211,9 +211,12 @@ export default function DashboardPage() {
                 Le streaming nécessite une validation par l&apos;équipe. Ta clé RTMPS et
                 les outils de diffusion seront débloqués une fois ta candidature approuvée.
               </p>
-              <p className="mt-2 text-xs text-neutral-500">
-                La candidature en ligne arrive très bientôt.
-              </p>
+              <Link
+                href="/become-streamer"
+                className="mt-3 inline-block rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-emerald-400"
+              >
+                Faire une demande
+              </Link>
             </div>
           )}
         </section>

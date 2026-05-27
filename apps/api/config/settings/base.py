@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     "chat",
     "health",
     "social",
+    "streamers",
 ]
 
 MIDDLEWARE = [
@@ -188,6 +189,9 @@ if CELERY_BROKER_URL.startswith("rediss://"):
     CELERY_BROKER_USE_SSL = {"ssl_cert_reqs": ssl.CERT_NONE}
 if CELERY_RESULT_BACKEND.startswith("rediss://"):
     CELERY_REDIS_BACKEND_USE_SSL = {"ssl_cert_reqs": ssl.CERT_NONE}
+
+# --- Streamers : quota quotidien d'approbations (gating, maîtrise des coûts) ---
+STREAMER_DAILY_APPROVAL_QUOTA = env.int("STREAMER_DAILY_APPROVAL_QUOTA", default=100)
 
 # --- Cloudflare Stream ---
 # Si CLOUDFLARE_API_TOKEN est vide, on bascule sur un client FAKE en dev/tests

@@ -11,4 +11,5 @@ urlpatterns = [
     path("api/", include("chat.urls")),
     path("api/", include("catalog.urls")),
     path("api/", include("social.urls")),
+    path("api/", include("streamers.urls")),
 ]

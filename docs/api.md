@@ -82,6 +82,23 @@ is_email_verified, date_joined`.
 
 ---
 
+## Streamer (candidature) — `/api/streamer/`
+
+L'inscription est ouverte à tous, mais **streamer est gaté** : candidature →
+validation admin (panel) → provisioning Cloudflare à l'approbation. Quota
+quotidien d'approbations configurable (`STREAMER_DAILY_APPROVAL_QUOTA`, défaut 100).
+
+| Méthode | Chemin | Auth | Rate-limit | Description |
+|---------|--------|------|-----------|-------------|
+| `POST` | `/api/streamer/apply` | JWT | 3/h/user | Dépose/réessaie une candidature `{motivation?}`. `201` → application. `409` si déjà streamer. |
+| `GET` | `/api/streamer/application` | JWT | — | Statut courant : `{status: none\|pending\|approved\|rejected, ...}`. |
+
+L'approbation/rejet se fait dans l'admin Django (actions « Approuver » / « Rejeter »
+sur `StreamerApplication`). L'approbation provisionne la chaîne via la task
+`provision_live_input_task` (réutilisée).
+
+---
+
 ## Chat — REST + WebSocket
 
 ### Historique (REST)
