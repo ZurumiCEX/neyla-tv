@@ -184,6 +184,8 @@ CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="redis://redis:6379/1")
 CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND", default="redis://redis:6379/2")
 CELERY_TASK_ALWAYS_EAGER = False
 CELERY_TIMEZONE = TIME_ZONE
+# Retry de connexion au broker au démarrage (broker managé/externe parfois lent).
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 # Celery/kombu attendent la config TLS via un dict dédié (pas via la query URL).
 if CELERY_BROKER_URL.startswith("rediss://"):
     CELERY_BROKER_USE_SSL = {"ssl_cert_reqs": ssl.CERT_NONE}
