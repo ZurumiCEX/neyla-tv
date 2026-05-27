@@ -7,6 +7,7 @@ import { HlsPlayer } from "@/components/HlsPlayer";
 import { LiveBadge } from "@/components/LiveBadge";
 import { ReportButton } from "@/components/ReportButton";
 import { SocialLinks } from "@/components/SocialLinks";
+import { TipButton } from "@/components/TipButton";
 import { apiFetchServer } from "@/lib/api";
 
 type PublicChannel = {
@@ -89,6 +90,7 @@ export default async function ChannelPage({
             <div className="flex items-center gap-3">
               <LiveBadge slug={channel.slug} initial={{ is_live: channel.is_live }} />
               <FollowButton username={channel.slug} />
+              <TipButton channelSlug={channel.slug} />
               <ReportButton
                 channelSlug={channel.slug}
                 targetUsername={channel.streamer.username}

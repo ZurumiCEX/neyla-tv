@@ -72,6 +72,12 @@ export function Navbar() {
                 Ma chaîne
               </Link>
               <Link
+                href="/wallet"
+                className="hidden text-amber-300 hover:text-amber-200 sm:inline"
+              >
+                Aura
+              </Link>
+              <Link
                 href="/settings"
                 className="hidden text-neutral-300 hover:text-emerald-300 sm:inline"
               >
