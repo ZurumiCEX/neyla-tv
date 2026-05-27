@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { apiFetch } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 
 export default function RegisterPage() {
+  const t = useT();
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -30,11 +32,11 @@ export default function RegisterPage() {
 
   return (
     <main className="mx-auto max-w-md p-8">
-      <h1 className="mb-6 text-2xl font-bold">Créer un compte</h1>
+      <h1 className="mb-6 text-2xl font-bold">{t("auth.registerTitle")}</h1>
       <form onSubmit={submit} className="space-y-4">
-        <Field label="Email" type="email" value={email} onValueChange={setEmail} required />
+        <Field label={t("auth.email")} type="email" value={email} onValueChange={setEmail} required />
         <Field
-          label="Username"
+          label={t("auth.username")}
           type="text"
           value={username}
           onValueChange={setUsername}
@@ -42,7 +44,7 @@ export default function RegisterPage() {
           required
         />
         <Field
-          label="Mot de passe (10+ caractères)"
+          label={t("auth.passwordHint")}
           type="password"
           value={password}
           onValueChange={setPassword}
@@ -54,7 +56,7 @@ export default function RegisterPage() {
           disabled={busy}
           className="w-full rounded-lg bg-emerald-500 px-4 py-2 font-semibold text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
         >
-          {busy ? "..." : "S'inscrire"}
+          {busy ? "..." : t("auth.signup")}
         </button>
       </form>
       {status && (
@@ -63,7 +65,10 @@ export default function RegisterPage() {
         </p>
       )}
       <p className="mt-6 text-sm text-neutral-400">
-        Déjà un compte ? <a href="/login" className="text-emerald-300 underline">Connexion</a>
+        {t("auth.haveAccount")}{" "}
+        <a href="/login" className="text-emerald-300 underline">
+          {t("nav.login")}
+        </a>
       </p>
     </main>
   );

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { useT } from "@/lib/i18n";
 
 type FollowedChannel = {
   slug: string;
@@ -33,6 +34,7 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [follows, setFollows] = useState<FollowedChannel[]>([]);
   const pathname = usePathname();
+  const t = useT();
 
   useEffect(() => {
     setCollapsed(localStorage.getItem("sidebar:collapsed") === "1");
@@ -72,12 +74,12 @@ export function Sidebar() {
       </button>
 
       <nav className="space-y-1">
-        <NavItem href="/" label="Accueil" collapsed={collapsed} active={pathname === "/"}>
+        <NavItem href="/" label={t("side.home")} collapsed={collapsed} active={pathname === "/"}>
           <HomeIcon />
         </NavItem>
         <NavItem
           href="/parcourir"
-          label="Parcourir"
+          label={t("side.browse")}
           collapsed={collapsed}
           active={pathname?.startsWith("/parcourir") ?? false}
         >
@@ -88,11 +90,13 @@ export function Sidebar() {
       {user && (
         <div className="mt-6">
           {!collapsed && (
-            <p className="mb-2 px-2 text-xs uppercase tracking-wider text-neutral-500">Suivis</p>
+            <p className="mb-2 px-2 text-xs uppercase tracking-wider text-neutral-500">
+              {t("side.following")}
+            </p>
           )}
           {follows.length === 0 ? (
             !collapsed && (
-              <p className="px-2 text-xs text-neutral-600">Aucune chaîne suivie.</p>
+              <p className="px-2 text-xs text-neutral-600">{t("side.noFollows")}</p>
             )
           ) : (
             <div className="space-y-1">
