@@ -38,6 +38,7 @@ class MeSerializer(serializers.ModelSerializer):
             "bio",
             "is_email_verified",
             "is_staff",
+            "role",
             "date_joined",
         )
         read_only_fields = (
@@ -46,6 +47,7 @@ class MeSerializer(serializers.ModelSerializer):
             "username",
             "is_email_verified",
             "is_staff",
+            "role",
             "date_joined",
         )
 

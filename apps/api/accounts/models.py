@@ -30,6 +30,12 @@ RESERVED_USERNAMES = frozenset(
 
 
 class User(AbstractBaseUser, PermissionsMixin):
+    class Role(models.TextChoices):
+        USER = "user", "Utilisateur"
+        SUPPORT = "support", "Support"
+        MODERATOR = "moderator", "Modérateur"
+        ADMIN = "admin", "Administrateur"
+
     email = models.EmailField(unique=True)
     username = models.CharField(
         max_length=30,
@@ -41,6 +47,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     bio = models.TextField(max_length=500, blank=True)
     email_verified_at = models.DateTimeField(null=True, blank=True)
 
+    role = models.CharField(max_length=12, choices=Role.choices, default=Role.USER, db_index=True)
     is_staff = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     date_joined = models.DateTimeField(default=timezone.now)
@@ -60,3 +67,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     @property
     def is_email_verified(self) -> bool:
         return self.email_verified_at is not None
+
+    @property
+    def is_staff_role(self) -> bool:
+        """True pour support/modérateur/admin (rôles internes)."""
+        return self.role in (self.Role.SUPPORT, self.Role.MODERATOR, self.Role.ADMIN)

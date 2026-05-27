@@ -10,16 +10,18 @@ class UserAdmin(DjangoUserAdmin):
     list_display = (
         "email",
         "username",
+        "role",
         "is_staff",
         "is_active",
         "email_verified_at",
         "date_joined",
     )
-    list_filter = ("is_staff", "is_active")
+    list_filter = ("role", "is_staff", "is_active")
     search_fields = ("email", "username", "display_name")
     fieldsets = (
         (None, {"fields": ("email", "username", "password")}),
         ("Profil", {"fields": ("display_name", "avatar_url", "bio")}),
+        ("Rôle", {"fields": ("role",)}),
         ("Vérification", {"fields": ("email_verified_at",)}),
         (
             "Permissions",
