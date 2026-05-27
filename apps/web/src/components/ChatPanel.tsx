@@ -16,10 +16,16 @@ type ChatMessage = {
 
 type SystemEvent = { type: "system" | "error" | "kicked"; detail: string };
 
-const PUBLIC_API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const PUBLIC_API = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 function wsBase(): string {
-  return PUBLIC_API.replace(/^http/, "ws");
+  if (PUBLIC_API) return PUBLIC_API.replace(/^http/, "ws");
+  // Même origine que la page (App Platform route /ws vers l'api).
+  if (typeof window !== "undefined") {
+    const proto = window.location.protocol === "https:" ? "wss" : "ws";
+    return `${proto}://${window.location.host}`;
+  }
+  return "";
 }
 
 export function ChatPanel({
