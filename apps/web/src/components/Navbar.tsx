@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { NotificationBell } from "@/components/NotificationBell";
 
 export function Navbar() {
   const { user, loading, logout } = useAuth();
@@ -68,6 +69,7 @@ export function Navbar() {
               >
                 Paramètres
               </Link>
+              <NotificationBell />
               <span className="hidden text-neutral-500 sm:inline">@{user.username}</span>
               <button
                 type="button"

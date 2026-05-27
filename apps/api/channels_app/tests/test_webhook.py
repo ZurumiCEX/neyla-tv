@@ -13,6 +13,7 @@ from django.urls import reverse
 
 from accounts.factories import UserFactory
 from channels_app.models import Channel
+from channels_app.services import provision_channel
 
 pytestmark = pytest.mark.django_db
 
@@ -68,6 +69,8 @@ def test_webhook_rejects_stale_timestamp(client):
 def test_webhook_connected_marks_channel_live(client):
     user = UserFactory(username="streamerlive")
     channel = Channel.objects.get(user=user)
+    provision_channel(channel)
+    channel.refresh_from_db()
     response = _post(
         client,
         {
@@ -83,6 +86,7 @@ def test_webhook_connected_marks_channel_live(client):
 def test_webhook_disconnected_marks_channel_offline(client):
     user = UserFactory(username="streamerend")
     channel = Channel.objects.get(user=user)
+    provision_channel(channel)
     channel.is_live = True
     channel.save()
     response = _post(

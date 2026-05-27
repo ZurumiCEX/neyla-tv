@@ -17,7 +17,17 @@ def follow_user(follower: User, target_username: str) -> Follow:
         raise FollowError("Utilisateur introuvable.")
     if target.pk == follower.pk:
         raise FollowError("Tu ne peux pas te suivre toi-même.")
-    follow, _created = Follow.objects.get_or_create(follower=follower, followee=target)
+    follow, created = Follow.objects.get_or_create(follower=follower, followee=target)
+    if created:
+        from notifications.models import Notification
+        from notifications.services import create_notification
+
+        create_notification(
+            recipient=target,
+            type=Notification.Type.NEW_FOLLOWER,
+            actor=follower,
+            payload={"username": follower.username},
+        )
     return follow
 
 
