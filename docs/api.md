@@ -3,6 +3,11 @@
 API REST (Django REST Framework) + WebSocket (Channels). Toutes les routes
 HTTP sont préfixées par `/api/`. L'admin Django est servi sous `/admin/`.
 
+> **OpenAPI** : schéma sur `GET /api/schema`, Swagger UI sur `GET /api/docs`
+> (drf-spectacular). Pagination DRF (`page`/`page_size`) + filtres/tri/recherche
+> (django-filter) sur les vues qui les déclarent. Erreurs au format
+> `{detail, errors?}`. Actions sensibles tracées dans `audit.AuditEvent`.
+
 ## Conventions
 
 - **Format** : JSON. `Content-Type: application/json`.

@@ -68,6 +68,7 @@ def approve_application(application: StreamerApplication, admin) -> StreamerAppl
         application.save()
     _provision_channel_now(application.user_id)
     _notify_decision(application, "approved")
+    _audit(admin, "streamer.approve", application)
     return application
 
 
@@ -80,7 +81,14 @@ def reject_application(
     application.rejection_reason = reason
     application.save()
     _notify_decision(application, "rejected")
+    _audit(admin, "streamer.reject", application)
     return application
+
+
+def _audit(admin, action: str, application: StreamerApplication) -> None:
+    from audit.services import record
+
+    record(admin, action, target=application.user, meta={"application": application.id})
 
 
 def _notify_decision(application: StreamerApplication, status: str) -> None:

@@ -129,6 +129,10 @@ def request_payout(user, aura_amount: int) -> Payout:
     if wallet.aura_balance < aura_amount:
         raise InsufficientBalanceError("Solde Aura insuffisant.")
     _apply(wallet, -aura_amount, LedgerEntry.Kind.PAYOUT, "payout")
-    return Payout.objects.create(
+    payout = Payout.objects.create(
         user=user, aura_amount=aura_amount, fiat_amount=_fiat_for(aura_amount)
     )
+    from audit.services import record
+
+    record(user, "payout.request", target=payout, meta={"aura": aura_amount})
+    return payout
