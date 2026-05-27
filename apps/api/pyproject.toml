@@ -19,6 +19,8 @@ ignore = ["S101", "DJ001"]
 "**/tests.py" = ["S"]
 "**/test_*.py" = ["S"]
 "**/migrations/*.py" = ["E501"]
+# Seeders / outils CLI : random non-crypto, mot de passe démo, best-effort try/except.
+"**/management/commands/*.py" = ["S105", "S311", "S110", "SIM105"]
 
 [tool.mypy]
 python_version = "3.12"
