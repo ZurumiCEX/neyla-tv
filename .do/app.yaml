@@ -131,11 +131,17 @@ services:
       period_seconds: 15
       failure_threshold: 5
     # Routes plus spécifiques que le "/" du web → priorité à l'api.
+    # preserve_path_prefix: garde /api, /admin... dans le chemin transmis à
+    # Django (App Platform retire le préfixe par défaut → sinon 404).
     routes:
       - path: /api
+        preserve_path_prefix: true
       - path: /admin
+        preserve_path_prefix: true
       - path: /ws
+        preserve_path_prefix: true
       - path: /django-static
+        preserve_path_prefix: true
 
   # Frontend Next.js (build standalone).
   - name: web
