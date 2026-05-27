@@ -132,10 +132,23 @@ def logout(request: Request) -> Response:
     return _clear_refresh_cookie(response)
 
 
+def _touch_last_active(user) -> None:
+    """Marque l'utilisateur actif (pour DAU/MAU). Écrit au plus une fois / 5 min."""
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    now = timezone.now()
+    if user.last_active_at is None or now - user.last_active_at > timedelta(minutes=5):
+        user.last_active_at = now
+        user.save(update_fields=["last_active_at"])
+
+
 @api_view(["GET", "PATCH"])
 @permission_classes([IsAuthenticated])
 def me(request: Request) -> Response:
     if request.method == "GET":
+        _touch_last_active(request.user)
         return Response(MeSerializer(request.user).data)
     serializer = MeSerializer(request.user, data=request.data, partial=True)
     serializer.is_valid(raise_exception=True)

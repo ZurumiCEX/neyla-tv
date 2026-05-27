@@ -33,6 +33,13 @@ type StreamSession = {
   category: string | null;
 };
 
+type MyStats = {
+  sessions_total: number;
+  broadcast_hours: number;
+  peak_viewers: number;
+  follower_count: number;
+};
+
 function formatDuration(seconds: number | null): string {
   if (seconds === null) return "en cours";
   const h = Math.floor(seconds / 3600);
@@ -45,6 +52,7 @@ export default function DashboardPage() {
   const { user, loading, authFetch } = useAuth();
   const [channel, setChannel] = useState<MyChannel | null>(null);
   const [sessions, setSessions] = useState<StreamSession[]>([]);
+  const [stats, setStats] = useState<MyStats | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [rotating, setRotating] = useState(false);
@@ -65,6 +73,9 @@ export default function DashboardPage() {
       if (data.is_provisioned) {
         authFetch<{ results: StreamSession[] }>("/api/channels/me/sessions")
           .then((d) => setSessions(d.results))
+          .catch(() => undefined);
+        authFetch<MyStats>("/api/analytics/me")
+          .then(setStats)
           .catch(() => undefined);
       }
     } catch (err) {
@@ -268,6 +279,26 @@ export default function DashboardPage() {
               >
                 Faire une demande
               </Link>
+            </div>
+          )}
+
+          {channel.is_provisioned && stats && (
+            <div className="grid grid-cols-3 gap-3 border-t border-neutral-800 pt-6">
+              {[
+                ["Streams", stats.sessions_total],
+                ["Heures diffusées", `${stats.broadcast_hours} h`],
+                ["Pic spectateurs", stats.peak_viewers],
+              ].map(([label, value]) => (
+                <div
+                  key={label}
+                  className="rounded-lg border border-neutral-800 bg-neutral-900/40 p-3"
+                >
+                  <p className="text-xs uppercase tracking-wider text-neutral-500">
+                    {label}
+                  </p>
+                  <p className="mt-1 text-xl font-bold">{value}</p>
+                </div>
+              ))}
             </div>
           )}
 

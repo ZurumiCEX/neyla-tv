@@ -166,6 +166,18 @@ Mots interdits (`BannedWord`) et signalements (`Report`) se gèrent dans l'admin
 
 ---
 
+## Analytics — `/api/analytics/`
+
+Calculées **à la demande** (pas de tâche planifiée). DAU/MAU s'appuient sur
+`User.last_active_at` (mis à jour à l'appel de `/api/auth/me`).
+
+| Méthode | Chemin | Auth | Description |
+|---------|--------|------|-------------|
+| `GET` | `/api/analytics/me` | JWT | Résumé streamer : `{sessions_total, broadcast_hours, peak_viewers, follower_count}`. |
+| `GET` | `/api/analytics/overview` | **admin** | Plateforme : `{users_total, dau, mau, streamers_total, live_now, streams_total, streams_7d, broadcast_hours, peak_concurrent, top_streamers:[...]}`. `403` si non-admin. |
+
+---
+
 ## Webhooks
 
 | Méthode | Chemin | Sécurité | Description |
