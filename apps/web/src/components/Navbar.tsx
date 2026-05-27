@@ -64,12 +64,14 @@ export function Navbar() {
                   {t("nav.admin")}
                 </Link>
               )}
-              <Link
-                href="/become-streamer"
-                className="hidden text-neutral-300 hover:text-emerald-300 lg:inline"
-              >
-                {t("nav.becomeStreamer")}
-              </Link>
+              {!user.is_streamer && (
+                <Link
+                  href="/become-streamer"
+                  className="hidden text-neutral-300 hover:text-emerald-300 lg:inline"
+                >
+                  {t("nav.becomeStreamer")}
+                </Link>
+              )}
               <Link href="/dashboard" className="text-neutral-300 hover:text-emerald-300">
                 {t("nav.dashboard")}
               </Link>

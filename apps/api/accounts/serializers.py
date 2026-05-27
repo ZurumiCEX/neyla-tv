@@ -26,6 +26,13 @@ class MeSerializer(serializers.ModelSerializer):
     """Profil privé de l'utilisateur courant (lecture + update partielle)."""
 
     is_email_verified = serializers.BooleanField(read_only=True)
+    is_streamer = serializers.SerializerMethodField()
+
+    def get_is_streamer(self, obj) -> bool:
+        try:
+            return obj.channel.is_provisioned
+        except Exception:
+            return False
 
     class Meta:
         model = User
@@ -38,6 +45,7 @@ class MeSerializer(serializers.ModelSerializer):
             "bio",
             "is_email_verified",
             "is_staff",
+            "is_streamer",
             "role",
             "date_joined",
         )
@@ -47,6 +55,7 @@ class MeSerializer(serializers.ModelSerializer):
             "username",
             "is_email_verified",
             "is_staff",
+            "is_streamer",
             "role",
             "date_joined",
         )

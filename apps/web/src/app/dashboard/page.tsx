@@ -254,6 +254,24 @@ export default function DashboardPage() {
                 </code>
               </Field>
 
+              <div className="rounded-xl border border-neutral-800 bg-neutral-900/40 p-4 text-sm text-neutral-300">
+                <p className="mb-2 font-semibold text-neutral-100">
+                  Diffuser avec OBS
+                </p>
+                <ol className="list-inside list-decimal space-y-1 text-neutral-400">
+                  <li>OBS → Paramètres → Flux → Service : « Personnalisé… ».</li>
+                  <li>
+                    Serveur : colle le <span className="text-emerald-300">Serveur RTMPS</span>{" "}
+                    ci-dessus.
+                  </li>
+                  <li>
+                    Clé de stream : colle la <span className="text-emerald-300">Stream key</span>{" "}
+                    (garde-la secrète).
+                  </li>
+                  <li>Applique, puis « Démarrer le streaming ». Ta chaîne passera en direct.</li>
+                </ol>
+              </div>
+
               <button
                 type="button"
                 onClick={rotate}
