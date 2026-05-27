@@ -7,7 +7,26 @@ from rest_framework import serializers
 from catalog.models import Game
 from catalog.serializers import GameSerializer
 
-from .models import Channel
+from .models import Channel, StreamSession
+
+
+class StreamSessionSerializer(serializers.ModelSerializer):
+    duration_seconds = serializers.IntegerField(read_only=True)
+    category = serializers.SlugRelatedField(
+        source="category_snapshot", slug_field="name", read_only=True
+    )
+
+    class Meta:
+        model = StreamSession
+        fields = (
+            "started_at",
+            "ended_at",
+            "duration_seconds",
+            "peak_viewers",
+            "title_snapshot",
+            "category",
+        )
+        read_only_fields = fields
 
 
 class StreamerSerializer(serializers.Serializer):

@@ -5,11 +5,12 @@ from __future__ import annotations
 import pytest
 
 from accounts.factories import UserFactory
-from channels_app.models import Channel
+from channels_app.models import Channel, StreamSession
 from channels_app.services import (
     mark_live,
     mark_offline,
     provision_channel,
+    record_session_peak,
     rotate_stream_key,
 )
 
@@ -63,3 +64,26 @@ def test_mark_offline_idempotent():
     mark_live(channel)
     assert mark_offline(channel) is True
     assert not channel.is_live
+
+
+def test_mark_live_opens_session_offline_closes_it():
+    channel = Channel.objects.get(user=UserFactory())
+    channel.title = "Speedrun"
+    channel.save(update_fields=["title"])
+    mark_live(channel)
+    session = StreamSession.objects.get(channel=channel)
+    assert session.ended_at is None
+    assert session.title_snapshot == "Speedrun"
+    mark_offline(channel)
+    session.refresh_from_db()
+    assert session.ended_at is not None
+    assert session.duration_seconds is not None
+
+
+def test_record_session_peak_only_increases():
+    channel = Channel.objects.get(user=UserFactory())
+    mark_live(channel)
+    record_session_peak(channel.id, 5)
+    record_session_peak(channel.id, 3)  # plus petit → ignoré
+    session = StreamSession.objects.get(channel=channel)
+    assert session.peak_viewers == 5
