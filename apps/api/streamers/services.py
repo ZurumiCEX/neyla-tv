@@ -66,7 +66,7 @@ def approve_application(application: StreamerApplication, admin) -> StreamerAppl
         application.decided_by = admin
         application.rejection_reason = ""
         application.save()
-    _enqueue_provisioning(application.user_id)
+    _provision_channel_now(application.user_id)
     return application
 
 
@@ -81,11 +81,15 @@ def reject_application(
     return application
 
 
-def _enqueue_provisioning(user_id: int) -> None:
-    """Provisionne la chaîne de l'utilisateur (réutilise la task channels_app)."""
+def _provision_channel_now(user_id: int) -> None:
+    """Provisionne la chaîne de façon SYNCHRONE (aucune dépendance au worker Celery).
+
+    L'approbation reste fonctionnelle même si le worker est indisponible ; l'admin
+    voit immédiatement le résultat. provision_channel est idempotent.
+    """
     from channels_app.models import Channel
-    from channels_app.tasks import provision_live_input_task
+    from channels_app.services import provision_channel
 
     channel = Channel.objects.filter(user_id=user_id).first()
     if channel is not None and not channel.is_provisioned:
-        provision_live_input_task.delay(channel.id)
+        provision_channel(channel)
