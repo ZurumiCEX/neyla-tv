@@ -14,7 +14,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { apiFetch, type ApiError } from "@/lib/api";
+import { apiFetch, apiUpload, type ApiError } from "@/lib/api";
 
 export type AuthUser = {
   id: number;
@@ -33,6 +33,7 @@ type AuthState = {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   authFetch: <T>(path: string, init?: RequestInit) => Promise<T>;
+  authUpload: <T>(path: string, formData: FormData) => Promise<T>;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -140,9 +141,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [refresh],
   );
 
+  const authUpload = useCallback(
+    async <T,>(path: string, formData: FormData): Promise<T> => {
+      const token = accessRef.current;
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      try {
+        return await apiUpload<T>(path, formData, { headers });
+      } catch (err) {
+        const e = err as ApiError;
+        if (e.status !== 401) throw err;
+        const fresh = await refresh();
+        if (!fresh) throw err;
+        return await apiUpload<T>(path, formData, {
+          headers: { Authorization: `Bearer ${fresh}` },
+        });
+      }
+    },
+    [refresh],
+  );
+
   const value = useMemo<AuthState>(
-    () => ({ user, accessToken, loading, login, logout, authFetch }),
-    [user, accessToken, loading, login, logout, authFetch],
+    () => ({ user, accessToken, loading, login, logout, authFetch, authUpload }),
+    [user, accessToken, loading, login, logout, authFetch, authUpload],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

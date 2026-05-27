@@ -204,6 +204,19 @@ Réglages : `AURA_UNIT_PRICE_XOF`, `EUR_XOF_RATE`, `USD_XOF_RATE`, `CREATOR_SHAR
 
 ---
 
+## Uploads médias — `/api/uploads/`
+
+Multipart (`file`), PNG/JPEG/WebP, ≤ 5 Mo. Stockage **Cloudflare R2** (mode FAKE
+si non configuré → URL `fake.local`).
+
+| Méthode | Chemin | Auth | Description |
+|---------|--------|------|-------------|
+| `POST` | `/api/uploads/avatar` | JWT | Upload + set `avatar_url`. → `{url}`. |
+| `POST` | `/api/uploads/banner` | JWT | Upload + set `Channel.banner_url`. → `{url}`. |
+| `POST` | `/api/uploads/game/<slug>` | **admin** | Upload + set `Game.box_art_url`. → `{url}`. |
+
+---
+
 ## Webhooks
 
 | Méthode | Chemin | Sécurité | Description |

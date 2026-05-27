@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { ImageUpload } from "@/components/ImageUpload";
 
 const SOCIAL_KEYS = [
   "twitter",
@@ -103,10 +104,22 @@ export default function SettingsPage() {
         <Field label="Nom affiché">
           <Input value={displayName} onChange={setDisplayName} maxLength={60} />
         </Field>
-        <Field label="Avatar (URL)">
+        <ImageUpload
+          label="Photo de profil"
+          currentUrl={avatarUrl}
+          uploadPath="/api/uploads/avatar"
+          onUploaded={setAvatarUrl}
+        />
+        <ImageUpload
+          label="Bannière"
+          currentUrl={bannerUrl}
+          uploadPath="/api/uploads/banner"
+          onUploaded={setBannerUrl}
+        />
+        <Field label="Avatar (URL — ou colle un lien)">
           <Input value={avatarUrl} onChange={setAvatarUrl} placeholder="https://…" />
         </Field>
-        <Field label="Bannière (URL)">
+        <Field label="Bannière (URL — ou colle un lien)">
           <Input value={bannerUrl} onChange={setBannerUrl} placeholder="https://…" />
         </Field>
         <Field label="Bio">

@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     "payments",
     "social",
     "streamers",
+    "uploads",
 ]
 
 MIDDLEWARE = [
@@ -217,6 +218,14 @@ if CELERY_RESULT_BACKEND.startswith("rediss://"):
 
 # --- Streamers : quota quotidien d'approbations (gating, maîtrise des coûts) ---
 STREAMER_DAILY_APPROVAL_QUOTA = env.int("STREAMER_DAILY_APPROVAL_QUOTA", default=100)
+
+# --- Uploads médias (Cloudflare R2, S3-compatible) ---
+# Si non configuré → mode FAKE (URL fake.local, pas d'appel réseau).
+CLOUDFLARE_R2_ENDPOINT = env("CLOUDFLARE_R2_ENDPOINT", default="")
+CLOUDFLARE_R2_BUCKET = env("CLOUDFLARE_R2_BUCKET", default="")
+CLOUDFLARE_R2_ACCESS_KEY = env("CLOUDFLARE_R2_ACCESS_KEY", default="")
+CLOUDFLARE_R2_SECRET_KEY = env("CLOUDFLARE_R2_SECRET_KEY", default="")
+CLOUDFLARE_R2_PUBLIC_BASE_URL = env("CLOUDFLARE_R2_PUBLIC_BASE_URL", default="")
 
 # --- Monétisation "Aura" ---
 # Devise = FCFA (XOF). Prix d'1 Aura en XOF, part créateur (reste = commission).

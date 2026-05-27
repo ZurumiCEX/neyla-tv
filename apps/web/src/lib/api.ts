@@ -31,6 +31,26 @@ export async function apiFetch<T = unknown>(
   return data as T;
 }
 
+/** Upload multipart (FormData) : ne PAS poser Content-Type (boundary auto). */
+export async function apiUpload<T = unknown>(
+  path: string,
+  formData: FormData,
+  init: RequestInit = {},
+): Promise<T> {
+  const res = await fetch(`${PUBLIC_API_URL}${path}`, {
+    method: "POST",
+    ...init,
+    credentials: "include",
+    body: formData,
+  });
+  const text = await res.text();
+  const data = text ? (JSON.parse(text) as unknown) : null;
+  if (!res.ok) {
+    throw { status: res.status, data } satisfies ApiError;
+  }
+  return data as T;
+}
+
 /** Appel côté serveur (Server Component) : utilise l'URL interne pour fetch direct. */
 export async function apiFetchServer<T = unknown>(
   path: string,
