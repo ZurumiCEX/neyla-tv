@@ -145,7 +145,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const authUpload = useCallback(
     async <T,>(path: string, formData: FormData): Promise<T> => {
       const token = accessRef.current;
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const headers: Record<string, string> = {};
+      if (token) headers.Authorization = `Bearer ${token}`;
       try {
         return await apiUpload<T>(path, formData, { headers });
       } catch (err) {
