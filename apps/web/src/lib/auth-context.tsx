@@ -23,6 +23,7 @@ export type AuthUser = {
   display_name: string;
   is_email_verified: boolean;
   is_staff: boolean;
+  is_streamer: boolean;
   role: "user" | "support" | "moderator" | "admin";
 };
 
