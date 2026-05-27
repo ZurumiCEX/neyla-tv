@@ -160,6 +160,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             "user": {
                 "username": user.username,
                 "display_name": user.display_name or user.username,
+                "role": user.role,
             },
             "content": text,
             "ts": int(time.time() * 1000),

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { NotificationBell } from "@/components/NotificationBell";
+import { RoleBadge } from "@/components/RoleBadge";
 
 export function Navbar() {
   const { user, loading, logout } = useAuth();
@@ -21,7 +22,8 @@ export function Navbar() {
   return (
     <nav className="border-b border-neutral-800 bg-neutral-950/90 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
-        <div className="flex items-center gap-4">
+        {/* Gauche : logo (position fixe) */}
+        <div className="flex shrink-0 items-center gap-4">
           <Link href="/" className="text-lg font-bold tracking-tight">
             Neyla<span className="text-emerald-400">.tv</span>
           </Link>
@@ -33,22 +35,23 @@ export function Navbar() {
           </Link>
         </div>
 
-        <form onSubmit={submitSearch} className="hidden flex-1 max-w-sm md:block">
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Rechercher une chaîne ou un jeu…"
-            className="w-full rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-100 outline-none focus:border-emerald-500"
-          />
-        </form>
-
+        {/* Droite : barre de recherche + liens */}
         <div className="flex items-center gap-4 text-sm">
+          <form onSubmit={submitSearch} className="hidden md:block">
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Rechercher une chaîne ou un jeu…"
+              className="w-56 rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-100 outline-none focus:border-emerald-500 lg:w-72"
+            />
+          </form>
+
           {loading ? (
             <span className="text-neutral-500">…</span>
           ) : user ? (
             <>
-              {user.is_staff && (
+              {(user.is_staff || user.role === "admin") && (
                 <Link
                   href="/admin/analytics"
                   className="hidden text-amber-300 hover:text-amber-200 lg:inline"
@@ -84,7 +87,9 @@ export function Navbar() {
                 Paramètres
               </Link>
               <NotificationBell />
-              <span className="hidden text-neutral-500 sm:inline">@{user.username}</span>
+              <span className="hidden items-center text-neutral-500 sm:inline-flex">
+                <RoleBadge role={user.role} />@{user.username}
+              </span>
               <button
                 type="button"
                 onClick={() => logout()}

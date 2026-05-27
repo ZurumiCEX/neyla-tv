@@ -7,10 +7,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { EmojiPicker } from "@/components/EmojiPicker";
+import { RoleBadge } from "@/components/RoleBadge";
 
 type ChatMessage = {
   id: string;
-  user: { username: string; display_name: string };
+  user: { username: string; display_name: string; role?: string };
   content: string;
   ts: number;
 };
@@ -139,6 +140,7 @@ export function ChatPanel({
         {messages.map((m) => (
           <div key={m.id} className="group flex items-start gap-1 break-words">
             <span className="min-w-0 flex-1">
+              <RoleBadge role={m.user.role} />
               <span className="font-semibold text-emerald-300">
                 {m.user.display_name || m.user.username}
               </span>
