@@ -20,9 +20,17 @@ export function Navbar() {
   return (
     <nav className="border-b border-neutral-800 bg-neutral-950/90 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
-        <Link href="/" className="text-lg font-bold tracking-tight">
-          Neyla<span className="text-emerald-400">.tv</span>
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link href="/" className="text-lg font-bold tracking-tight">
+            Neyla<span className="text-emerald-400">.tv</span>
+          </Link>
+          <Link
+            href="/parcourir"
+            className="text-sm text-neutral-300 hover:text-emerald-300 md:hidden"
+          >
+            Parcourir
+          </Link>
+        </div>
 
         <form onSubmit={submitSearch} className="hidden flex-1 max-w-sm md:block">
           <input

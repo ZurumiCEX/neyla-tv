@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
 import { Navbar } from "@/components/Navbar";
+import { Sidebar } from "@/components/Sidebar";
 
 export const metadata: Metadata = {
   title: "Neyla TV",
@@ -14,7 +15,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen bg-neutral-950 text-neutral-100 antialiased">
         <AuthProvider>
           <Navbar />
-          {children}
+          <div className="flex">
+            <Sidebar />
+            <div className="min-w-0 flex-1">{children}</div>
+          </div>
         </AuthProvider>
       </body>
     </html>
