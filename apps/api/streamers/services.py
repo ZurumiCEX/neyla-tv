@@ -67,6 +67,7 @@ def approve_application(application: StreamerApplication, admin) -> StreamerAppl
         application.rejection_reason = ""
         application.save()
     _provision_channel_now(application.user_id)
+    _notify_decision(application, "approved")
     return application
 
 
@@ -78,7 +79,19 @@ def reject_application(
     application.decided_by = admin
     application.rejection_reason = reason
     application.save()
+    _notify_decision(application, "rejected")
     return application
+
+
+def _notify_decision(application: StreamerApplication, status: str) -> None:
+    from notifications.models import Notification
+    from notifications.services import create_notification
+
+    create_notification(
+        recipient=application.user,
+        type=Notification.Type.APPLICATION_DECIDED,
+        payload={"status": status, "reason": application.rejection_reason},
+    )
 
 
 def _provision_channel_now(user_id: int) -> None:

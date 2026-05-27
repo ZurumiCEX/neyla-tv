@@ -95,8 +95,23 @@ quotidien d'approbations configurable (`STREAMER_DAILY_APPROVAL_QUOTA`, défaut 
 | `GET` | `/api/streamer/application` | JWT | — | Statut courant : `{status: none\|pending\|approved\|rejected, ...}`. |
 
 L'approbation/rejet se fait dans l'admin Django (actions « Approuver » / « Rejeter »
-sur `StreamerApplication`). L'approbation provisionne la chaîne via la task
-`provision_live_input_task` (réutilisée).
+sur `StreamerApplication`). L'approbation **provisionne la chaîne de façon
+synchrone** (aucune dépendance au worker Celery).
+
+---
+
+## Notifications — `/api/notifications`
+
+Notifications in-app créées **de façon synchrone** : live d'une chaîne suivie,
+nouveau follower, décision de candidature streamer.
+
+| Méthode | Chemin | Auth | Description |
+|---------|--------|------|-------------|
+| `GET` | `/api/notifications` | JWT | `{results: [{id, type, payload, read_at, created_at}], unread: int}` (50 plus récentes). |
+| `POST` | `/api/notifications/read` | JWT | Marque lu. Corps `{ids?: [int]}` (sinon **tout** marquer lu). `{marked: int}`. |
+
+Types : `live_started` (payload `{slug, display_name}`), `new_follower`
+(`{username}`), `application_decided` (`{status, reason}`).
 
 ---
 

@@ -22,7 +22,6 @@ from django.views.decorators.http import require_POST
 
 from .models import Channel
 from .services import mark_live, mark_offline
-from .tasks import notify_followers_live_started
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +62,9 @@ def _handle_event(event_type: str, live_input_uid: str) -> None:
         return
     if event_type == "live_input.connected":
         if mark_live(channel):
-            notify_followers_live_started.delay(channel.pk)
+            from notifications.services import notify_followers_live
+
+            notify_followers_live(channel)
     elif event_type == "live_input.disconnected":
         mark_offline(channel)
     else:
