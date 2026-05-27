@@ -68,6 +68,35 @@ Alternative PaaS au Droplet : moins d'ops, scaling déclaratif, bases managées.
 
 ---
 
+## ✅ MVP Produit (style Kick) — livré
+
+Déployé sur DigitalOcean App Platform (Neon Postgres, Upstash Redis). Détail
+des endpoints : [`docs/api.md`](docs/api.md).
+
+| # | Fonctionnalité | Détails |
+|---|----------------|---------|
+| 0 | **Gating streaming** | Inscription ouverte ; la chaîne n'est plus provisionnée à l'inscription |
+| 1 | **Candidature streamer** | Demande → validation admin → provisioning ; **quota/jour** (défaut 100) |
+| 2 | **Go-Live & historique** | `StreamSession` : durée, pic viewers, copier RTMP, dashboard |
+| 3 | **Profil enrichi** | Bannière, bio, réseaux sociaux, page `/settings` |
+| 4 | **Layout Kick** | Sidebar rétractable (Accueil/Parcourir/Suivis) + page Parcourir |
+| 5 | **Notifications** | In-app (live suivi, nouveau follower, candidature) — synchrones |
+| 6 | **Modération** | Mots interdits, `/delete` message, report, emoji picker, admin |
+| 7 | **Analytics** | DAU/MAU, streams, heures diffusées, pic, top streamers (admin) |
+| 8 | **Monétisation "Aura"** | Wallet + ledger, achat (FAKE/Stripe/mobile-money), tips **70/30**, payout |
+
+**Apps backend** : `accounts`, `channels_app`, `chat`, `catalog`, `social`,
+`streamers`, `notifications`, `moderation`, `analytics`, `payments`, `health`.
+
+### Dette / à finaliser
+- 💡 Worker Celery **désactivé** (Upstash free) : provisioning + notifications
+  rendus **synchrones**. Rebrancher un worker (Valkey managé) pour les emails
+  et tâches lourdes.
+- 💡 Paiements : **Stripe** à activer (clés) ; **mobile money** = stub provider à brancher.
+- 💡 Analytics calculées à la demande (pas de séries temporelles ni vrai watch-time/viewer).
+
+---
+
 ## 📋 Prochaines étapes (post-MVP)
 
 ### Produit
