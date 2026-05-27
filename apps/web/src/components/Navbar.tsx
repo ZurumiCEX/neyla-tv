@@ -39,6 +39,12 @@ export function Navbar() {
             <span className="text-neutral-500">…</span>
           ) : user ? (
             <>
+              <Link
+                href="/become-streamer"
+                className="hidden text-neutral-300 hover:text-emerald-300 lg:inline"
+              >
+                Devenir streamer
+              </Link>
               <Link href="/dashboard" className="text-neutral-300 hover:text-emerald-300">
                 Dashboard
               </Link>
