@@ -14,14 +14,27 @@ class LedgerEntrySerializer(serializers.ModelSerializer):
 
 class WalletSerializer(serializers.ModelSerializer):
     recent = serializers.SerializerMethodField()
+    balance = serializers.SerializerMethodField()
+    unit_price_xof = serializers.SerializerMethodField()
 
     class Meta:
         model = Wallet
-        fields = ("aura_balance", "recent")
+        fields = ("aura_balance", "balance", "unit_price_xof", "recent")
         read_only_fields = fields
 
     def get_recent(self, obj):
         return LedgerEntrySerializer(obj.entries.all()[:20], many=True).data
+
+    def get_unit_price_xof(self, obj):  # noqa: ARG002
+        from . import services
+
+        return str(services.aura_unit_price())
+
+    def get_balance(self, obj):
+        """Équivalents fiat (XOF/EUR/USD) du solde Aura."""
+        from . import conversion, services
+
+        return conversion.equivalents(services.aura_unit_price() * obj.aura_balance)
 
 
 class PurchaseSerializer(serializers.Serializer):

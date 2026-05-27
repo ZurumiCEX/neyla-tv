@@ -200,8 +200,11 @@ if CELERY_RESULT_BACKEND.startswith("rediss://"):
 STREAMER_DAILY_APPROVAL_QUOTA = env.int("STREAMER_DAILY_APPROVAL_QUOTA", default=100)
 
 # --- Monétisation "Aura" ---
-# Prix d'1 Aura en EUR, part créateur (reste = commission plateforme), provider.
-AURA_UNIT_PRICE_EUR = env("AURA_UNIT_PRICE_EUR", default="0.01")
+# Devise = FCFA (XOF). Prix d'1 Aura en XOF, part créateur (reste = commission).
+AURA_UNIT_PRICE_XOF = env("AURA_UNIT_PRICE_XOF", default="5")
+# Parité EUR FIXE (officielle) ; taux USD configurable manuellement (admin).
+EUR_XOF_RATE = env("EUR_XOF_RATE", default="655.957")
+USD_XOF_RATE = env("USD_XOF_RATE", default="600")
 CREATOR_SHARE = env.float("CREATOR_SHARE", default=0.70)
 # fake (défaut, confirme tout de suite) | stripe | mobile_money
 PAYMENTS_PROVIDER = env("PAYMENTS_PROVIDER", default="fake")

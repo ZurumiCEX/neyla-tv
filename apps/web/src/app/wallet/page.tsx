@@ -11,7 +11,13 @@ type Ledger = {
   balance_after: number;
   created_at: string;
 };
-type WalletData = { aura_balance: number; recent: Ledger[] };
+type FiatEq = { xof: string; eur: string; usd: string };
+type WalletData = {
+  aura_balance: number;
+  balance: FiatEq;
+  unit_price_xof: string;
+  recent: Ledger[];
+};
 
 const PACKS = [100, 500, 1000, 5000];
 const KIND_LABEL: Record<string, string> = {
@@ -91,8 +97,14 @@ export default function WalletPage() {
   return (
     <main className="mx-auto max-w-2xl p-8">
       <h1 className="mb-2 text-2xl font-bold">Portefeuille Aura</h1>
-      <p className="mb-6 text-4xl font-bold text-emerald-400">
+      <p className="text-4xl font-bold text-emerald-400">
         {wallet.aura_balance} <span className="text-lg text-neutral-400">Aura</span>
+      </p>
+      <p className="mb-6 mt-1 text-sm text-neutral-400">
+        ≈ {wallet.balance.xof} FCFA{" "}
+        <span className="text-neutral-600">
+          ({wallet.balance.eur} € / {wallet.balance.usd} $)
+        </span>
       </p>
 
       {error && (
@@ -113,6 +125,9 @@ export default function WalletPage() {
               className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
             >
               {p} Aura
+              <span className="ml-1 font-normal opacity-80">
+                · {p * Number(wallet.unit_price_xof)} FCFA
+              </span>
             </button>
           ))}
         </div>

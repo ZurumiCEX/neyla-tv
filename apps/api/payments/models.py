@@ -51,7 +51,7 @@ class Purchase(models.Model):
     )
     credits = models.PositiveIntegerField()  # Aura achetés
     fiat_amount = models.DecimalField(max_digits=10, decimal_places=2)
-    currency = models.CharField(max_length=8, default="EUR")
+    currency = models.CharField(max_length=8, default="XOF")
     provider = models.CharField(max_length=20)
     provider_ref = models.CharField(max_length=255, blank=True)
     status = models.CharField(
@@ -97,7 +97,7 @@ class Payout(models.Model):
     )
     aura_amount = models.PositiveIntegerField()
     fiat_amount = models.DecimalField(max_digits=10, decimal_places=2)
-    currency = models.CharField(max_length=8, default="EUR")
+    currency = models.CharField(max_length=8, default="XOF")
     status = models.CharField(
         max_length=10, choices=Status.choices, default=Status.REQUESTED, db_index=True
     )

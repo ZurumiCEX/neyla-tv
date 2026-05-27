@@ -20,11 +20,13 @@ class InsufficientBalanceError(PaymentError):
 
 
 def aura_unit_price() -> decimal.Decimal:
-    return decimal.Decimal(str(getattr(settings, "AURA_UNIT_PRICE_EUR", "0.01")))
+    """Prix d'1 Aura en XOF (FCFA)."""
+    return decimal.Decimal(str(getattr(settings, "AURA_UNIT_PRICE_XOF", "5")))
 
 
 def _fiat_for(credits: int) -> decimal.Decimal:
-    return (aura_unit_price() * credits).quantize(decimal.Decimal("0.01"))
+    """Montant en XOF (sans décimale) pour un nombre d'Aura."""
+    return (aura_unit_price() * credits).quantize(decimal.Decimal("1"))
 
 
 def get_wallet(user) -> Wallet:
@@ -60,7 +62,7 @@ def confirm_purchase(purchase: Purchase) -> Purchase:
     return purchase
 
 
-def create_purchase(user, credits: int, currency: str = "EUR") -> tuple[Purchase, dict]:
+def create_purchase(user, credits: int, currency: str = "XOF") -> tuple[Purchase, dict]:
     credits = int(credits)
     if credits <= 0:
         raise PaymentError("Montant invalide.")

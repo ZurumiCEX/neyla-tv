@@ -11,6 +11,17 @@ from payments.models import Purchase, Tip, Wallet
 pytestmark = pytest.mark.django_db
 
 
+def test_conversion_equivalents(settings):
+    settings.EUR_XOF_RATE = "655.957"
+    settings.USD_XOF_RATE = "600"
+    from payments import conversion
+
+    eq = conversion.equivalents(655957)
+    assert eq["xof"] == "655957"
+    assert eq["eur"] == "1000.00"
+    assert eq["usd"] == "1093.26"
+
+
 def test_fake_purchase_credits_wallet():
     user = UserFactory()
     purchase, _ = services.create_purchase(user, 500)
