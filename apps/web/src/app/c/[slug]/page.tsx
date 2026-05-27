@@ -5,6 +5,7 @@ import { ChatPanel } from "@/components/ChatPanel";
 import { FollowButton } from "@/components/FollowButton";
 import { HlsPlayer } from "@/components/HlsPlayer";
 import { LiveBadge } from "@/components/LiveBadge";
+import { ReportButton } from "@/components/ReportButton";
 import { SocialLinks } from "@/components/SocialLinks";
 import { apiFetchServer } from "@/lib/api";
 
@@ -88,6 +89,10 @@ export default async function ChannelPage({
             <div className="flex items-center gap-3">
               <LiveBadge slug={channel.slug} initial={{ is_live: channel.is_live }} />
               <FollowButton username={channel.slug} />
+              <ReportButton
+                channelSlug={channel.slug}
+                targetUsername={channel.streamer.username}
+              />
             </div>
           </header>
 

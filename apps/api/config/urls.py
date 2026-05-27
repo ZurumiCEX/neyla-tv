@@ -13,4 +13,5 @@ urlpatterns = [
     path("api/", include("social.urls")),
     path("api/", include("streamers.urls")),
     path("api/", include("notifications.urls")),
+    path("api/", include("moderation.urls")),
 ]

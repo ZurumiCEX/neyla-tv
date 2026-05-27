@@ -34,6 +34,25 @@ async def append_message(channel_id: int, msg: dict[str, Any]) -> None:
         await r.aclose()
 
 
+async def delete_message(channel_id: int, msg_id: str) -> bool:
+    """Retire un message (par id) de la liste cappée. True si trouvé."""
+    r = _aclient()
+    try:
+        key = _key("msgs", channel_id)
+        raw = await r.lrange(key, 0, -1)
+        kept = [m for m in raw if json.loads(m).get("id") != msg_id]
+        if len(kept) == len(raw):
+            return False
+        pipe = r.pipeline()
+        pipe.delete(key)
+        if kept:
+            pipe.rpush(key, *kept)
+        await pipe.execute()
+        return True
+    finally:
+        await r.aclose()
+
+
 async def get_slowmode(channel_id: int) -> int:
     r = _aclient()
     try:
