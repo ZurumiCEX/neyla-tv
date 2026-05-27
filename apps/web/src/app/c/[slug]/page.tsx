@@ -5,16 +5,19 @@ import { ChatPanel } from "@/components/ChatPanel";
 import { FollowButton } from "@/components/FollowButton";
 import { HlsPlayer } from "@/components/HlsPlayer";
 import { LiveBadge } from "@/components/LiveBadge";
+import { SocialLinks } from "@/components/SocialLinks";
 import { apiFetchServer } from "@/lib/api";
 
 type PublicChannel = {
   slug: string;
   title: string;
   thumbnail_url: string;
+  banner_url: string;
+  social_links: Record<string, string>;
   hls_playback_url: string;
   is_live: boolean;
   last_live_started_at: string | null;
-  streamer: { username: string; display_name: string; avatar_url: string };
+  streamer: { username: string; display_name: string; avatar_url: string; bio: string };
   category: { slug: string; name: string } | null;
 };
 
@@ -55,6 +58,14 @@ export default async function ChannelPage({
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-6">
+      {channel.banner_url && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={channel.banner_url}
+          alt=""
+          className="mb-4 h-40 w-full rounded-xl object-cover"
+        />
+      )}
       <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
         <div>
           <HlsPlayer src={channel.hls_playback_url} poster={channel.thumbnail_url} />
@@ -79,6 +90,13 @@ export default async function ChannelPage({
               <FollowButton username={channel.slug} />
             </div>
           </header>
+
+          {channel.streamer.bio && (
+            <p className="mt-4 whitespace-pre-line text-sm text-neutral-300">
+              {channel.streamer.bio}
+            </p>
+          )}
+          <SocialLinks links={channel.social_links} />
         </div>
 
         <aside>

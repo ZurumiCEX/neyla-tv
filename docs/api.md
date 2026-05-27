@@ -50,10 +50,10 @@ is_email_verified, date_joined`.
 | Méthode | Chemin | Auth | Rate-limit | Description |
 |---------|--------|------|-----------|-------------|
 | `GET` | `/api/channels/me` | JWT | — | Ma chaîne, **avec credentials RTMPS** (si provisionnée) + `follower_count`, `viewers`. |
-| `PATCH` | `/api/channels/me` | JWT | — | Met à jour `{title?, thumbnail_url?, category_slug?}`. |
+| `PATCH` | `/api/channels/me` | JWT | — | Met à jour `{title?, thumbnail_url?, banner_url?, social_links?, category_slug?}`. `social_links` : clés ∈ {twitter, youtube, instagram, tiktok, discord, website}. |
 | `GET` | `/api/channels/me/sessions` | JWT | `limit` (≤100, déf 50) | Historique des diffusions : `started_at`, `ended_at`, `duration_seconds`, `peak_viewers`, `category`. |
 | `POST` | `/api/channels/me/key/rotate` | JWT | 5 / j / user | Régénère la clé de stream. **403** si chaîne non provisionnée. |
-| `GET` | `/api/channels/<slug>` | — | — | Chaîne publique (sans secrets) : streamer, catégorie, HLS, statut. |
+| `GET` | `/api/channels/<slug>` | — | — | Chaîne publique (sans secrets) : streamer (+ bio), bannière, réseaux sociaux, catégorie, HLS, statut. |
 | `GET` | `/api/channels/<slug>/status` | — | cache 5 s | `{is_live, last_live_started_at, viewers}` (poll du badge LIVE). |
 
 > ⚠️ `rtmps_key` n'est **jamais** exposée dans la vue publique, uniquement

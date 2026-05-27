@@ -69,6 +69,44 @@ def test_rotate_key_changes_rtmps_key_when_provisioned(auth_client_factory):
     assert rotated["rtmps_key"] != before["rtmps_key"]
 
 
+def test_patch_my_channel_sets_banner_and_socials(auth_client_factory):
+    client = auth_client_factory(UserFactory())
+    response = client.patch(
+        reverse("channel-me"),
+        {
+            "banner_url": "https://img.example/banner.jpg",
+            "social_links": {"twitter": "https://x.com/me", "unknown": "x"},
+        },
+        format="json",
+    )
+    # clé non autorisée → 400
+    assert response.status_code == 400
+
+
+def test_patch_my_channel_accepts_allowed_socials(auth_client_factory):
+    client = auth_client_factory(UserFactory())
+    response = client.patch(
+        reverse("channel-me"),
+        {"social_links": {"twitter": "https://x.com/me", "youtube": ""}},
+        format="json",
+    )
+    assert response.status_code == 200
+    # les liens vides sont retirés
+    assert response.json()["social_links"] == {"twitter": "https://x.com/me"}
+
+
+def test_public_channel_exposes_banner_socials_bio(api_client):
+    user = UserFactory(username="pub2", bio="Salut")
+    Channel.objects.filter(user=user).update(
+        banner_url="https://img.example/b.jpg",
+        social_links={"twitter": "https://x.com/pub2"},
+    )
+    data = api_client.get(reverse("channel-public", kwargs={"slug": "pub2"})).json()
+    assert data["banner_url"] == "https://img.example/b.jpg"
+    assert data["social_links"] == {"twitter": "https://x.com/pub2"}
+    assert data["streamer"]["bio"] == "Salut"
+
+
 def test_public_channel_excludes_rtmps_credentials(api_client):
     user = UserFactory(username="public1")
     Channel.objects.filter(user=user).update(title="Bonjour")
