@@ -1,7 +1,13 @@
 // Client API : appels publics + helper côté serveur pour le SSR (Server Components).
 
-const PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-const INTERNAL_API_URL = process.env.API_URL_INTERNAL ?? PUBLIC_API_URL;
+// Côté navigateur : défaut "" = chemin relatif (même origine que la page).
+// Sur App Platform, /api est routé vers le service api → pas besoin de figer
+// l'URL au build (NEXT_PUBLIC_* n'est pas garanti d'être injecté). En dev,
+// NEXT_PUBLIC_API_URL est défini (http://localhost:8000) via .env.
+const PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
+// Côté serveur (SSR) : URL absolue obligatoire (fetch Node), résolue au runtime.
+const INTERNAL_API_URL =
+  process.env.API_URL_INTERNAL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export type ApiError = { status: number; data: unknown };
 
