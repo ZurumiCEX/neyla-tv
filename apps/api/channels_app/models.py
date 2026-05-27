@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 
 class Channel(models.Model):
@@ -44,3 +45,41 @@ class Channel(models.Model):
     @property
     def is_provisioned(self) -> bool:
         return bool(self.live_input_uid)
+
+
+class StreamSession(models.Model):
+    """Une session de diffusion : créée au passage live, clôturée au passage offline.
+
+    Sert l'historique streamer (durée, pic viewers) et les analytics (Phase 7).
+    Le titre/catégorie sont figés au démarrage (snapshot).
+    """
+
+    channel = models.ForeignKey(
+        Channel,
+        on_delete=models.CASCADE,
+        related_name="sessions",
+        db_index=True,
+    )
+    started_at = models.DateTimeField(default=timezone.now)
+    ended_at = models.DateTimeField(null=True, blank=True)
+    peak_viewers = models.PositiveIntegerField(default=0)
+    title_snapshot = models.CharField(max_length=140, blank=True)
+    category_snapshot = models.ForeignKey(
+        "catalog.Game",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+
+    class Meta:
+        ordering = ["-started_at"]
+
+    def __str__(self) -> str:
+        return f"session:{self.channel.slug}:{self.started_at:%Y-%m-%d %H:%M}"
+
+    @property
+    def duration_seconds(self) -> int | None:
+        if self.ended_at is None:
+            return None
+        return int((self.ended_at - self.started_at).total_seconds())

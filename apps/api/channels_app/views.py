@@ -15,7 +15,11 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from .models import Channel
-from .serializers import MyChannelSerializer, PublicChannelSerializer
+from .serializers import (
+    MyChannelSerializer,
+    PublicChannelSerializer,
+    StreamSessionSerializer,
+)
 from .services import rotate_stream_key
 
 
@@ -33,11 +37,30 @@ def _get_my_channel(user) -> Channel:
 def my_channel(request: Request) -> Response:
     channel = _get_my_channel(request.user)
     if request.method == "GET":
-        return Response(MyChannelSerializer(channel).data)
+        from chat.redis_store import get_viewers_count
+        from social.models import Follow
+
+        data = MyChannelSerializer(channel).data
+        data["follower_count"] = Follow.objects.filter(followee=request.user).count()
+        data["viewers"] = get_viewers_count(channel.id)
+        return Response(data)
     serializer = MyChannelSerializer(channel, data=request.data, partial=True)
     serializer.is_valid(raise_exception=True)
     serializer.save()
     return Response(serializer.data)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def my_sessions(request: Request) -> Response:
+    """Historique des sessions de diffusion du propriétaire (les plus récentes)."""
+    channel = _get_my_channel(request.user)
+    try:
+        limit = min(int(request.query_params.get("limit", 50)), 100)
+    except (TypeError, ValueError):
+        limit = 50
+    sessions = channel.sessions.all()[:limit]
+    return Response({"results": StreamSessionSerializer(sessions, many=True).data})
 
 
 @api_view(["POST"])

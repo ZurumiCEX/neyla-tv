@@ -8,7 +8,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from .cloudflare import CloudflareStreamError, get_client
-from .models import Channel
+from .models import Channel, StreamSession
 
 logger = logging.getLogger(__name__)
 
@@ -65,18 +65,44 @@ def rotate_stream_key(channel: Channel) -> Channel:
 
 
 def mark_live(channel: Channel) -> bool:
-    """Bascule la chaîne en live. Retourne True si le statut a changé."""
+    """Bascule la chaîne en live + ouvre une StreamSession. True si changement."""
     if channel.is_live:
         return False
     channel.is_live = True
     channel.last_live_started_at = timezone.now()
     channel.save(update_fields=["is_live", "last_live_started_at", "updated_at"])
+    StreamSession.objects.create(
+        channel=channel,
+        title_snapshot=channel.title,
+        category_snapshot=channel.category,
+    )
     return True
 
 
 def mark_offline(channel: Channel) -> bool:
+    """Bascule la chaîne offline + clôt la session ouverte. True si changement."""
     if not channel.is_live:
         return False
     channel.is_live = False
     channel.save(update_fields=["is_live", "updated_at"])
+    StreamSession.objects.filter(channel=channel, ended_at__isnull=True).update(
+        ended_at=timezone.now()
+    )
     return True
+
+
+def record_session_peak(channel_id: int, viewers: int) -> None:
+    """Met à jour le pic de viewers de la session ouverte (appelé aux connexions chat).
+
+    Le pic concurrent n'augmente qu'aux connexions → pas besoin d'échantillonnage.
+    """
+    if viewers <= 0:
+        return
+    session = (
+        StreamSession.objects.filter(channel_id=channel_id, ended_at__isnull=True)
+        .order_by("-started_at")
+        .first()
+    )
+    if session is not None and viewers > session.peak_viewers:
+        session.peak_viewers = viewers
+        session.save(update_fields=["peak_viewers"])

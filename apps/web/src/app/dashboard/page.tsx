@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { CopyButton } from "@/components/CopyButton";
+import { LiveBadge } from "@/components/LiveBadge";
 
 type Category = { slug: string; name: string };
 
@@ -19,12 +21,30 @@ type MyChannel = {
   is_provisioned: boolean;
   last_live_started_at: string | null;
   category: Category | null;
+  follower_count?: number;
+  viewers?: number;
 };
+
+type StreamSession = {
+  started_at: string;
+  ended_at: string | null;
+  duration_seconds: number | null;
+  peak_viewers: number;
+  category: string | null;
+};
+
+function formatDuration(seconds: number | null): string {
+  if (seconds === null) return "en cours";
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  return h > 0 ? `${h}h${String(m).padStart(2, "0")}` : `${m} min`;
+}
 
 export default function DashboardPage() {
   const router = useRouter();
   const { user, loading, authFetch } = useAuth();
   const [channel, setChannel] = useState<MyChannel | null>(null);
+  const [sessions, setSessions] = useState<StreamSession[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [rotating, setRotating] = useState(false);
@@ -42,6 +62,11 @@ export default function DashboardPage() {
       setChannel(data);
       setTitle(data.title);
       setCategorySlug(data.category?.slug ?? "");
+      if (data.is_provisioned) {
+        authFetch<{ results: StreamSession[] }>("/api/channels/me/sessions")
+          .then((d) => setSessions(d.results))
+          .catch(() => undefined);
+      }
     } catch (err) {
       const e = err as { data?: { detail?: string } };
       setError(e.data?.detail ?? "Échec du chargement de la chaîne.");
@@ -111,7 +136,12 @@ export default function DashboardPage() {
       {channel && (
         <section className="space-y-6 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-6">
           <header className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">@{channel.slug}</h2>
+            <div className="flex items-center gap-3">
+              <h2 className="text-xl font-semibold">@{channel.slug}</h2>
+              {channel.is_provisioned && (
+                <LiveBadge slug={channel.slug} initial={{ is_live: channel.is_live }} />
+              )}
+            </div>
             <Link
               href={`/c/${channel.slug}`}
               className="text-sm text-emerald-300 underline"
@@ -119,6 +149,21 @@ export default function DashboardPage() {
               Page publique →
             </Link>
           </header>
+
+          <div className="flex gap-6 text-sm text-neutral-400">
+            <span>
+              <span className="font-semibold text-neutral-100">
+                {channel.follower_count ?? 0}
+              </span>{" "}
+              followers
+            </span>
+            <span>
+              <span className="font-semibold text-neutral-100">
+                {channel.viewers ?? 0}
+              </span>{" "}
+              spectateurs actuels
+            </span>
+          </div>
 
           <div className="space-y-3 border-b border-neutral-800 pb-6">
             <Field label="Titre du stream">
@@ -160,9 +205,12 @@ export default function DashboardPage() {
               </Field>
 
               <Field label="Serveur RTMPS">
-                <code className="break-all text-emerald-300">
-                  {channel.rtmps_url || "—"}
-                </code>
+                <div className="flex items-center gap-2">
+                  <code className="break-all text-emerald-300">
+                    {channel.rtmps_url || "—"}
+                  </code>
+                  {channel.rtmps_url && <CopyButton value={channel.rtmps_url} />}
+                </div>
               </Field>
 
               <Field label="Stream key">
@@ -175,13 +223,16 @@ export default function DashboardPage() {
                       : "—"}
                   </code>
                   {channel.rtmps_key && (
-                    <button
-                      type="button"
-                      onClick={() => setRevealKey((v) => !v)}
-                      className="rounded-md border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:border-neutral-500"
-                    >
-                      {revealKey ? "Masquer" : "Afficher"}
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setRevealKey((v) => !v)}
+                        className="rounded-md border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:border-neutral-500"
+                      >
+                        {revealKey ? "Masquer" : "Afficher"}
+                      </button>
+                      <CopyButton value={channel.rtmps_key} />
+                    </>
                   )}
                 </div>
               </Field>
@@ -217,6 +268,49 @@ export default function DashboardPage() {
               >
                 Faire une demande
               </Link>
+            </div>
+          )}
+
+          {channel.is_provisioned && (
+            <div className="border-t border-neutral-800 pt-6">
+              <p className="mb-3 text-xs uppercase tracking-wider text-neutral-500">
+                Historique des diffusions
+              </p>
+              {sessions.length === 0 ? (
+                <p className="text-sm text-neutral-500">
+                  Aucune diffusion pour le moment.
+                </p>
+              ) : (
+                <table className="w-full text-left text-sm">
+                  <thead className="text-xs uppercase tracking-wider text-neutral-500">
+                    <tr>
+                      <th className="pb-2">Date</th>
+                      <th className="pb-2">Durée</th>
+                      <th className="pb-2">Pic viewers</th>
+                      <th className="pb-2">Catégorie</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sessions.map((s) => (
+                      <tr key={s.started_at} className="border-t border-neutral-800/60">
+                        <td className="py-2 text-neutral-300">
+                          {new Date(s.started_at).toLocaleString("fr-FR", {
+                            day: "2-digit",
+                            month: "short",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </td>
+                        <td className="py-2 text-neutral-300">
+                          {formatDuration(s.duration_seconds)}
+                        </td>
+                        <td className="py-2 text-neutral-300">{s.peak_viewers}</td>
+                        <td className="py-2 text-neutral-400">{s.category ?? "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
           )}
         </section>

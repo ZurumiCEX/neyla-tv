@@ -99,3 +99,24 @@ def test_channel_status_returns_minimal_payload(api_client):
 def test_channel_status_404_when_unknown(api_client):
     response = api_client.get(reverse("channel-status", kwargs={"slug": "ghost"}))
     assert response.status_code == 404
+
+
+def test_my_channel_get_includes_follower_count_and_viewers(auth_client_factory):
+    user = UserFactory()
+    client = auth_client_factory(user)
+    data = client.get(reverse("channel-me")).json()
+    assert data["follower_count"] == 0
+    assert data["viewers"] == 0
+
+
+def test_my_sessions_lists_owner_sessions(auth_client_factory):
+    from channels_app.services import mark_live
+
+    user = UserFactory()
+    mark_live(Channel.objects.get(user=user))
+    client = auth_client_factory(user)
+    response = client.get(reverse("channel-sessions"))
+    assert response.status_code == 200
+    results = response.json()["results"]
+    assert len(results) == 1
+    assert results[0]["ended_at"] is None

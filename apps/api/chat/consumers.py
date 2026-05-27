@@ -63,6 +63,13 @@ def _delete_ban(channel_id: int, user_id: int) -> int:
     return deleted
 
 
+@database_sync_to_async
+def _record_peak(channel_id: int, viewers: int) -> None:
+    from channels_app.services import record_session_peak
+
+    record_session_peak(channel_id, viewers)
+
+
 class ChatConsumer(AsyncJsonWebsocketConsumer):
     channel_obj: Channel | None = None
     group_name: str = ""
@@ -96,7 +103,8 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         self.group_name = f"chat.{self.channel_obj.id}"
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
-        await incr_viewers(self.channel_obj.id)
+        count = await incr_viewers(self.channel_obj.id)
+        await _record_peak(self.channel_obj.id, count)
 
     async def disconnect(self, code: int) -> None:  # noqa: ARG002
         if self.group_name and self.channel_obj is not None:
