@@ -36,6 +36,8 @@ def purchase(request: Request) -> Response:
     serializer = PurchaseSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     obj, result = services.create_purchase(request.user, serializer.validated_data["credits"])
+    from . import conversion
+
     return Response(
         {
             "status": obj.status,
@@ -43,6 +45,7 @@ def purchase(request: Request) -> Response:
             "credits": obj.credits,
             "fiat_amount": str(obj.fiat_amount),
             "currency": obj.currency,
+            "equivalents": conversion.equivalents(obj.fiat_amount),
         },
         status=status.HTTP_201_CREATED,
     )
