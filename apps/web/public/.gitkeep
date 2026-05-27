@@ -1,0 +1,2 @@
+# Dossier public Next.js (assets statiques servis à la racine).
+# Présence requise pour le COPY du build standalone (infra/docker/web.Dockerfile).
