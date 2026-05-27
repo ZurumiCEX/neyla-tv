@@ -10,6 +10,18 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 
 
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def livez(_request) -> JsonResponse:
+    """Liveness : 200 si le process répond. Aucune dépendance (DB/Redis).
+
+    Utilisé comme health check de la plateforme (PaaS) : un incident Redis ou DB
+    ne doit pas faire échouer le déploiement ni redémarrer le conteneur en boucle.
+    La santé des dépendances est exposée par /api/healthz (readiness/monitoring).
+    """
+    return JsonResponse({"status": "ok"})
+
+
 def _check_db() -> bool:
     try:
         with connection.cursor() as cur:
@@ -22,7 +34,9 @@ def _check_db() -> bool:
 
 def _check_redis() -> bool:
     try:
-        client = redis.Redis.from_url(settings.REDIS_URL, socket_connect_timeout=1)
+        client = redis.Redis.from_url(
+            settings.REDIS_URL, socket_connect_timeout=3, socket_timeout=3
+        )
         return bool(client.ping())
     except Exception:
         return False
