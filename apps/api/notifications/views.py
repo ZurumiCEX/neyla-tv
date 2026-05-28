@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from django.conf import settings
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -11,7 +12,7 @@ from rest_framework.response import Response
 from accounts.permissions import IsSupport
 
 from . import services
-from .models import Notification
+from .models import Notification, PushSubscription
 from .serializers import NotificationSerializer, SupportMessageSerializer
 
 
@@ -45,6 +46,37 @@ def preferences(request: Request) -> Response:
         return Response(services.get_preferences(request.user))
     mapping = request.data if isinstance(request.data, dict) else {}
     return Response(services.set_preferences(request.user, mapping))
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def push_key(request: Request) -> Response:  # noqa: ARG001
+    """Clé publique VAPID pour l'abonnement Web Push côté navigateur."""
+    return Response({"public_key": settings.VAPID_PUBLIC_KEY})
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def push_subscribe(request: Request) -> Response:
+    endpoint = (request.data.get("endpoint") or "").strip()
+    keys = request.data.get("keys") or {}
+    p256dh = (keys.get("p256dh") or "").strip()
+    auth = (keys.get("auth") or "").strip()
+    if not endpoint or not p256dh or not auth:
+        return Response({"detail": "Abonnement invalide."}, status=status.HTTP_400_BAD_REQUEST)
+    PushSubscription.objects.update_or_create(
+        endpoint=endpoint,
+        defaults={"user": request.user, "p256dh": p256dh, "auth": auth},
+    )
+    return Response({"subscribed": True}, status=status.HTTP_201_CREATED)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def push_unsubscribe(request: Request) -> Response:
+    endpoint = (request.data.get("endpoint") or "").strip()
+    PushSubscription.objects.filter(user=request.user, endpoint=endpoint).delete()
+    return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @api_view(["POST"])

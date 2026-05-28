@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useT } from "@/lib/i18n";
 import { ImageUpload } from "@/components/ImageUpload";
 import { NotificationPreferences } from "@/components/NotificationPreferences";
+import { PushManager } from "@/components/PushManager";
 import { SessionsManager } from "@/components/SessionsManager";
 import { TwoFactorManager } from "@/components/TwoFactorManager";
 
@@ -182,6 +183,7 @@ export default function SettingsPage() {
       </section>
 
       <NotificationPreferences />
+      <PushManager />
       <TwoFactorManager />
       <SessionsManager />
     </main>

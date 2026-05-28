@@ -8,7 +8,7 @@ from django.core.mail import send_mail
 
 from social.models import Follow
 
-from .models import Notification, NotificationPreference
+from .models import Notification, NotificationPreference, PushSubscription
 
 
 @shared_task
@@ -50,4 +50,41 @@ def email_live_followers(channel_id: int) -> int:
             fail_silently=True,
         )
         sent += 1
+    return sent
+
+
+@shared_task
+def push_live_followers(channel_id: int) -> int:
+    """Web Push aux followers (préférence LIVE_STARTED active) quand la chaîne passe live."""
+    from . import push
+
+    if not push.is_configured():
+        return 0
+
+    from channels_app.models import Channel
+
+    channel = Channel.objects.filter(id=channel_id).select_related("user").first()
+    if channel is None:
+        return 0
+
+    disabled_ids = set(
+        NotificationPreference.objects.filter(
+            type=Notification.Type.LIVE_STARTED, enabled=False
+        ).values_list("user_id", flat=True)
+    )
+    follower_ids = (
+        Follow.objects.filter(followee=channel.user)
+        .exclude(follower_id__in=disabled_ids)
+        .values_list("follower_id", flat=True)
+    )
+    name = channel.user.display_name or channel.user.username
+    payload = {
+        "title": f"{name} est en direct",
+        "body": channel.title or "Un live vient de commencer.",
+        "url": f"/c/{channel.slug}",
+    }
+    sent = 0
+    for sub in PushSubscription.objects.filter(user_id__in=list(follower_ids)):
+        if push.send_to_subscription(sub, payload):
+            sent += 1
     return sent

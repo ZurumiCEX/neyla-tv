@@ -72,10 +72,11 @@ def notify_followers_live(channel) -> int:
     ]
     Notification.objects.bulk_create(notifications)
 
-    # Email opt-in (async, best-effort) aux followers à email vérifié.
-    from .tasks import email_live_followers
+    # Notifications externes (async, best-effort) : email + web push.
+    from .tasks import email_live_followers, push_live_followers
 
     email_live_followers.delay(channel.id)
+    push_live_followers.delay(channel.id)
 
     return len(notifications)
 
