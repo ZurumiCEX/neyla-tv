@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { idempotencyKey } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 
 export function TipButton({ channelSlug }: { channelSlug: string }) {
@@ -20,6 +21,7 @@ export function TipButton({ channelSlug }: { channelSlug: string }) {
       await authFetch("/api/payments/tip", {
         method: "POST",
         body: JSON.stringify({ channel_slug: channelSlug, aura_amount: aura, message }),
+        headers: { "Idempotency-Key": idempotencyKey() },
       });
       setSent(true);
       setOpen(false);

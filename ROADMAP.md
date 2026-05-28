@@ -122,6 +122,8 @@ messagerie **support/système** (pas de DM 1:1).
 ### Dette / à finaliser (v2)
 - 💡 Worker Celery toujours désactivé (gamification & notifications de masse en
   repli **synchrone**) ; rebrancher un Valkey managé pour l'asynchrone.
+  → [ADR 009 — Réactivation du worker](docs/adr/009-worker-reenablement.md)
+  (tâche + beat de renouvellement d'abonnements déjà en place).
 - 💡 Hub admin **réservé au rôle `admin`** ; ouvrir les vues modération/support
   aux rôles `moderator`/`support` côté front.
 - 💡 Cloudflare R2 + taux USD à configurer via secrets en prod.

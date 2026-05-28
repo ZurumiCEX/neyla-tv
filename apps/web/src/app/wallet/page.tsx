@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { idempotencyKey } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useT } from "@/lib/i18n";
 
@@ -54,7 +55,11 @@ export default function WalletPage() {
     try {
       const res = await authFetch<{ status: string; checkout_url: string | null }>(
         "/api/payments/purchase",
-        { method: "POST", body: JSON.stringify({ credits }) },
+        {
+          method: "POST",
+          body: JSON.stringify({ credits }),
+          headers: { "Idempotency-Key": idempotencyKey() },
+        },
       );
       if (res.checkout_url) {
         window.location.href = res.checkout_url;
@@ -77,6 +82,7 @@ export default function WalletPage() {
       await authFetch("/api/payments/payout", {
         method: "POST",
         body: JSON.stringify({ aura_amount: amount }),
+        headers: { "Idempotency-Key": idempotencyKey() },
       });
       setPayoutAmount("");
       await load();
