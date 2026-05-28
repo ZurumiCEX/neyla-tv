@@ -89,6 +89,7 @@ class Purchase(models.Model):
     status = models.CharField(
         max_length=8, choices=Status.choices, default=Status.PENDING, db_index=True
     )
+    idempotency_key = models.CharField(max_length=64, null=True, blank=True, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -109,6 +110,7 @@ class Tip(models.Model):
     creator_share = models.PositiveIntegerField()
     platform_fee = models.PositiveIntegerField()
     message = models.CharField(max_length=200, blank=True)
+    idempotency_key = models.CharField(max_length=64, null=True, blank=True, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -133,6 +135,7 @@ class Payout(models.Model):
     status = models.CharField(
         max_length=10, choices=Status.choices, default=Status.REQUESTED, db_index=True
     )
+    idempotency_key = models.CharField(max_length=64, null=True, blank=True, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
