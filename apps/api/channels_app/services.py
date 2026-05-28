@@ -76,6 +76,9 @@ def mark_live(channel: Channel) -> bool:
         title_snapshot=channel.title,
         category_snapshot=channel.category,
     )
+    from gamification.services import check_and_award
+
+    check_and_award(channel.user, "first_stream")
     return True
 
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 
@@ -9,8 +9,14 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [invite, setInvite] = useState("");
   const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    const code = new URLSearchParams(window.location.search).get("invite");
+    if (code) setInvite(code.toUpperCase());
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -19,7 +25,7 @@ export default function RegisterPage() {
     try {
       await apiFetch("/api/auth/register", {
         method: "POST",
-        body: JSON.stringify({ email, username, password }),
+        body: JSON.stringify({ email, username, password, invite }),
       });
       setStatus({ ok: true, msg: "Compte créé. Vérifie tes emails." });
     } catch (err) {
@@ -50,6 +56,13 @@ export default function RegisterPage() {
           onValueChange={setPassword}
           required
           minLength={10}
+        />
+        <Field
+          label="Code d'invitation (optionnel)"
+          type="text"
+          value={invite}
+          onValueChange={(v) => setInvite(v.toUpperCase())}
+          maxLength={16}
         />
         <button
           type="submit"

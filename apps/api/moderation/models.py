@@ -73,6 +73,15 @@ class Report(models.Model):
         blank=True,
         related_name="+",
     )
+    assigned_to = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reports_assigned",
+    )
+    resolution = models.TextField(max_length=1000, blank=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

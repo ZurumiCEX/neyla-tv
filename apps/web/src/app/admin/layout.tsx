@@ -10,6 +10,8 @@ const TABS: { href: string; label: string }[] = [
   { href: "/admin/transactions", label: "Transactions" },
   { href: "/admin/fees", label: "Commissions" },
   { href: "/admin/users", label: "Utilisateurs" },
+  { href: "/admin/reports", label: "Signalements" },
+  { href: "/admin/messages", label: "Messagerie" },
   { href: "/admin/analytics", label: "Analytics" },
 ];
 

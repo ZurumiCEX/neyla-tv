@@ -52,6 +52,13 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     date_joined = models.DateTimeField(default=timezone.now)
     last_active_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    invited_by = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="invited_users",
+    )
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS: list[str] = ["username"]

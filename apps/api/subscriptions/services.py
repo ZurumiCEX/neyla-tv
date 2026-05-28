@@ -64,6 +64,9 @@ def subscribe(user, channel_slug: str) -> Subscription:
         },
     )
     _notify(channel.user, user)
+    from gamification.services import check_and_award
+
+    check_and_award(user, "subscription")
     return sub
 
 

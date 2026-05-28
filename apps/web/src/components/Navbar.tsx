@@ -82,6 +82,24 @@ export function Navbar() {
                 {t("nav.myChannel")}
               </Link>
               <Link
+                href="/invite"
+                className="hidden text-neutral-300 hover:text-emerald-300 lg:inline"
+              >
+                {t("nav.invite")}
+              </Link>
+              <Link
+                href="/achievements"
+                className="hidden text-neutral-300 hover:text-emerald-300 lg:inline"
+              >
+                {t("nav.achievements")}
+              </Link>
+              <Link
+                href="/inbox"
+                className="hidden text-neutral-300 hover:text-emerald-300 sm:inline"
+              >
+                {t("nav.inbox")}
+              </Link>
+              <Link
                 href="/wallet"
                 className="hidden text-amber-300 hover:text-amber-200 sm:inline"
               >

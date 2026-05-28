@@ -137,7 +137,7 @@ def send_tip(from_user, channel_slug: str, aura_amount: int, message: str = "") 
         LedgerEntry.Kind.TIP_RECEIVED,
         f"from:{from_user.username}",
     )
-    return Tip.objects.create(
+    tip = Tip.objects.create(
         from_user=from_user,
         to_channel=channel,
         aura_amount=aura_amount,
@@ -145,6 +145,29 @@ def send_tip(from_user, channel_slug: str, aura_amount: int, message: str = "") 
         platform_fee=platform_fee,
         message=message[:200],
     )
+    _after_tip(tip, from_user, channel)
+    return tip
+
+
+def _after_tip(tip: Tip, from_user, channel) -> None:
+    """Notification au créateur + succès (best-effort, hors transaction critique)."""
+    from notifications.models import Notification
+    from notifications.services import create_notification
+
+    create_notification(
+        recipient=channel.user,
+        type=Notification.Type.TIP_RECEIVED,
+        actor=from_user,
+        payload={
+            "username": from_user.username,
+            "aura": tip.creator_share,
+            "slug": channel.slug,
+        },
+    )
+    from gamification.services import check_and_award
+
+    check_and_award(from_user, "tip_sent")
+    check_and_award(channel.user, "tip_received")
 
 
 @transaction.atomic
