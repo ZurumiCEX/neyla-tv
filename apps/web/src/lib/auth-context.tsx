@@ -21,6 +21,7 @@ export type AuthUser = {
   email: string;
   username: string;
   display_name: string;
+  avatar_url: string;
   is_email_verified: boolean;
   is_staff: boolean;
   is_streamer: boolean;
