@@ -36,8 +36,15 @@ def _get_channel(slug: str) -> Channel | None:
 
 
 @database_sync_to_async
-def _has_active_ban(channel_id: int, user_id: int) -> bool:
-    qs = ChatBan.objects.filter(channel_id=channel_id, user_id=user_id)
+def _has_active_hard_ban(channel_id: int, user_id: int) -> bool:
+    """Ban "dur" (ferme la connexion). Les shadow bans n'entrent pas en compte."""
+    qs = ChatBan.objects.filter(channel_id=channel_id, user_id=user_id, shadow=False)
+    return any(ban.is_active() for ban in qs)
+
+
+@database_sync_to_async
+def _has_active_shadow_ban(channel_id: int, user_id: int) -> bool:
+    qs = ChatBan.objects.filter(channel_id=channel_id, user_id=user_id, shadow=True)
     return any(ban.is_active() for ban in qs)
 
 
@@ -49,11 +56,16 @@ def _resolve_target_user(username: str):
 
 
 @database_sync_to_async
-def _upsert_ban(channel, user, until, created_by, reason=""):
+def _upsert_ban(channel, user, until, created_by, reason="", shadow=False):
     ban, _ = ChatBan.objects.update_or_create(
         channel=channel,
         user=user,
-        defaults={"until": until, "created_by": created_by, "reason": reason},
+        defaults={
+            "until": until,
+            "created_by": created_by,
+            "reason": reason,
+            "shadow": shadow,
+        },
     )
     return ban
 
@@ -90,6 +102,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
     group_name: str = ""
     banned_words: set[str] = frozenset()
     subscriber_ids: set[int] = frozenset()
+    is_shadow_banned: bool = False
 
     async def connect(self) -> None:
         slug = self.scope["url_route"]["kwargs"]["slug"]
@@ -110,12 +123,18 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             await self.close(code=CLOSE_FORBIDDEN)
             return
 
-        # Vérification ban actif (uniquement pour les utilisateurs authentifiés).
-        if getattr(user, "is_authenticated", False) and await _has_active_ban(
+        # Ban "dur" → connexion refusée (uniquement pour les authentifiés).
+        if getattr(user, "is_authenticated", False) and await _has_active_hard_ban(
             self.channel_obj.id, user.pk
         ):
             await self.close(code=CLOSE_FORBIDDEN)
             return
+
+        # Shadow ban → connexion permise, messages non diffusés aux autres.
+        self.is_shadow_banned = bool(
+            getattr(user, "is_authenticated", False)
+            and await _has_active_shadow_ban(self.channel_obj.id, user.pk)
+        )
 
         self.group_name = f"chat.{self.channel_obj.id}"
         await self.channel_layer.group_add(self.group_name, self.channel_name)
@@ -175,12 +194,24 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             "content": text,
             "ts": int(time.time() * 1000),
         }
+        # Shadow ban : l'auteur voit son message, mais il n'est ni historisé
+        # ni diffusé aux autres spectateurs.
+        if self.is_shadow_banned:
+            await self.send_json({"type": "message", "msg": msg})
+            return
+
         await append_message(self.channel_obj.id, msg)
         await self.channel_layer.group_send(self.group_name, {"type": "chat.message", "msg": msg})
 
     # Handler du group_send.
     async def chat_message(self, event):
         await self.send_json({"type": "message", "msg": event["msg"]})
+
+    async def chat_shadow(self, event):
+        """Active/désactive le shadow ban de cette connexion si elle est ciblée."""
+        u = self.scope.get("user")
+        if u and getattr(u, "pk", None) == event["user_id"]:
+            self.is_shadow_banned = bool(event["on"])
 
     async def chat_kick(self, event):
         if self.scope.get("user") and self.scope["user"].pk == event["user_id"]:
@@ -228,6 +259,27 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 {"type": "system", "detail": f"{cmd} @{target.username} ({reason})"}
             )
 
+        if cmd in ("/shadow", "/unshadow") and len(parts) >= 2:
+            target = await _resolve_target_user(parts[1])
+            if target is None:
+                return await self.send_json({"type": "error", "detail": "Utilisateur introuvable."})
+            if target.pk == streamer.pk:
+                return await self.send_json(
+                    {"type": "error", "detail": "Action impossible sur toi-même."}
+                )
+            if cmd == "/shadow":
+                await _upsert_ban(
+                    self.channel_obj, target, None, streamer, reason="shadow", shadow=True
+                )
+            else:
+                await _delete_ban(self.channel_obj.id, target.pk)
+            await self.channel_layer.group_send(
+                self.group_name,
+                {"type": "chat.shadow", "user_id": target.pk, "on": cmd == "/shadow"},
+            )
+            verb = "shadow-banni" if cmd == "/shadow" else "réintégré"
+            return await self.send_json({"type": "system", "detail": f"@{target.username} {verb}."})
+
         if cmd == "/delete" and len(parts) >= 2:
             await delete_message(self.channel_obj.id, parts[1])
             await self.channel_layer.group_send(
@@ -240,6 +292,10 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             if target is None:
                 return
             await _delete_ban(self.channel_obj.id, target.pk)
+            await self.channel_layer.group_send(
+                self.group_name,
+                {"type": "chat.shadow", "user_id": target.pk, "on": False},
+            )
             return await self.send_json(
                 {"type": "system", "detail": f"@{target.username} débanni."}
             )

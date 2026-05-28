@@ -17,6 +17,9 @@ class ChatBan(models.Model):
         related_name="chat_bans_received",
     )
     until = models.DateTimeField(null=True, blank=True)  # None = permanent
+    # Shadow ban : l'utilisateur peut poster (et voit ses messages) mais
+    # personne d'autre ne les reçoit. La connexion n'est pas fermée.
+    shadow = models.BooleanField(default=False)
     reason = models.CharField(max_length=200, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(

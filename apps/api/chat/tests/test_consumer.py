@@ -117,3 +117,44 @@ async def test_unknown_channel_returns_4404():
     connected, code = await comm.connect()
     assert not connected
     assert code == 4404
+
+
+@pytest.mark.django_db(transaction=True)
+async def test_shadow_banned_user_can_connect():
+    _, channel = await _make_streamer("shadowown")
+    shadowed = await _make_user()
+    await database_sync_to_async(ChatBan.objects.create)(
+        channel=channel, user=shadowed, until=None, shadow=True
+    )
+    token = _access_for(shadowed)
+    comm = WebsocketCommunicator(application, _ws_path(channel.slug, token=token))
+    connected, _ = await comm.connect()
+    assert connected  # shadow ban ne ferme pas la connexion
+    await comm.disconnect()
+
+
+@pytest.mark.django_db(transaction=True)
+async def test_shadow_message_echoed_to_self_only():
+    streamer, channel = await _make_streamer("shadowsee")
+    shadowed = await _make_user()
+    await database_sync_to_async(ChatBan.objects.create)(
+        channel=channel, user=shadowed, until=None, shadow=True
+    )
+
+    obs = WebsocketCommunicator(application, _ws_path(channel.slug, token=_access_for(streamer)))
+    assert (await obs.connect())[0]
+    shadow_comm = WebsocketCommunicator(
+        application, _ws_path(channel.slug, token=_access_for(shadowed))
+    )
+    assert (await shadow_comm.connect())[0]
+
+    await shadow_comm.send_to(text_data=json.dumps({"content": "invisible"}))
+    own = await shadow_comm.receive_json_from()
+    assert own["type"] == "message"
+    assert own["msg"]["content"] == "invisible"
+
+    # L'observateur (streamer) ne reçoit jamais le message shadow-banni.
+    assert await obs.receive_nothing(timeout=0.3)
+
+    await shadow_comm.disconnect()
+    await obs.disconnect()
