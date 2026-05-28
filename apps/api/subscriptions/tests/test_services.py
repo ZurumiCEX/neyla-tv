@@ -53,6 +53,16 @@ def test_no_tier_means_no_subscription():
         services.subscribe(fan, channel.slug)
 
 
+def test_subscriber_user_ids_lists_active_only():
+    channel = _streamer()
+    fan = UserFactory()
+    pay.create_purchase(fan, 500)
+    services.subscribe(fan, channel.slug)
+    assert services.subscriber_user_ids(channel) == {fan.id}
+    services.cancel(fan, channel.slug)
+    assert services.subscriber_user_ids(channel) == set()
+
+
 def test_subscribe_endpoint_and_status(auth_client_factory):
     from django.urls import reverse
 

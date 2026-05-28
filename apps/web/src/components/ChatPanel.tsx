@@ -11,7 +11,7 @@ import { RoleBadge } from "@/components/RoleBadge";
 
 type ChatMessage = {
   id: string;
-  user: { username: string; display_name: string; role?: string };
+  user: { username: string; display_name: string; role?: string; is_subscriber?: boolean };
   content: string;
   ts: number;
 };
@@ -141,6 +141,14 @@ export function ChatPanel({
           <div key={m.id} className="group flex items-start gap-1 break-words">
             <span className="min-w-0 flex-1">
               <RoleBadge role={m.user.role} />
+              {m.user.is_subscriber && (
+                <span
+                  className="mr-1 rounded bg-fuchsia-500/20 px-1 text-xs font-semibold text-fuchsia-300"
+                  title="Abonné"
+                >
+                  ★
+                </span>
+              )}
               <span className="font-semibold text-emerald-300">
                 {m.user.display_name || m.user.username}
               </span>

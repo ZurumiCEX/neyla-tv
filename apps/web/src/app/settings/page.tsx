@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { ImageUpload } from "@/components/ImageUpload";
+import { NotificationPreferences } from "@/components/NotificationPreferences";
 
 const SOCIAL_KEYS = [
   "twitter",
@@ -159,6 +160,8 @@ export default function SettingsPage() {
           {saving ? "Enregistrement…" : "Enregistrer"}
         </button>
       </section>
+
+      <NotificationPreferences />
     </main>
   );
 }
