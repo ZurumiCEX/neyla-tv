@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useT } from "@/lib/i18n";
 import { CopyButton } from "@/components/CopyButton";
+import { QrCode } from "@/components/QrCode";
 
 type Setup = { secret: string; otpauth_uri: string };
 
@@ -110,9 +111,17 @@ export function TwoFactorManager() {
       {!enabled && setup && (
         <div className="space-y-3">
           <p className="text-sm text-neutral-300">{t("twofa.setupHint")}</p>
-          <div className="flex items-center gap-2 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2">
-            <code className="break-all text-sm text-emerald-300">{setup.secret}</code>
-            <CopyButton value={setup.secret} />
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="rounded-xl bg-white p-2">
+              <QrCode value={setup.otpauth_uri} />
+            </div>
+            <div className="min-w-0 flex-1 space-y-2">
+              <p className="text-xs text-neutral-500">{t("twofa.manualKey")}</p>
+              <div className="flex items-center gap-2 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2">
+                <code className="break-all text-sm text-emerald-300">{setup.secret}</code>
+                <CopyButton value={setup.secret} />
+              </div>
+            </div>
           </div>
           <input
             inputMode="numeric"
