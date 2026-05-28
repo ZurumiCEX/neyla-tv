@@ -65,7 +65,7 @@ export default function AdminFeesPage() {
     <div className="space-y-6">
       <p className="text-sm text-neutral-400">{t("admin.fees.intro")}</p>
 
-      <div className="flex flex-wrap items-end gap-3 rounded-xl border border-neutral-800 bg-neutral-900/60 p-4">
+      <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-4">
         <label className="flex flex-col gap-1 text-xs text-neutral-500">
           {t("admin.fees.product")}
           <select
@@ -112,52 +112,56 @@ export default function AdminFeesPage() {
 
       {error && <p className="text-sm text-red-300">{error}</p>}
 
-      <table className="w-full text-left text-sm">
-        <thead className="text-xs uppercase tracking-wider text-neutral-500">
-          <tr>
-            <th className="pb-2">{t("admin.fees.product")}</th>
-            <th className="pb-2">{t("admin.fees.mode")}</th>
-            <th className="pb-2">{t("admin.fees.commission")}</th>
-            <th className="pb-2">{t("admin.fees.colActive")}</th>
-            <th className="pb-2" />
-          </tr>
-        </thead>
-        <tbody>
-          {fees.map((f) => (
-            <tr key={f.id} className="border-t border-neutral-800/60">
-              <td className="py-2 text-neutral-200">{t(`admin.product.${f.product}`)}</td>
-              <td className="py-2 text-neutral-400">{t(`admin.feemode.${f.mode}`)}</td>
-              <td className="py-2 text-neutral-300">
-                {f.value}
-                {f.mode === "percentage" ? " %" : " Aura"}
-              </td>
-              <td className="py-2">
-                <button
-                  type="button"
-                  onClick={() => toggle(f)}
-                  className={`rounded px-2 py-1 text-xs font-semibold ${
-                    f.is_active
-                      ? "bg-emerald-500/20 text-emerald-300"
-                      : "bg-neutral-700 text-neutral-300"
-                  }`}
-                >
-                  {f.is_active ? t("admin.fees.active") : t("admin.fees.inactive")}
-                </button>
-              </td>
-              <td className="py-2">
-                <button
-                  type="button"
-                  onClick={() => remove(f.id)}
-                  className="text-xs text-red-300 hover:underline"
-                >
-                  {t("admin.fees.delete")}
-                </button>
-              </td>
+      <div className="overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-900/60">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-neutral-900/80 text-xs uppercase tracking-wider text-neutral-500">
+            <tr>
+              <th className="px-4 py-3">{t("admin.fees.product")}</th>
+              <th className="px-4 py-3">{t("admin.fees.mode")}</th>
+              <th className="px-4 py-3">{t("admin.fees.commission")}</th>
+              <th className="px-4 py-3">{t("admin.fees.colActive")}</th>
+              <th className="px-4 py-3" />
             </tr>
-          ))}
-        </tbody>
-      </table>
-      {fees.length === 0 && <p className="text-sm text-neutral-500">{t("admin.fees.empty")}</p>}
+          </thead>
+          <tbody>
+            {fees.map((f) => (
+              <tr key={f.id} className="border-t border-neutral-800/60 hover:bg-neutral-800/30">
+                <td className="px-4 py-2.5 text-neutral-200">{t(`admin.product.${f.product}`)}</td>
+                <td className="px-4 py-2.5 text-neutral-400">{t(`admin.feemode.${f.mode}`)}</td>
+                <td className="px-4 py-2.5 font-mono tabular-nums text-neutral-300">
+                  {f.value}
+                  {f.mode === "percentage" ? " %" : " Aura"}
+                </td>
+                <td className="px-4 py-2.5">
+                  <button
+                    type="button"
+                    onClick={() => toggle(f)}
+                    className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                      f.is_active
+                        ? "bg-emerald-500/20 text-emerald-300"
+                        : "bg-neutral-700 text-neutral-300"
+                    }`}
+                  >
+                    {f.is_active ? t("admin.fees.active") : t("admin.fees.inactive")}
+                  </button>
+                </td>
+                <td className="px-4 py-2.5">
+                  <button
+                    type="button"
+                    onClick={() => remove(f.id)}
+                    className="text-xs text-red-300 hover:underline"
+                  >
+                    {t("admin.fees.delete")}
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {fees.length === 0 && (
+          <p className="p-6 text-sm text-neutral-500">{t("admin.fees.empty")}</p>
+        )}
+      </div>
     </div>
   );
 }

@@ -55,18 +55,18 @@ export default function AdminUsersPage() {
   }
 
   return (
-    <div>
-      <div className="mb-4 flex flex-wrap items-center gap-3">
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-4">
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder={t("admin.users.search")}
-          className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm"
+          className="flex-1 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-emerald-500"
         />
         <select
           value={roleFilter}
           onChange={(e) => setRoleFilter(e.target.value)}
-          className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm"
+          className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-emerald-500"
         >
           <option value="">{t("admin.users.allRoles")}</option>
           {ROLES.map((r) => (
@@ -77,45 +77,47 @@ export default function AdminUsersPage() {
         </select>
       </div>
 
-      {error && <p className="mb-3 text-sm text-red-300">{error}</p>}
+      {error && <p className="text-sm text-red-300">{error}</p>}
 
-      <table className="w-full text-left text-sm">
-        <thead className="text-xs uppercase tracking-wider text-neutral-500">
-          <tr>
-            <th className="pb-2">{t("admin.users.colUser")}</th>
-            <th className="pb-2">{t("admin.users.colEmail")}</th>
-            <th className="pb-2">{t("admin.users.colRole")}</th>
-            <th className="pb-2">{t("admin.users.colJoined")}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((u) => (
-            <tr key={u.id} className="border-t border-neutral-800/60">
-              <td className="py-2 text-neutral-200">@{u.username}</td>
-              <td className="py-2 text-neutral-400">{u.email}</td>
-              <td className="py-2">
-                <select
-                  value={u.role}
-                  onChange={(e) => changeRole(u.id, e.target.value)}
-                  className="rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-100"
-                >
-                  {ROLES.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </select>
-              </td>
-              <td className="py-2 text-neutral-500">
-                {new Date(u.date_joined).toLocaleDateString("fr-FR")}
-              </td>
+      <div className="overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-900/60">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-neutral-900/80 text-xs uppercase tracking-wider text-neutral-500">
+            <tr>
+              <th className="px-4 py-3">{t("admin.users.colUser")}</th>
+              <th className="px-4 py-3">{t("admin.users.colEmail")}</th>
+              <th className="px-4 py-3">{t("admin.users.colRole")}</th>
+              <th className="px-4 py-3">{t("admin.users.colJoined")}</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-      {rows.length === 0 && !error && (
-        <p className="mt-4 text-sm text-neutral-500">{t("admin.users.empty")}</p>
-      )}
+          </thead>
+          <tbody>
+            {rows.map((u) => (
+              <tr key={u.id} className="border-t border-neutral-800/60 hover:bg-neutral-800/30">
+                <td className="px-4 py-2.5 text-neutral-200">@{u.username}</td>
+                <td className="px-4 py-2.5 text-neutral-400">{u.email}</td>
+                <td className="px-4 py-2.5">
+                  <select
+                    value={u.role}
+                    onChange={(e) => changeRole(u.id, e.target.value)}
+                    className="rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-100 outline-none focus:border-emerald-500"
+                  >
+                    {ROLES.map((r) => (
+                      <option key={r} value={r}>
+                        {r}
+                      </option>
+                    ))}
+                  </select>
+                </td>
+                <td className="px-4 py-2.5 text-neutral-500">
+                  {new Date(u.date_joined).toLocaleDateString("fr-FR")}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {rows.length === 0 && !error && (
+          <p className="p-6 text-sm text-neutral-500">{t("admin.users.empty")}</p>
+        )}
+      </div>
     </div>
   );
 }
