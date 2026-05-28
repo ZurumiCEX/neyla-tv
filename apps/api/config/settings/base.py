@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     "payments",
     "social",
     "streamers",
+    "subscriptions",
     "uploads",
 ]
 

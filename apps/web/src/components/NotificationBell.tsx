@@ -21,6 +21,8 @@ function describe(n: Notif): { text: string; href?: string } {
       return { text: `${name} est en direct`, href: `/c/${n.payload.slug}` };
     case "new_follower":
       return { text: `@${n.payload.username} te suit maintenant` };
+    case "subscription":
+      return { text: `@${n.payload.username} s'est abonné à ta chaîne` };
     case "application_decided":
       return {
         text:

@@ -11,6 +11,7 @@ class Notification(models.Model):
         LIVE_STARTED = "live_started", "Live démarré"
         NEW_FOLLOWER = "new_follower", "Nouveau follower"
         APPLICATION_DECIDED = "application_decided", "Candidature traitée"
+        SUBSCRIPTION = "subscription", "Nouvel abonné"
 
     recipient = models.ForeignKey(
         settings.AUTH_USER_MODEL,
