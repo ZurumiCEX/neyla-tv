@@ -11,6 +11,14 @@ const INTERNAL_API_URL =
 
 export type ApiError = { status: number; data: unknown };
 
+/** Génère une clé d'idempotence (réutilisée sur retry réseau via les headers). */
+export function idempotencyKey(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
 export async function apiFetch<T = unknown>(
   path: string,
   init: RequestInit = {},
