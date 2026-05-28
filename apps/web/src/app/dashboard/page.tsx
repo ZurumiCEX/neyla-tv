@@ -7,6 +7,7 @@ import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useT } from "@/lib/i18n";
 import { CopyButton } from "@/components/CopyButton";
+import { HlsPlayer } from "@/components/HlsPlayer";
 import { LiveBadge } from "@/components/LiveBadge";
 
 type TFn = (key: string, params?: Record<string, string | number>) => string;
@@ -24,8 +25,17 @@ type MyChannel = {
   is_provisioned: boolean;
   last_live_started_at: string | null;
   category: Category | null;
+  tags: string[];
   follower_count?: number;
   viewers?: number;
+};
+
+type ActivityEvent = {
+  type: "follow" | "tip" | "subscribe";
+  actor: string;
+  amount?: number;
+  message?: string;
+  created_at: string;
 };
 
 type StreamSession = {
@@ -65,14 +75,18 @@ export default function DashboardPage() {
   const [sessions, setSessions] = useState<StreamSession[]>([]);
   const [stats, setStats] = useState<MyStats | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [activity, setActivity] = useState<ActivityEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [rotating, setRotating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [revealKey, setRevealKey] = useState(false);
+  const [liveBusy, setLiveBusy] = useState(false);
 
   // Form state mirror.
   const [title, setTitle] = useState("");
   const [categorySlug, setCategorySlug] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
 
   // Subscription tier config.
   const [tierPrice, setTierPrice] = useState("100");
@@ -88,6 +102,10 @@ export default function DashboardPage() {
       setChannel(data);
       setTitle(data.title);
       setCategorySlug(data.category?.slug ?? "");
+      setTags(data.tags ?? []);
+      authFetch<{ results: ActivityEvent[] }>("/api/channels/me/activity")
+        .then((d) => setActivity(d.results))
+        .catch(() => undefined);
       if (data.is_provisioned) {
         authFetch<{ results: StreamSession[] }>("/api/channels/me/sessions")
           .then((d) => setSessions(d.results))
@@ -131,14 +149,39 @@ export default function DashboardPage() {
         body: JSON.stringify({
           title,
           category_slug: categorySlug || null,
+          tags,
         }),
       });
       setChannel(data);
+      setTags(data.tags ?? []);
     } catch (err) {
       const e = err as { data?: { detail?: string } };
       setError(e.data?.detail ?? t("dash.saveError"));
     } finally {
       setSaving(false);
+    }
+  }
+
+  function addTag() {
+    const tag = tagInput.trim().toLowerCase();
+    if (tag && !tags.includes(tag) && tags.length < 8) {
+      setTags([...tags, tag]);
+    }
+    setTagInput("");
+  }
+
+  async function toggleLive(live: boolean) {
+    setLiveBusy(true);
+    try {
+      const data = await authFetch<{ is_live: boolean }>("/api/channels/me/live", {
+        method: "POST",
+        body: JSON.stringify({ live }),
+      });
+      setChannel((c) => (c ? { ...c, is_live: data.is_live } : c));
+    } catch {
+      // ignore
+    } finally {
+      setLiveBusy(false);
     }
   }
 
@@ -205,13 +248,47 @@ export default function DashboardPage() {
                 <LiveBadge slug={channel.slug} initial={{ is_live: channel.is_live }} />
               )}
             </div>
-            <Link
-              href={`/c/${channel.slug}`}
-              className="text-sm text-emerald-300 underline"
-            >
-              {t("dash.publicPage")}
-            </Link>
+            <div className="flex items-center gap-3">
+              {channel.is_live ? (
+                <button
+                  type="button"
+                  onClick={() => toggleLive(false)}
+                  disabled={liveBusy}
+                  className="rounded-lg border border-red-500/50 px-3 py-1.5 text-sm font-semibold text-red-300 hover:bg-red-500/10 disabled:opacity-50"
+                >
+                  {t("dash.endLive")}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => toggleLive(true)}
+                  disabled={liveBusy}
+                  className="rounded-lg bg-red-500 px-3 py-1.5 text-sm font-semibold text-neutral-950 hover:bg-red-400 disabled:opacity-50"
+                >
+                  {t("dash.goLive")}
+                </button>
+              )}
+              <Link
+                href={`/c/${channel.slug}`}
+                className="text-sm text-emerald-300 underline"
+              >
+                {t("dash.publicPage")}
+              </Link>
+            </div>
           </header>
+
+          {channel.is_provisioned && channel.hls_playback_url && (
+            <div>
+              <p className="mb-2 text-xs uppercase tracking-wider text-neutral-500">
+                {t("dash.preview")}
+              </p>
+              <HlsPlayer
+                src={channel.hls_playback_url}
+                poster={channel.thumbnail_url}
+                className="aspect-video w-full overflow-hidden rounded-xl bg-black"
+              />
+            </div>
+          )}
 
           <div className="flex gap-6 text-sm text-neutral-400">
             <span>
@@ -250,6 +327,42 @@ export default function DashboardPage() {
                   </option>
                 ))}
               </select>
+            </Field>
+            <Field label={t("dash.tags")}>
+              <div className="flex flex-wrap items-center gap-2">
+                {tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="flex items-center gap-1 rounded-full bg-neutral-800 px-2.5 py-1 text-xs text-neutral-200"
+                  >
+                    {tag}
+                    <button
+                      type="button"
+                      onClick={() => setTags(tags.filter((x) => x !== tag))}
+                      className="text-neutral-500 hover:text-red-300"
+                      aria-label={`remove ${tag}`}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+                {tags.length < 8 && (
+                  <input
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === ",") {
+                        e.preventDefault();
+                        addTag();
+                      }
+                    }}
+                    onBlur={addTag}
+                    maxLength={24}
+                    placeholder={t("dash.tagsPlaceholder")}
+                    className="min-w-[8rem] flex-1 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-100 outline-none focus:border-emerald-500"
+                  />
+                )}
+              </div>
             </Field>
             <button
               type="button"
@@ -442,6 +555,42 @@ export default function DashboardPage() {
               )}
             </div>
           )}
+
+          <div className="border-t border-neutral-800 pt-6">
+            <p className="mb-3 text-xs uppercase tracking-wider text-neutral-500">
+              {t("dash.activity")}
+            </p>
+            {activity.length === 0 ? (
+              <p className="text-sm text-neutral-500">{t("dash.activityNone")}</p>
+            ) : (
+              <ul className="space-y-2">
+                {activity.map((e, i) => (
+                  <li
+                    key={i}
+                    className="flex items-center justify-between rounded-lg border border-neutral-800/60 bg-neutral-900/40 px-3 py-2 text-sm"
+                  >
+                    <span className="text-neutral-200">
+                      <span className="font-semibold">{e.actor}</span>{" "}
+                      <span className="text-neutral-400">
+                        {e.type === "tip"
+                          ? t("dash.act.tip", { n: e.amount ?? 0 })
+                          : t(`dash.act.${e.type}`)}
+                      </span>
+                      {e.message ? (
+                        <span className="text-neutral-500"> · {e.message}</span>
+                      ) : null}
+                    </span>
+                    <span className="shrink-0 text-xs text-neutral-600">
+                      {new Date(e.created_at).toLocaleDateString("fr-FR", {
+                        day: "2-digit",
+                        month: "short",
+                      })}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </section>
       )}
     </main>

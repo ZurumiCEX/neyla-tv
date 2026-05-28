@@ -9,6 +9,7 @@ import { useT } from "@/lib/i18n";
 // Chaque onglet déclare les rôles autorisés (l'admin a accès à tout).
 const TABS: { href: string; labelKey: string; roles: string[] }[] = [
   { href: "/admin/dashboard", labelKey: "admin.tab.dashboard", roles: ["admin"] },
+  { href: "/admin/monitoring", labelKey: "admin.tab.monitoring", roles: ["admin"] },
   { href: "/admin/transactions", labelKey: "admin.tab.transactions", roles: ["admin"] },
   { href: "/admin/fees", labelKey: "admin.tab.fees", roles: ["admin"] },
   { href: "/admin/users", labelKey: "admin.tab.users", roles: ["admin"] },

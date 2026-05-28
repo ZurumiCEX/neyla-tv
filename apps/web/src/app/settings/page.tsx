@@ -16,7 +16,12 @@ const SOCIAL_KEYS = [
   "website",
 ] as const;
 
-type Profile = { display_name: string; avatar_url: string; bio: string };
+type Profile = {
+  display_name: string;
+  avatar_url: string;
+  bio: string;
+  country: string;
+};
 type MyChannel = { banner_url: string; social_links: Record<string, string> };
 
 export default function SettingsPage() {
@@ -26,6 +31,7 @@ export default function SettingsPage() {
   const [displayName, setDisplayName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [bio, setBio] = useState("");
+  const [country, setCountry] = useState("");
   const [bannerUrl, setBannerUrl] = useState("");
   const [socials, setSocials] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -38,6 +44,7 @@ export default function SettingsPage() {
       setDisplayName(me.display_name ?? "");
       setAvatarUrl(me.avatar_url ?? "");
       setBio(me.bio ?? "");
+      setCountry(me.country ?? "");
       const channel = await authFetch<MyChannel>("/api/channels/me");
       setBannerUrl(channel.banner_url ?? "");
       setSocials(channel.social_links ?? {});
@@ -66,6 +73,7 @@ export default function SettingsPage() {
           display_name: displayName,
           avatar_url: avatarUrl,
           bio,
+          country: country.trim().toUpperCase(),
         }),
       });
       const cleanSocials = Object.fromEntries(
@@ -124,6 +132,14 @@ export default function SettingsPage() {
         </Field>
         <Field label={t("settings.bannerUrl")}>
           <Input value={bannerUrl} onChange={setBannerUrl} placeholder="https://…" />
+        </Field>
+        <Field label={t("settings.country")}>
+          <Input
+            value={country}
+            onChange={(v) => setCountry(v.toUpperCase())}
+            placeholder="FR, CI, SN…"
+            maxLength={2}
+          />
         </Field>
         <Field label={t("settings.bio")}>
           <textarea
