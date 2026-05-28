@@ -75,7 +75,8 @@ export default async function ChannelPage({
       <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
         <div>
           <HlsPlayer src={channel.hls_playback_url} poster={channel.thumbnail_url} />
-          <header className="mt-4 flex flex-wrap items-start justify-between gap-4">
+          <div className="mt-4 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-4 sm:p-5">
+            <header className="flex flex-wrap items-start justify-between gap-4">
             <div className="flex items-start gap-3">
               {channel.streamer.avatar_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -128,12 +129,13 @@ export default async function ChannelPage({
             </div>
           </header>
 
-          {channel.streamer.bio && (
-            <p className="mt-4 whitespace-pre-line text-sm text-neutral-300">
-              {channel.streamer.bio}
-            </p>
-          )}
-          <SocialLinks links={channel.social_links} />
+            {channel.streamer.bio && (
+              <p className="mt-4 whitespace-pre-line text-sm text-neutral-300">
+                {channel.streamer.bio}
+              </p>
+            )}
+            <SocialLinks links={channel.social_links} />
+          </div>
         </div>
 
         <aside>
