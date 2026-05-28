@@ -94,6 +94,42 @@ def subscriber_user_ids(channel: Channel) -> set[int]:
     )
 
 
+def process_due_subscriptions(now=None) -> dict:
+    """Renouvelle ou expire les abonnements actifs arrivés à échéance.
+
+    Renouvelle en débitant le wallet (palier toujours actif + solde suffisant),
+    sinon passe l'abonnement en EXPIRED. Conçu pour un beat task ou un cron ;
+    fonctionne aussi en exécution manuelle (repli sans worker).
+    """
+    from payments.services import InsufficientBalanceError, PaymentError, charge_subscription
+
+    now = now or timezone.now()
+    renewed = 0
+    expired = 0
+    due = Subscription.objects.select_related("channel__user", "tier", "subscriber").filter(
+        status=Subscription.Status.ACTIVE, current_period_end__lte=now
+    )
+    for sub in due:
+        tier = sub.tier if (sub.tier and sub.tier.is_active) else active_tier(sub.channel)
+        if tier is None:
+            sub.status = Subscription.Status.EXPIRED
+            sub.save(update_fields=["status"])
+            expired += 1
+            continue
+        try:
+            charge_subscription(sub.subscriber, sub.channel.user, tier.price_aura)
+        except (InsufficientBalanceError, PaymentError):
+            sub.status = Subscription.Status.EXPIRED
+            sub.save(update_fields=["status"])
+            expired += 1
+            continue
+        sub.tier = tier
+        sub.current_period_end = now + timezone.timedelta(days=PERIOD_DAYS)
+        sub.save(update_fields=["tier", "current_period_end"])
+        renewed += 1
+    return {"renewed": renewed, "expired": expired}
+
+
 def _notify(creator, subscriber) -> None:
     from notifications.models import Notification
     from notifications.services import create_notification
