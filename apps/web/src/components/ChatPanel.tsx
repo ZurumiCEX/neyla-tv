@@ -110,6 +110,11 @@ export function ChatPanel({
     wsRef.current.send(JSON.stringify({ content: `/delete ${id}` }));
   }, []);
 
+  const modCommand = useCallback((cmd: string) => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+    wsRef.current.send(JSON.stringify({ content: cmd }));
+  }, []);
+
   const addEmoji = useCallback((emoji: string) => {
     setInput((v) => (v + emoji).slice(0, 500));
   }, []);
@@ -156,15 +161,38 @@ export function ChatPanel({
               <span className="text-neutral-100">{m.content}</span>
             </span>
             {isStreamer && (
-              <button
-                type="button"
-                onClick={() => deleteMessage(m.id)}
-                className="hidden shrink-0 text-xs text-neutral-500 hover:text-red-400 group-hover:block"
-                title="Supprimer ce message"
-                aria-label="Supprimer"
-              >
-                ✕
-              </button>
+              <span className="hidden shrink-0 items-center gap-0.5 group-hover:flex">
+                {m.user.username !== user?.username && (
+                  <>
+                    <ModBtn
+                      title="Timeout 10 min"
+                      onClick={() => modCommand(`/timeout ${m.user.username} 10`)}
+                    >
+                      10m
+                    </ModBtn>
+                    <ModBtn
+                      title="Shadow ban"
+                      onClick={() => modCommand(`/shadow ${m.user.username}`)}
+                    >
+                      SB
+                    </ModBtn>
+                    <ModBtn
+                      title="Bannir"
+                      danger
+                      onClick={() => {
+                        if (window.confirm(`Bannir définitivement @${m.user.username} ?`)) {
+                          modCommand(`/ban ${m.user.username}`);
+                        }
+                      }}
+                    >
+                      Ban
+                    </ModBtn>
+                  </>
+                )}
+                <ModBtn title="Supprimer ce message" danger onClick={() => deleteMessage(m.id)}>
+                  ✕
+                </ModBtn>
+              </span>
             )}
           </div>
         ))}
@@ -201,5 +229,31 @@ export function ChatPanel({
         </button>
       </form>
     </section>
+  );
+}
+
+function ModBtn({
+  title,
+  onClick,
+  danger,
+  children,
+}: {
+  title: string;
+  onClick: () => void;
+  danger?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      aria-label={title}
+      className={`rounded px-1 text-xs leading-5 text-neutral-500 hover:bg-neutral-800 ${
+        danger ? "hover:text-red-400" : "hover:text-amber-300"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
