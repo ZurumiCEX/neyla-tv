@@ -176,6 +176,12 @@ EMAIL_BACKEND = env(
 DEFAULT_FROM_EMAIL = env("DJANGO_DEFAULT_FROM_EMAIL", default="no-reply@neyla.tv")
 FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:3000")
 
+# --- Web Push (VAPID) ---
+# Si les clés ne sont pas configurées → push désactivé (dégradation propre).
+VAPID_PUBLIC_KEY = env("VAPID_PUBLIC_KEY", default="")
+VAPID_PRIVATE_KEY = env("VAPID_PRIVATE_KEY", default="")
+VAPID_ADMIN_EMAIL = env("VAPID_ADMIN_EMAIL", default="admin@neyla.tv")
+
 # --- CORS ---
 CORS_ALLOWED_ORIGINS = env.list(
     "DJANGO_CORS_ALLOWED_ORIGINS",
