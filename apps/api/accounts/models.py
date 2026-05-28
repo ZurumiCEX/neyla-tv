@@ -106,3 +106,21 @@ class UserSession(models.Model):
 
     def __str__(self) -> str:
         return f"session:{self.user_id}:{self.jti[:8]}"
+
+
+class TwoFactor(models.Model):
+    """Configuration TOTP (2FA) d'un utilisateur + codes de secours hachés."""
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="two_factor"
+    )
+    secret = models.CharField(max_length=64)
+    enabled = models.BooleanField(default=False)
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    # Codes de secours : liste de SHA-256 (hex). Consommés à l'usage.
+    recovery_codes = models.JSONField(default=list, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:
+        return f"2fa:{self.user_id}:{'on' if self.enabled else 'off'}"

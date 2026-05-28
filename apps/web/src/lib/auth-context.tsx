@@ -25,14 +25,20 @@ export type AuthUser = {
   is_email_verified: boolean;
   is_staff: boolean;
   is_streamer: boolean;
+  two_factor_enabled?: boolean;
   role: "user" | "support" | "moderator" | "admin";
 };
+
+export type LoginResult =
+  | { twoFactorRequired: false }
+  | { twoFactorRequired: true; token: string };
 
 type AuthState = {
   user: AuthUser | null;
   accessToken: string | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<LoginResult>;
+  loginTwoFactor: (token: string, code: string) => Promise<void>;
   logout: () => Promise<void>;
   authFetch: <T>(path: string, init?: RequestInit) => Promise<T>;
   authUpload: <T>(path: string, formData: FormData) => Promise<T>;
@@ -46,7 +52,9 @@ export function useAuth(): AuthState {
   return ctx;
 }
 
-type LoginResp = { access: string; user: AuthUser };
+type LoginResp =
+  | { access: string; user: AuthUser }
+  | { two_factor_required: true; token: string };
 type RefreshResp = { access: string };
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -100,10 +108,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [refresh]);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const data = await apiFetch<LoginResp>("/api/auth/login", {
+  const login = useCallback(
+    async (email: string, password: string): Promise<LoginResult> => {
+      const data = await apiFetch<LoginResp>("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+      });
+      if ("two_factor_required" in data) {
+        return { twoFactorRequired: true, token: data.token };
+      }
+      setAccessToken(data.access);
+      setUser(data.user);
+      return { twoFactorRequired: false };
+    },
+    [],
+  );
+
+  const loginTwoFactor = useCallback(async (token: string, code: string) => {
+    const data = await apiFetch<{ access: string; user: AuthUser }>("/api/auth/2fa/login", {
       method: "POST",
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ token, code }),
     });
     setAccessToken(data.access);
     setUser(data.user);
@@ -164,8 +188,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const value = useMemo<AuthState>(
-    () => ({ user, accessToken, loading, login, logout, authFetch, authUpload }),
-    [user, accessToken, loading, login, logout, authFetch, authUpload],
+    () => ({
+      user,
+      accessToken,
+      loading,
+      login,
+      loginTwoFactor,
+      logout,
+      authFetch,
+      authUpload,
+    }),
+    [user, accessToken, loading, login, loginTwoFactor, logout, authFetch, authUpload],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

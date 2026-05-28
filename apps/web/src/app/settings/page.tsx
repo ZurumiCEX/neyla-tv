@@ -7,6 +7,7 @@ import { useT } from "@/lib/i18n";
 import { ImageUpload } from "@/components/ImageUpload";
 import { NotificationPreferences } from "@/components/NotificationPreferences";
 import { SessionsManager } from "@/components/SessionsManager";
+import { TwoFactorManager } from "@/components/TwoFactorManager";
 
 const SOCIAL_KEYS = [
   "twitter",
@@ -181,6 +182,7 @@ export default function SettingsPage() {
       </section>
 
       <NotificationPreferences />
+      <TwoFactorManager />
       <SessionsManager />
     </main>
   );
