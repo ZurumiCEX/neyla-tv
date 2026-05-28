@@ -58,7 +58,7 @@ export function Navbar() {
             <>
               {(user.is_staff || user.role === "admin") && (
                 <Link
-                  href="/admin/analytics"
+                  href="/admin/dashboard"
                   className="hidden text-amber-300 hover:text-amber-200 lg:inline"
                 >
                   {t("nav.admin")}

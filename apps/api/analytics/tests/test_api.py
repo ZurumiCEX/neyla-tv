@@ -6,6 +6,7 @@ import pytest
 from django.urls import reverse
 
 from accounts.factories import UserFactory
+from accounts.models import User
 from channels_app.models import Channel
 from channels_app.services import mark_live, mark_offline
 
@@ -31,7 +32,19 @@ def test_overview_forbidden_for_non_admin(auth_client_factory):
 
 
 def test_overview_ok_for_admin(auth_client_factory):
-    admin = UserFactory(is_staff=True)
+    admin = UserFactory(role=User.Role.ADMIN)
     data = auth_client_factory(admin).get(reverse("analytics-overview")).json()
     assert "dau" in data and "mau" in data and "top_streamers" in data
     assert data["users_total"] >= 1
+
+
+def test_dashboard_returns_revenue_series(auth_client_factory):
+    admin = UserFactory(role=User.Role.ADMIN)
+    data = auth_client_factory(admin).get(reverse("admin-dashboard")).json()
+    assert "overview" in data
+    assert "series" in data["revenue"] and "totals" in data["revenue"]
+    assert len(data["revenue"]["series"]) == 14
+
+
+def test_dashboard_forbidden_for_non_admin(auth_client_factory):
+    assert auth_client_factory(UserFactory()).get(reverse("admin-dashboard")).status_code == 403

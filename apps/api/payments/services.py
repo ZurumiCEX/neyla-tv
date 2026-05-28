@@ -7,7 +7,7 @@ import decimal
 from django.conf import settings
 from django.db import transaction
 
-from .models import LedgerEntry, Payout, Purchase, Tip, Wallet
+from .models import FeeRule, LedgerEntry, Payout, Purchase, Tip, Wallet
 from .providers import get_provider, get_provider_name
 
 
@@ -17,6 +17,24 @@ class PaymentError(Exception):
 
 class InsufficientBalanceError(PaymentError):
     """Solde Aura insuffisant."""
+
+
+def split(amount: int, product: str) -> tuple[int, int]:
+    """Répartit un montant Aura → (part créateur, commission plateforme).
+
+    Utilise la FeeRule active du produit ; repli sur CREATOR_SHARE si aucune règle.
+    """
+    amount = int(amount)
+    rule = FeeRule.objects.filter(product=product, is_active=True).order_by("-created_at").first()
+    if rule is None:
+        creator_share = int(amount * float(getattr(settings, "CREATOR_SHARE", 0.70)))
+        return creator_share, amount - creator_share
+    if rule.mode == FeeRule.Mode.FIXED:
+        platform_fee = int(rule.value)
+    else:
+        platform_fee = int(amount * float(rule.value) / 100)
+    platform_fee = max(0, min(platform_fee, amount))
+    return amount - platform_fee, platform_fee
 
 
 def aura_unit_price() -> decimal.Decimal:
@@ -34,7 +52,14 @@ def get_wallet(user) -> Wallet:
     return wallet
 
 
-def _apply(wallet: Wallet, amount: int, kind: str, reference: str = "") -> None:
+def _apply(
+    wallet: Wallet,
+    amount: int,
+    kind: str,
+    reference: str = "",
+    related=None,
+    metadata: dict | None = None,
+) -> None:
     """Applique une variation de solde + écriture ledger. Lève si solde négatif."""
     new_balance = wallet.aura_balance + amount
     if new_balance < 0:
@@ -47,6 +72,9 @@ def _apply(wallet: Wallet, amount: int, kind: str, reference: str = "") -> None:
         kind=kind,
         reference=reference,
         balance_after=new_balance,
+        related_type=related.__class__.__name__.lower() if related is not None else "",
+        related_id=getattr(related, "id", None),
+        metadata=metadata or {},
     )
 
 
@@ -99,8 +127,7 @@ def send_tip(from_user, channel_slug: str, aura_amount: int, message: str = "") 
     if sender.aura_balance < aura_amount:
         raise InsufficientBalanceError("Solde Aura insuffisant.")
 
-    creator_share = int(aura_amount * float(getattr(settings, "CREATOR_SHARE", 0.70)))
-    platform_fee = aura_amount - creator_share
+    creator_share, platform_fee = split(aura_amount, FeeRule.Product.TIP)
 
     _apply(sender, -aura_amount, LedgerEntry.Kind.TIP_SENT, f"channel:{channel.slug}")
     creator_wallet = Wallet.objects.select_for_update().get_or_create(user=channel.user)[0]
@@ -147,9 +174,131 @@ def charge_subscription(payer, creator, amount: int) -> tuple[int, int]:
     wallet = Wallet.objects.select_for_update().get_or_create(user=payer)[0]
     if wallet.aura_balance < amount:
         raise InsufficientBalanceError("Solde Aura insuffisant.")
-    creator_share = int(amount * float(getattr(settings, "CREATOR_SHARE", 0.70)))
-    platform_fee = amount - creator_share
+    creator_share, platform_fee = split(amount, FeeRule.Product.SUBSCRIPTION)
     _apply(wallet, -amount, LedgerEntry.Kind.SUB_PAID, f"sub:{creator.username}")
     creator_wallet = Wallet.objects.select_for_update().get_or_create(user=creator)[0]
     _apply(creator_wallet, creator_share, LedgerEntry.Kind.SUB_EARNED, f"sub-from:{payer.username}")
     return creator_share, platform_fee
+
+
+def list_transactions(type_filter: str = "", query: str = "", days: int = 0) -> list[dict]:
+    """Flux unifié Purchase/Tip/Subscription/Payout (récent d'abord) pour l'admin."""
+    from django.utils import timezone
+
+    since = None
+    if days and days > 0:
+        since = timezone.now() - timezone.timedelta(days=days)
+    rows: list[dict] = []
+    want = type_filter or "all"
+    q = (query or "").strip().lower()
+
+    if want in ("all", "purchase"):
+        qs = Purchase.objects.select_related("user").all()
+        if since:
+            qs = qs.filter(created_at__gte=since)
+        if q:
+            qs = qs.filter(user__username__icontains=q)
+        for p in qs[:500]:
+            rows.append(
+                {
+                    "type": "purchase",
+                    "id": p.id,
+                    "user": p.user.username,
+                    "aura": p.credits,
+                    "fiat_amount": str(p.fiat_amount),
+                    "currency": p.currency,
+                    "status": p.status,
+                    "created_at": p.created_at,
+                    "detail": f"{p.credits} Aura via {p.provider}",
+                }
+            )
+    if want in ("all", "tip"):
+        qs = Tip.objects.select_related("from_user", "to_channel").all()
+        if since:
+            qs = qs.filter(created_at__gte=since)
+        if q:
+            qs = qs.filter(from_user__username__icontains=q)
+        for t in qs[:500]:
+            rows.append(
+                {
+                    "type": "tip",
+                    "id": t.id,
+                    "user": t.from_user.username,
+                    "aura": t.aura_amount,
+                    "platform_fee": t.platform_fee,
+                    "status": "paid",
+                    "created_at": t.created_at,
+                    "detail": f"→ @{t.to_channel.slug} (part créateur {t.creator_share})",
+                }
+            )
+    if want in ("all", "subscription"):
+        from subscriptions.models import Subscription
+
+        qs = Subscription.objects.select_related("subscriber", "channel", "tier").all()
+        if since:
+            qs = qs.filter(created_at__gte=since)
+        if q:
+            qs = qs.filter(subscriber__username__icontains=q)
+        for s in qs[:500]:
+            rows.append(
+                {
+                    "type": "subscription",
+                    "id": s.id,
+                    "user": s.subscriber.username,
+                    "aura": s.tier.price_aura if s.tier else 0,
+                    "status": s.status,
+                    "created_at": s.created_at,
+                    "detail": f"→ @{s.channel.slug}",
+                }
+            )
+    if want in ("all", "payout"):
+        qs = Payout.objects.select_related("user").all()
+        if since:
+            qs = qs.filter(created_at__gte=since)
+        if q:
+            qs = qs.filter(user__username__icontains=q)
+        for p in qs[:500]:
+            rows.append(
+                {
+                    "type": "payout",
+                    "id": p.id,
+                    "user": p.user.username,
+                    "aura": p.aura_amount,
+                    "fiat_amount": str(p.fiat_amount),
+                    "currency": p.currency,
+                    "status": p.status,
+                    "created_at": p.created_at,
+                    "detail": f"{p.fiat_amount} {p.currency}",
+                }
+            )
+
+    rows.sort(key=lambda r: r["created_at"], reverse=True)
+    return rows
+
+
+@transaction.atomic
+def resolve_payout(admin, payout: Payout, action: str) -> Payout:
+    """Action admin sur un retrait : `paid` (validé) ou `fail` (rejeté → remboursé)."""
+    if action not in ("paid", "fail"):
+        raise PaymentError("Action invalide.")
+    if payout.status != Payout.Status.REQUESTED:
+        raise PaymentError("Ce retrait a déjà été traité.")
+    if action == "paid":
+        payout.status = Payout.Status.PAID
+        payout.save(update_fields=["status"])
+    else:
+        wallet = Wallet.objects.select_for_update().get_or_create(user=payout.user)[0]
+        _apply(
+            wallet,
+            payout.aura_amount,
+            LedgerEntry.Kind.PAYOUT,
+            "payout-refund",
+            related=payout,
+            metadata={"refund": True},
+        )
+        payout.status = Payout.Status.FAILED
+        payout.save(update_fields=["status"])
+    from audit.services import record
+
+    record(admin, f"payout.{action}", target=payout, meta={"aura": payout.aura_amount})
+    return payout

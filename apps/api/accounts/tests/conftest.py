@@ -25,3 +25,16 @@ def auth_client(api_client, user):
     access = str(RefreshToken.for_user(user).access_token)
     api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
     return api_client
+
+
+@pytest.fixture
+def auth_client_factory():
+    from rest_framework_simplejwt.tokens import RefreshToken
+
+    def _make(u) -> APIClient:
+        client = APIClient()
+        access = str(RefreshToken.for_user(u).access_token)
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+        return client
+
+    return _make

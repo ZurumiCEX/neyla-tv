@@ -58,3 +58,68 @@ def my_analytics(user) -> dict:
         "peak_viewers": sessions.aggregate(m=Max("peak_viewers"))["m"] or 0,
         "follower_count": Follow.objects.filter(followee=user).count(),
     }
+
+
+def _revenue_series(days: int) -> dict:
+    """Séries quotidiennes de revenus (bucket Python, agnostique du SGBD)."""
+    from payments.models import Payout, Purchase, Tip
+    from subscriptions.models import Subscription
+
+    now = timezone.now()
+    since = now - timedelta(days=days - 1)
+    start_day = timezone.localtime(since).date()
+    buckets: dict = {
+        (start_day + timedelta(days=i)).isoformat(): {
+            "date": (start_day + timedelta(days=i)).isoformat(),
+            "purchases_xof": 0,
+            "tips_aura": 0,
+            "subs_aura": 0,
+            "platform_commission_aura": 0,
+            "payouts_aura": 0,
+        }
+        for i in range(days)
+    }
+
+    def bucket(dt):
+        return buckets.get(timezone.localtime(dt).date().isoformat())
+
+    totals = {
+        "purchases_xof": 0,
+        "tips_aura": 0,
+        "subs_aura": 0,
+        "platform_commission_aura": 0,
+        "payouts_aura": 0,
+    }
+    for p in Purchase.objects.filter(status=Purchase.Status.PAID, created_at__gte=since):
+        b = bucket(p.created_at)
+        if b:
+            b["purchases_xof"] += int(p.fiat_amount)
+        totals["purchases_xof"] += int(p.fiat_amount)
+    for t in Tip.objects.filter(created_at__gte=since):
+        b = bucket(t.created_at)
+        if b:
+            b["tips_aura"] += t.aura_amount
+            b["platform_commission_aura"] += t.platform_fee
+        totals["tips_aura"] += t.aura_amount
+        totals["platform_commission_aura"] += t.platform_fee
+    for s in Subscription.objects.select_related("tier").filter(created_at__gte=since):
+        amount = s.tier.price_aura if s.tier else 0
+        b = bucket(s.created_at)
+        if b:
+            b["subs_aura"] += amount
+        totals["subs_aura"] += amount
+    for po in Payout.objects.filter(created_at__gte=since):
+        b = bucket(po.created_at)
+        if b:
+            b["payouts_aura"] += po.aura_amount
+        totals["payouts_aura"] += po.aura_amount
+
+    return {"series": list(buckets.values()), "totals": totals}
+
+
+def admin_dashboard(days: int = 14) -> dict:
+    """Vue d'ensemble + activité + progression des revenus pour l'admin."""
+    return {
+        "overview": platform_overview(),
+        "revenue": _revenue_series(max(1, min(days, 90))),
+    }

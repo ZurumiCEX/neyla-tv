@@ -2,7 +2,13 @@ from __future__ import annotations
 
 from django.contrib import admin
 
-from .models import LedgerEntry, Payout, Purchase, Tip, Wallet
+from .models import FeeRule, LedgerEntry, Payout, Purchase, Tip, Wallet
+
+
+@admin.register(FeeRule)
+class FeeRuleAdmin(admin.ModelAdmin):
+    list_display = ("product", "mode", "value", "is_active", "updated_at")
+    list_filter = ("product", "mode", "is_active")
 
 
 @admin.register(Wallet)
