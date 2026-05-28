@@ -40,6 +40,13 @@ type MyStats = {
   follower_count: number;
 };
 
+type SubTier = {
+  name?: string;
+  price_aura?: number;
+  perks?: string[];
+  is_active?: boolean;
+};
+
 function formatDuration(seconds: number | null): string {
   if (seconds === null) return "en cours";
   const h = Math.floor(seconds / 3600);
@@ -63,6 +70,13 @@ export default function DashboardPage() {
   const [title, setTitle] = useState("");
   const [categorySlug, setCategorySlug] = useState("");
 
+  // Subscription tier config.
+  const [tierPrice, setTierPrice] = useState("100");
+  const [tierPerks, setTierPerks] = useState("");
+  const [tierActive, setTierActive] = useState(true);
+  const [tierSaving, setTierSaving] = useState(false);
+  const [tierSaved, setTierSaved] = useState(false);
+
   const load = useCallback(async () => {
     setError(null);
     try {
@@ -76,6 +90,15 @@ export default function DashboardPage() {
           .catch(() => undefined);
         authFetch<MyStats>("/api/analytics/me")
           .then(setStats)
+          .catch(() => undefined);
+        authFetch<SubTier>("/api/streamer/tier")
+          .then((t) => {
+            if (typeof t.price_aura === "number") {
+              setTierPrice(String(t.price_aura));
+              setTierPerks((t.perks ?? []).join("\n"));
+              setTierActive(t.is_active ?? true);
+            }
+          })
           .catch(() => undefined);
       }
     } catch (err) {
@@ -127,6 +150,31 @@ export default function DashboardPage() {
       setError(e.data?.detail ?? "Échec de la régénération.");
     } finally {
       setRotating(false);
+    }
+  }
+
+  async function saveTier() {
+    setTierSaving(true);
+    setTierSaved(false);
+    try {
+      const perks = tierPerks
+        .split("\n")
+        .map((p) => p.trim())
+        .filter(Boolean);
+      await authFetch("/api/streamer/tier", {
+        method: "PUT",
+        body: JSON.stringify({
+          price_aura: Number(tierPrice) || 1,
+          perks,
+          is_active: tierActive,
+        }),
+      });
+      setTierSaved(true);
+    } catch (err) {
+      const e = err as { data?: { detail?: string } };
+      setError(e.data?.detail ?? "Échec de l'enregistrement du palier.");
+    } finally {
+      setTierSaving(false);
     }
   }
 
@@ -283,6 +331,52 @@ export default function DashboardPage() {
               <p className="text-xs text-neutral-500">
                 Régénérer invalide l&apos;ancienne clé. OBS devra être reconfiguré.
               </p>
+
+              <div className="space-y-3 rounded-xl border border-fuchsia-500/30 bg-fuchsia-500/5 p-4">
+                <p className="font-semibold text-fuchsia-300">Abonnement de chaîne</p>
+                <p className="text-xs text-neutral-400">
+                  Les fans s&apos;abonnent en Aura. Tu reçois 70 % du prix, chaque mois
+                  tant que l&apos;abonnement est actif.
+                </p>
+                <Field label="Prix mensuel (Aura)">
+                  <input
+                    type="number"
+                    min={1}
+                    value={tierPrice}
+                    onChange={(e) => setTierPrice(e.target.value)}
+                    className="w-40 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-fuchsia-500"
+                  />
+                </Field>
+                <Field label="Avantages (un par ligne)">
+                  <textarea
+                    value={tierPerks}
+                    onChange={(e) => setTierPerks(e.target.value)}
+                    rows={3}
+                    placeholder={"Badge abonné\nStickers exclusifs"}
+                    className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-fuchsia-500"
+                  />
+                </Field>
+                <label className="flex items-center gap-2 text-sm text-neutral-300">
+                  <input
+                    type="checkbox"
+                    checked={tierActive}
+                    onChange={(e) => setTierActive(e.target.checked)}
+                    className="h-4 w-4 accent-fuchsia-500"
+                  />
+                  Abonnements ouverts
+                </label>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={saveTier}
+                    disabled={tierSaving}
+                    className="rounded-lg bg-fuchsia-500 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-fuchsia-400 disabled:opacity-50"
+                  >
+                    {tierSaving ? "Enregistrement…" : "Enregistrer le palier"}
+                  </button>
+                  {tierSaved && <span className="text-sm text-fuchsia-300">Enregistré ✓</span>}
+                </div>
+              </div>
             </>
           ) : (
             <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">

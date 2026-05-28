@@ -24,6 +24,8 @@ class LedgerEntry(models.Model):
         PURCHASE = "purchase", "Achat"
         TIP_SENT = "tip_sent", "Tip envoyé"
         TIP_RECEIVED = "tip_received", "Tip reçu"
+        SUB_PAID = "sub_paid", "Abonnement payé"
+        SUB_EARNED = "sub_earned", "Abonnement reçu"
         PAYOUT = "payout", "Retrait"
 
     wallet = models.ForeignKey(Wallet, on_delete=models.CASCADE, related_name="entries")

@@ -136,3 +136,20 @@ def request_payout(user, aura_amount: int) -> Payout:
 
     record(user, "payout.request", target=payout, meta={"aura": aura_amount})
     return payout
+
+
+@transaction.atomic
+def charge_subscription(payer, creator, amount: int) -> tuple[int, int]:
+    """Débite l'abonné en Aura et crédite le créateur (split fee). Retourne (part, commission)."""
+    amount = int(amount)
+    if amount <= 0:
+        raise PaymentError("Montant invalide.")
+    wallet = Wallet.objects.select_for_update().get_or_create(user=payer)[0]
+    if wallet.aura_balance < amount:
+        raise InsufficientBalanceError("Solde Aura insuffisant.")
+    creator_share = int(amount * float(getattr(settings, "CREATOR_SHARE", 0.70)))
+    platform_fee = amount - creator_share
+    _apply(wallet, -amount, LedgerEntry.Kind.SUB_PAID, f"sub:{creator.username}")
+    creator_wallet = Wallet.objects.select_for_update().get_or_create(user=creator)[0]
+    _apply(creator_wallet, creator_share, LedgerEntry.Kind.SUB_EARNED, f"sub-from:{payer.username}")
+    return creator_share, platform_fee
