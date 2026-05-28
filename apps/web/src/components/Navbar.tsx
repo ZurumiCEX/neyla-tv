@@ -26,9 +26,9 @@ export function Navbar() {
   }
 
   return (
-    <nav className="border-b border-neutral-800 bg-neutral-950/90 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-2.5 sm:gap-4">
-        {/* Gauche : burger (mobile) + logo + navigation */}
+    <nav className="relative z-50 border-b border-neutral-800 bg-neutral-950/90 backdrop-blur">
+      <div className="flex w-full items-center gap-3 px-4 py-2.5 sm:gap-4">
+        {/* Gauche : burger (mobile) + logo */}
         <div className="flex shrink-0 items-center gap-3 sm:gap-4">
           <button
             type="button"
@@ -41,12 +41,6 @@ export function Navbar() {
           </button>
           <Link href="/" className="text-lg font-bold tracking-tight">
             Neyla<span className="text-emerald-400">.tv</span>
-          </Link>
-          <Link
-            href="/parcourir"
-            className="hidden text-sm text-neutral-300 hover:text-emerald-300 sm:inline"
-          >
-            {t("nav.browse")}
           </Link>
         </div>
 

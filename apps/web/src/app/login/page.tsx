@@ -23,7 +23,7 @@ export default function LoginPage() {
       router.push("/dashboard");
     } catch (err) {
       const e = err as { data?: { detail?: string } };
-      setError(e.data?.detail ?? "Échec de la connexion.");
+      setError(e.data?.detail ?? t("auth.loginFail"));
     } finally {
       setBusy(false);
     }

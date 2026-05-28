@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { LiveCard, type LiveChannel } from "@/components/LiveCard";
 import { apiFetch } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 
 type SearchResp = {
   channels: LiveChannel[];
@@ -12,6 +13,7 @@ type SearchResp = {
 };
 
 export function SearchView() {
+  const t = useT();
   const params = useSearchParams();
   const router = useRouter();
   const initial = params.get("q") ?? "";
@@ -42,26 +44,26 @@ export function SearchView() {
   }, [q, router]);
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-8">
-      <h1 className="text-2xl font-bold">Recherche</h1>
+    <main className="mx-auto max-w-7xl px-4 py-8">
+      <h1 className="text-2xl font-bold">{t("search.title")}</h1>
       <input
         autoFocus
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        placeholder="Chaîne ou jeu…"
+        placeholder={t("search.placeholder")}
         className="mt-4 w-full rounded-lg border border-neutral-700 bg-neutral-900 px-4 py-2 text-neutral-100 outline-none focus:border-emerald-500"
       />
 
-      {busy && <p className="mt-4 text-xs text-neutral-500">Recherche…</p>}
+      {busy && <p className="mt-4 text-xs text-neutral-500">{t("search.searching")}</p>}
 
       {result && q.trim().length >= 2 && (
         <>
           <section className="mt-8">
-            <h2 className="mb-3 text-lg font-semibold">Chaînes</h2>
+            <h2 className="mb-3 text-lg font-semibold">{t("search.channels")}</h2>
             {result.channels.length === 0 ? (
-              <p className="text-sm text-neutral-500">Aucun résultat.</p>
+              <p className="text-sm text-neutral-500">{t("search.noResult")}</p>
             ) : (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {result.channels.map((c) => (
                   <LiveCard key={c.slug} channel={c} />
                 ))}
@@ -70,9 +72,9 @@ export function SearchView() {
           </section>
 
           <section className="mt-8">
-            <h2 className="mb-3 text-lg font-semibold">Jeux</h2>
+            <h2 className="mb-3 text-lg font-semibold">{t("search.games")}</h2>
             {result.games.length === 0 ? (
-              <p className="text-sm text-neutral-500">Aucun résultat.</p>
+              <p className="text-sm text-neutral-500">{t("search.noResult")}</p>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {result.games.map((g) => (
