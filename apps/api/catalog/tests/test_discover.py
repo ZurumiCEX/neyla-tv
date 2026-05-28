@@ -39,6 +39,7 @@ def test_discover_categories_orders_by_live_count(api_client):
     by_slug = {g["slug"]: g for g in results}
     assert by_slug["vlr"]["live_count"] == 2
     assert by_slug["lol"]["live_count"] == 1
+    assert "viewers" in by_slug["vlr"]
     # "empty" doit avoir 0 et venir après.
     order = [g["slug"] for g in results]
     assert order.index("vlr") < order.index("lol")

@@ -1,11 +1,11 @@
 import Link from "next/link";
+import { GameCard, type GameSummary } from "@/components/GameCard";
 import { LiveCard, type LiveChannel } from "@/components/LiveCard";
 import { apiFetchServer } from "@/lib/api";
 import { getServerT } from "@/lib/i18n-server";
 
 type LiveListResp = { results: LiveChannel[]; total: number };
-type Category = { slug: string; name: string; live_count: number };
-type CategoryListResp = { results: Category[] };
+type CategoryListResp = { results: GameSummary[] };
 
 async function safeFetch<T>(path: string, fallback: T): Promise<T> {
   try {
@@ -78,18 +78,9 @@ export default async function HomePage() {
       {cats.results.length > 0 && (
         <section className="mt-12">
           <h2 className="text-xl font-bold">{t("home.popularCategories")}</h2>
-          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+          <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
             {cats.results.map((g) => (
-              <Link
-                key={g.slug}
-                href={`/categories/${g.slug}`}
-                className="rounded-lg border border-neutral-800 bg-neutral-900/60 px-4 py-3 text-sm transition hover:border-neutral-700"
-              >
-                <p className="font-semibold">{g.name}</p>
-                <p className="mt-1 text-xs text-neutral-500">
-                  {t("home.liveShort", { count: g.live_count })}
-                </p>
-              </Link>
+              <GameCard key={g.slug} game={g} />
             ))}
           </div>
         </section>

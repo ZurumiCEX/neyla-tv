@@ -35,9 +35,20 @@ GAMES = [
     ("gta-v", "Grand Theft Auto V"),
     ("minecraft", "Minecraft"),
     ("fc-25", "EA Sports FC 25"),
+    ("elden-ring", "Elden Ring"),
+    ("counter-strike-2", "Counter-Strike 2"),
+    ("fortnite", "Fortnite"),
+    ("call-of-duty", "Call of Duty"),
+    ("dota-2", "Dota 2"),
+    ("street-fighter-6", "Street Fighter 6"),
+    ("the-finals", "THE FINALS"),
+    ("apex-legends", "Apex Legends"),
+    ("rocket-league", "Rocket League"),
+    ("world-of-warcraft", "World of Warcraft"),
 ]
 BANNED = ["arnaque", "spam-link", "insulte1"]
-FAKE_IMG = "https://fake.local/seed"
+# Images de démo : service de placeholder déterministe (rendu réaliste).
+IMG = "https://picsum.photos/seed"
 
 
 class Command(BaseCommand):
@@ -45,8 +56,8 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("--flush", action="store_true", help="Purge les données démo avant.")
-        parser.add_argument("--streamers", type=int, default=6)
-        parser.add_argument("--viewers", type=int, default=20)
+        parser.add_argument("--streamers", type=int, default=16)
+        parser.add_argument("--viewers", type=int, default=40)
 
     def handle(self, *args, **opts):
         random.seed(42)
@@ -82,7 +93,7 @@ class Command(BaseCommand):
         if created:
             user.set_password(PASSWORD)
             user.bio = f"Compte démo : {display}."
-            user.avatar_url = f"{FAKE_IMG}/avatar/{handle}.png"
+            user.avatar_url = f"{IMG}/{handle}-av/200/200"
             user.role = role
             user.save()
         return user
@@ -124,7 +135,7 @@ class Command(BaseCommand):
         for slug, name in GAMES:
             g, _ = Game.objects.get_or_create(
                 slug=slug,
-                defaults={"name": name, "box_art_url": f"{FAKE_IMG}/game/{slug}.png"},
+                defaults={"name": name, "box_art_url": f"{IMG}/{slug}-box/320/440"},
             )
             out.append(g)
         return out
@@ -144,11 +155,13 @@ class Command(BaseCommand):
                 streamer_services.approve_application(app, admin)
             except AlreadyStreamerError:
                 pass
+            # Répartit les streamers sur toutes les catégories (couverture large).
+            game = games[i % len(games)]
             channel = Channel.objects.get(user=user)
-            channel.title = f"Live démo de {handle} 🎮"
-            channel.category = random.choice(games)
-            channel.thumbnail_url = f"{FAKE_IMG}/thumb/{handle}.png"
-            channel.banner_url = f"{FAKE_IMG}/banner/{handle}.png"
+            channel.title = f"{game.name} — run du soir 🎮"
+            channel.category = game
+            channel.thumbnail_url = f"{IMG}/{handle}-th/640/360"
+            channel.banner_url = f"{IMG}/{handle}-bn/1200/300"
             channel.social_links = {"twitter": f"https://x.com/{handle}"}
             channel.save()
             sub_services.set_tier(
@@ -158,8 +171,8 @@ class Command(BaseCommand):
             )
             self._sessions(channel)
             streamers.append((user, channel))
-        # ~moitié en direct
-        for _user, channel in streamers[: max(1, count // 2)]:
+        # La plupart en direct (pour remplir l'accueil et Parcourir).
+        for _user, channel in streamers[: max(1, count * 3 // 4)]:
             self._go_live(channel)
         return streamers
 
@@ -195,7 +208,19 @@ class Command(BaseCommand):
                 title_snapshot=channel.title,
                 category_snapshot=channel.category,
             )
+        self._set_viewers(channel.id, random.randint(5, 5000))
         self._chat(channel)
+
+    def _set_viewers(self, channel_id, count):
+        """Pose un compteur de viewers en Redis (rendu réaliste cartes/sidebar)."""
+        try:
+            import redis
+            from django.conf import settings
+
+            client = redis.Redis.from_url(settings.REDIS_URL, decode_responses=True)
+            client.set(f"chat:viewers:{channel_id}", count, ex=60 * 60)
+        except Exception:  # noqa: BLE001 - best effort
+            pass
 
     def _chat(self, channel):
         try:
