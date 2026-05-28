@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { useT } from "@/lib/i18n";
 import { CopyButton } from "@/components/CopyButton";
 
 type Invite = {
@@ -17,6 +18,7 @@ type InvitesResp = { results: Invite[]; successful_invites: number };
 
 export default function InvitePage() {
   const router = useRouter();
+  const t = useT();
   const { user, loading, authFetch } = useAuth();
   const [data, setData] = useState<InvitesResp | null>(null);
   const [maxUses, setMaxUses] = useState("1");
@@ -27,9 +29,9 @@ export default function InvitePage() {
     try {
       setData(await authFetch<InvitesResp>("/api/invites"));
     } catch {
-      setError("Chargement impossible.");
+      setError(t("common.loadError"));
     }
-  }, [authFetch]);
+  }, [authFetch, t]);
 
   useEffect(() => {
     setOrigin(window.location.origin);
@@ -50,24 +52,22 @@ export default function InvitePage() {
       });
       load();
     } catch {
-      setError("Création impossible.");
+      setError(t("invite.createError"));
     }
   }
 
-  if (loading || !user) return <main className="p-8 text-neutral-500">Chargement…</main>;
+  if (loading || !user) return <main className="p-8 text-neutral-500">{t("common.loading")}</main>;
 
   return (
     <main className="mx-auto max-w-2xl p-8">
-      <h1 className="mb-2 text-2xl font-bold">Inviter des amis</h1>
+      <h1 className="mb-2 text-2xl font-bold">{t("invite.title")}</h1>
       <p className="mb-6 text-sm text-neutral-400">
-        Partage un lien d&apos;invitation. Tu as parrainé{" "}
-        <span className="font-semibold text-emerald-300">{data?.successful_invites ?? 0}</span>{" "}
-        personne(s).
+        {t("invite.subtitle", { count: data?.successful_invites ?? 0 })}
       </p>
 
       <div className="mb-6 flex items-end gap-3 rounded-xl border border-neutral-800 bg-neutral-900/60 p-4">
         <label className="flex flex-col gap-1 text-xs text-neutral-500">
-          Utilisations max
+          {t("invite.maxUses")}
           <input
             type="number"
             min={1}
@@ -81,7 +81,7 @@ export default function InvitePage() {
           onClick={create}
           className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-emerald-400"
         >
-          Générer un code
+          {t("invite.generate")}
         </button>
       </div>
 
@@ -98,7 +98,8 @@ export default function InvitePage() {
               <div>
                 <p className="font-mono text-lg font-bold tracking-wider">{inv.code}</p>
                 <p className="text-xs text-neutral-500">
-                  {inv.used_count}/{inv.max_uses} utilisé(s) · {inv.is_usable ? "actif" : "épuisé"}
+                  {t("invite.used", { used: inv.used_count, max: inv.max_uses })} ·{" "}
+                  {inv.is_usable ? t("invite.active") : t("invite.exhausted")}
                 </p>
               </div>
               <CopyButton value={link} />
@@ -107,7 +108,7 @@ export default function InvitePage() {
         })}
       </ul>
       {data && data.results.length === 0 && (
-        <p className="text-sm text-neutral-500">Aucun code pour le moment.</p>
+        <p className="text-sm text-neutral-500">{t("invite.empty")}</p>
       )}
     </main>
   );

@@ -56,9 +56,15 @@ export function Navbar() {
             <span className="text-neutral-500">…</span>
           ) : user ? (
             <>
-              {(user.is_staff || user.role === "admin") && (
+              {["admin", "moderator", "support"].includes(user.role) && (
                 <Link
-                  href="/admin/dashboard"
+                  href={
+                    user.role === "moderator"
+                      ? "/admin/reports"
+                      : user.role === "support"
+                        ? "/admin/messages"
+                        : "/admin/dashboard"
+                  }
                   className="hidden text-amber-300 hover:text-amber-200 lg:inline"
                 >
                   {t("nav.admin")}

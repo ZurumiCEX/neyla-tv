@@ -4,10 +4,12 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { useT } from "@/lib/i18n";
 
 type TierResp = { price_aura?: number; perks?: string[] };
 
 export function SubscribeButton({ channelSlug }: { channelSlug: string }) {
+  const t = useT();
   const { user, authFetch } = useAuth();
   const [price, setPrice] = useState<number | null>(null);
   const [perks, setPerks] = useState<string[]>([]);
@@ -44,16 +46,16 @@ export function SubscribeButton({ channelSlug }: { channelSlug: string }) {
       setOpen(false);
     } catch (err) {
       const e = err as { data?: { detail?: string } };
-      setError(e.data?.detail ?? "Échec de l'abonnement.");
+      setError(e.data?.detail ?? t("sub.error"));
     }
-  }, [authFetch, channelSlug]);
+  }, [authFetch, channelSlug, t]);
 
   if (price === null) return null;
 
   if (subscribed) {
     return (
       <span className="rounded-md bg-fuchsia-500/20 px-3 py-1 text-sm font-semibold text-fuchsia-300">
-        Abonné ✓
+        {t("sub.subscribed")}
       </span>
     );
   }
@@ -64,7 +66,7 @@ export function SubscribeButton({ channelSlug }: { channelSlug: string }) {
         href="/login"
         className="rounded-md bg-fuchsia-500 px-3 py-1 text-sm font-semibold text-neutral-950 hover:bg-fuchsia-400"
       >
-        S&apos;abonner · {price} Aura
+        {t("sub.subscribe", { price })}
       </Link>
     );
   }
@@ -76,11 +78,11 @@ export function SubscribeButton({ channelSlug }: { channelSlug: string }) {
         onClick={() => setOpen((o) => !o)}
         className="rounded-md bg-fuchsia-500 px-3 py-1 text-sm font-semibold text-neutral-950 hover:bg-fuchsia-400"
       >
-        S&apos;abonner · {price} Aura
+        {t("sub.subscribe", { price })}
       </button>
       {open && (
         <div className="absolute right-0 z-50 mt-2 w-64 space-y-2 rounded-xl border border-neutral-800 bg-neutral-900 p-3 shadow-xl">
-          <p className="text-xs text-neutral-400">{price} Aura / mois</p>
+          <p className="text-xs text-neutral-400">{t("sub.perMonth", { price })}</p>
           {perks.length > 0 && (
             <ul className="list-inside list-disc text-xs text-neutral-300">
               {perks.map((p) => (
@@ -92,7 +94,7 @@ export function SubscribeButton({ channelSlug }: { channelSlug: string }) {
             <p className="text-xs text-red-300">
               {error}{" "}
               <Link href="/wallet" className="underline">
-                Recharger
+                {t("sub.topup")}
               </Link>
             </p>
           )}
@@ -101,7 +103,7 @@ export function SubscribeButton({ channelSlug }: { channelSlug: string }) {
             onClick={subscribe}
             className="w-full rounded-lg bg-fuchsia-500 px-3 py-1.5 text-sm font-semibold text-neutral-950 hover:bg-fuchsia-400"
           >
-            Confirmer
+            {t("sub.confirm")}
           </button>
         </div>
       )}

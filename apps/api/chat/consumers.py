@@ -78,10 +78,18 @@ def _load_banned_words() -> set[str]:
     return get_banned_words()
 
 
+@database_sync_to_async
+def _load_subscriber_ids(channel) -> set[int]:
+    from subscriptions.services import subscriber_user_ids
+
+    return subscriber_user_ids(channel)
+
+
 class ChatConsumer(AsyncJsonWebsocketConsumer):
     channel_obj: Channel | None = None
     group_name: str = ""
     banned_words: set[str] = frozenset()
+    subscriber_ids: set[int] = frozenset()
 
     async def connect(self) -> None:
         slug = self.scope["url_route"]["kwargs"]["slug"]
@@ -113,6 +121,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
         self.banned_words = await _load_banned_words()
+        self.subscriber_ids = await _load_subscriber_ids(self.channel_obj)
         count = await incr_viewers(self.channel_obj.id)
         await _record_peak(self.channel_obj.id, count)
 
@@ -161,6 +170,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 "username": user.username,
                 "display_name": user.display_name or user.username,
                 "role": user.role,
+                "is_subscriber": user.pk in self.subscriber_ids,
             },
             "content": text,
             "ts": int(time.time() * 1000),

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { LiveCard, type LiveChannel } from "@/components/LiveCard";
 import { apiFetchServer } from "@/lib/api";
+import { getServerT } from "@/lib/i18n-server";
 
 type LiveListResp = { results: LiveChannel[]; total: number };
 type Category = { slug: string; name: string; live_count: number };
@@ -15,24 +16,27 @@ async function safeFetch<T>(path: string, fallback: T): Promise<T> {
 }
 
 export default async function HomePage() {
-  const [lives, cats] = await Promise.all([
-    safeFetch<LiveListResp>("/api/discover/live?limit=12", {
-      results: [],
-      total: 0,
-    }),
-    safeFetch<CategoryListResp>("/api/discover/categories?limit=8", {
-      results: [],
-    }),
+  const [t, [lives, cats]] = await Promise.all([
+    getServerT(),
+    Promise.all([
+      safeFetch<LiveListResp>("/api/discover/live?limit=12", {
+        results: [],
+        total: 0,
+      }),
+      safeFetch<CategoryListResp>("/api/discover/categories?limit=8", {
+        results: [],
+      }),
+    ]),
   ]);
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8">
       <section>
-        <h1 className="text-2xl font-bold">En direct</h1>
+        <h1 className="text-2xl font-bold">{t("home.live")}</h1>
         <p className="mt-1 text-sm text-neutral-400">
           {lives.total === 0
-            ? "Aucun stream en cours pour le moment."
-            : `${lives.total} chaîne(s) en live.`}
+            ? t("home.noLive")
+            : t("home.liveCount", { total: lives.total })}
         </p>
         {lives.results.length > 0 && (
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -45,7 +49,7 @@ export default async function HomePage() {
 
       {cats.results.length > 0 && (
         <section className="mt-12">
-          <h2 className="text-xl font-bold">Catégories populaires</h2>
+          <h2 className="text-xl font-bold">{t("home.popularCategories")}</h2>
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
             {cats.results.map((g) => (
               <Link
@@ -55,7 +59,7 @@ export default async function HomePage() {
               >
                 <p className="font-semibold">{g.name}</p>
                 <p className="mt-1 text-xs text-neutral-500">
-                  {g.live_count} live{g.live_count > 1 ? "s" : ""}
+                  {t("home.liveShort", { count: g.live_count })}
                 </p>
               </Link>
             ))}

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { useT } from "@/lib/i18n";
 
 type Ledger = {
   amount: number;
@@ -20,15 +21,10 @@ type WalletData = {
 };
 
 const PACKS = [100, 500, 1000, 5000];
-const KIND_LABEL: Record<string, string> = {
-  purchase: "Achat",
-  tip_sent: "Tip envoyé",
-  tip_received: "Tip reçu",
-  payout: "Retrait",
-};
 
 export default function WalletPage() {
   const router = useRouter();
+  const t = useT();
   const { user, loading, authFetch } = useAuth();
   const [wallet, setWallet] = useState<WalletData | null>(null);
   const [busy, setBusy] = useState(false);
@@ -39,9 +35,9 @@ export default function WalletPage() {
     try {
       setWallet(await authFetch<WalletData>("/api/payments/wallet"));
     } catch {
-      setError("Échec du chargement du portefeuille.");
+      setError(t("wallet.loadError"));
     }
-  }, [authFetch]);
+  }, [authFetch, t]);
 
   useEffect(() => {
     if (loading) return;
@@ -66,7 +62,7 @@ export default function WalletPage() {
       }
       await load();
     } catch {
-      setError("Échec de l'achat.");
+      setError(t("wallet.buyError"));
     } finally {
       setBusy(false);
     }
@@ -86,17 +82,17 @@ export default function WalletPage() {
       await load();
     } catch (err) {
       const e = err as { data?: { detail?: string } };
-      setError(e.data?.detail ?? "Échec de la demande de retrait.");
+      setError(e.data?.detail ?? t("wallet.payoutError"));
     } finally {
       setBusy(false);
     }
   }
 
-  if (loading || !wallet) return <main className="p-8 text-neutral-500">Chargement…</main>;
+  if (loading || !wallet) return <main className="p-8 text-neutral-500">{t("common.loading")}</main>;
 
   return (
     <main className="mx-auto max-w-2xl p-8">
-      <h1 className="mb-2 text-2xl font-bold">Portefeuille Aura</h1>
+      <h1 className="mb-2 text-2xl font-bold">{t("wallet.title")}</h1>
       <p className="text-4xl font-bold text-emerald-400">
         {wallet.aura_balance} <span className="text-lg text-neutral-400">Aura</span>
       </p>
@@ -114,7 +110,7 @@ export default function WalletPage() {
       )}
 
       <section className="mb-8 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-6">
-        <h2 className="mb-3 font-semibold">Acheter de l&apos;Aura</h2>
+        <h2 className="mb-3 font-semibold">{t("wallet.buyTitle")}</h2>
         <div className="flex flex-wrap gap-2">
           {PACKS.map((p) => (
             <button
@@ -134,14 +130,14 @@ export default function WalletPage() {
       </section>
 
       <section className="mb-8 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-6">
-        <h2 className="mb-3 font-semibold">Retrait (créateur)</h2>
+        <h2 className="mb-3 font-semibold">{t("wallet.payoutTitle")}</h2>
         <div className="flex gap-2">
           <input
             type="number"
             min={1}
             value={payoutAmount}
             onChange={(e) => setPayoutAmount(e.target.value)}
-            placeholder="Montant en Aura"
+            placeholder={t("wallet.payoutPlaceholder")}
             className="flex-1 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-emerald-500"
           />
           <button
@@ -150,20 +146,20 @@ export default function WalletPage() {
             onClick={payout}
             className="rounded-lg border border-neutral-700 px-4 py-2 text-sm hover:border-neutral-500 disabled:opacity-50"
           >
-            Demander
+            {t("wallet.payoutRequest")}
           </button>
         </div>
       </section>
 
-      <h2 className="mb-3 font-semibold">Historique</h2>
+      <h2 className="mb-3 font-semibold">{t("wallet.history")}</h2>
       {wallet.recent.length === 0 ? (
-        <p className="text-sm text-neutral-500">Aucune opération.</p>
+        <p className="text-sm text-neutral-500">{t("wallet.noOps")}</p>
       ) : (
         <table className="w-full text-left text-sm">
           <tbody>
             {wallet.recent.map((l, i) => (
               <tr key={i} className="border-t border-neutral-800/60">
-                <td className="py-2 text-neutral-400">{KIND_LABEL[l.kind] ?? l.kind}</td>
+                <td className="py-2 text-neutral-400">{t(`wallet.kind.${l.kind}`)}</td>
                 <td
                   className={`py-2 text-right font-semibold ${
                     l.amount >= 0 ? "text-emerald-300" : "text-red-300"
