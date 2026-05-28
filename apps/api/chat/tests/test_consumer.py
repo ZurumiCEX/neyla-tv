@@ -158,3 +158,79 @@ async def test_shadow_message_echoed_to_self_only():
 
     await shadow_comm.disconnect()
     await obs.disconnect()
+
+
+@pytest.mark.django_db(transaction=True)
+async def test_ip_banned_connection_rejected():
+    from chat.models import ChatIpBan
+
+    _, channel = await _make_streamer("ipbanown")
+    await database_sync_to_async(ChatIpBan.objects.create)(
+        channel=channel, ip="9.9.9.9", until=None
+    )
+    comm = WebsocketCommunicator(
+        application, _ws_path(channel.slug), headers=[(b"x-forwarded-for", b"9.9.9.9")]
+    )
+    connected, code = await comm.connect()
+    assert not connected
+    assert code == 4403
+
+
+@pytest.mark.django_db(transaction=True)
+async def test_connect_records_user_ip():
+    from chat.models import ChatUserIp
+
+    _, channel = await _make_streamer("iptrack")
+    fan = await _make_user()
+    comm = WebsocketCommunicator(
+        application,
+        _ws_path(channel.slug, token=_access_for(fan)),
+        headers=[(b"x-forwarded-for", b"5.5.5.5")],
+    )
+    assert (await comm.connect())[0]
+    await comm.disconnect()
+    ip = await database_sync_to_async(
+        lambda: ChatUserIp.objects.get(channel=channel, user=fan).ip
+    )()
+    assert ip == "5.5.5.5"
+
+
+@pytest.mark.django_db(transaction=True)
+async def test_ipban_command_bans_user_ip():
+    from chat.models import ChatIpBan
+
+    streamer, channel = await _make_streamer("ipcmd")
+    fan = await _make_user()
+
+    fan_comm = WebsocketCommunicator(
+        application,
+        _ws_path(channel.slug, token=_access_for(fan)),
+        headers=[(b"x-forwarded-for", b"5.5.5.5")],
+    )
+    assert (await fan_comm.connect())[0]
+
+    streamer_comm = WebsocketCommunicator(
+        application, _ws_path(channel.slug, token=_access_for(streamer))
+    )
+    assert (await streamer_comm.connect())[0]
+
+    await streamer_comm.send_to(text_data=json.dumps({"content": f"/ipban {fan.username}"}))
+    # Le streamer reçoit la confirmation système.
+    sys_msg = await streamer_comm.receive_json_from(timeout=1)
+    assert sys_msg["type"] == "system"
+
+    banned = await database_sync_to_async(
+        lambda: ChatIpBan.objects.filter(channel=channel, ip="5.5.5.5").exists()
+    )()
+    assert banned
+
+    await fan_comm.disconnect()
+    await streamer_comm.disconnect()
+
+    # Nouvelle connexion depuis l'IP bannie → refusée.
+    again = WebsocketCommunicator(
+        application, _ws_path(channel.slug), headers=[(b"x-forwarded-for", b"5.5.5.5")]
+    )
+    connected, code = await again.connect()
+    assert not connected
+    assert code == 4403
