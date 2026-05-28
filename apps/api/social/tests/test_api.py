@@ -49,8 +49,10 @@ def test_my_followings_lists_followed_channels(auth_client_factory):
 
     response = client.get(reverse("follows-me"))
     assert response.status_code == 200
-    slugs = [c["slug"] for c in response.json()["results"]]
+    results = response.json()["results"]
+    slugs = [c["slug"] for c in results]
     assert set(slugs) == {"streamera", "streamerb"}
+    assert all("viewers" in c for c in results)
 
 
 def test_self_follow_rejected(auth_client_factory):

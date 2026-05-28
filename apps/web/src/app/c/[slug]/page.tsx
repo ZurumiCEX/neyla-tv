@@ -10,6 +10,7 @@ import { SocialLinks } from "@/components/SocialLinks";
 import { SubscribeButton } from "@/components/SubscribeButton";
 import { TipButton } from "@/components/TipButton";
 import { apiFetchServer } from "@/lib/api";
+import { getServerT } from "@/lib/i18n-server";
 
 type PublicChannel = {
   slug: string;
@@ -40,8 +41,8 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const channel = await getChannel(slug);
-  if (!channel) return { title: "Chaîne introuvable" };
+  const [t, channel] = await Promise.all([getServerT(), getChannel(slug)]);
+  if (!channel) return { title: t("channel.notFound") };
   return {
     title: `${channel.streamer.display_name || `@${channel.slug}`} — Neyla TV`,
     description: channel.title || `La chaîne de @${channel.slug}`,
@@ -54,13 +55,14 @@ export default async function ChannelPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const channel = await getChannel(slug);
+  const [t, channel] = await Promise.all([getServerT(), getChannel(slug)]);
   if (!channel) notFound();
 
   const displayName = channel.streamer.display_name || `@${channel.slug}`;
+  const initial = displayName.replace(/^@/, "").charAt(0).toUpperCase();
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-6">
+    <main className="mx-auto max-w-7xl px-4 py-6">
       {channel.banner_url && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -72,23 +74,37 @@ export default async function ChannelPage({
       <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
         <div>
           <HlsPlayer src={channel.hls_playback_url} poster={channel.thumbnail_url} />
-          <header className="mt-4 flex items-start justify-between gap-4">
-            <div>
-              <h1 className="text-xl font-bold">{channel.title || "Aucun titre"}</h1>
-              <p className="mt-1 text-sm text-neutral-400">
-                par <span className="text-neutral-200">{displayName}</span>{" "}
-                <span className="text-neutral-500">@{channel.slug}</span>
-              </p>
-              {channel.category && (
-                <Link
-                  href={`/categories/${channel.category.slug}`}
-                  className="mt-2 inline-block rounded-full border border-neutral-700 px-3 py-0.5 text-xs text-neutral-300 hover:border-emerald-500"
-                >
-                  {channel.category.name}
-                </Link>
+          <header className="mt-4 flex flex-wrap items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              {channel.streamer.avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={channel.streamer.avatar_url}
+                  alt=""
+                  className="h-12 w-12 rounded-full object-cover"
+                />
+              ) : (
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-neutral-800 text-lg font-semibold text-neutral-300">
+                  {initial}
+                </span>
               )}
+              <div>
+                <h1 className="text-xl font-bold">{channel.title || t("card.untitled")}</h1>
+                <p className="mt-1 text-sm text-neutral-400">
+                  {t("channel.by")} <span className="text-neutral-200">{displayName}</span>{" "}
+                  <span className="text-neutral-500">@{channel.slug}</span>
+                </p>
+                {channel.category && (
+                  <Link
+                    href={`/categories/${channel.category.slug}`}
+                    className="mt-2 inline-block rounded-full border border-neutral-700 px-3 py-0.5 text-xs text-neutral-300 hover:border-emerald-500"
+                  >
+                    {channel.category.name}
+                  </Link>
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2">
               <LiveBadge slug={channel.slug} initial={{ is_live: channel.is_live }} />
               <FollowButton username={channel.slug} />
               <SubscribeButton channelSlug={channel.slug} />
