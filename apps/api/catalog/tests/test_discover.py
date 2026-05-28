@@ -79,3 +79,14 @@ def test_discover_search_short_query_returns_empty(api_client):
     assert response.status_code == 200
     data = response.json()
     assert data == {"channels": [], "games": []}
+
+
+def test_discover_search_matches_tags(api_client):
+    user = UserFactory(username="taggedstreamer")
+    channel = Channel.objects.get(user=user)
+    channel.tags = ["speedrun", "retro"]
+    channel.save(update_fields=["tags"])
+    response = api_client.get(reverse("discover-search"), {"q": "speedrun"})
+    assert response.status_code == 200
+    slugs = [c["slug"] for c in response.json()["channels"]]
+    assert "taggedstreamer" in slugs

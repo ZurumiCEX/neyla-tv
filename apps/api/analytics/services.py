@@ -117,10 +117,26 @@ def _revenue_series(days: int) -> dict:
     return {"series": list(buckets.values()), "totals": totals}
 
 
+def growth_metrics() -> dict:
+    """Croissance & rétention : nouveaux inscrits + utilisateurs récurrents."""
+    now = timezone.now()
+    week_ago = now - timedelta(days=7)
+    month_ago = now - timedelta(days=30)
+    active_7d = User.objects.filter(last_active_at__gte=week_ago)
+    return {
+        "new_users_7d": User.objects.filter(date_joined__gte=week_ago).count(),
+        "new_users_30d": User.objects.filter(date_joined__gte=month_ago).count(),
+        # Récurrents : actifs cette semaine et inscrits il y a plus d'une semaine.
+        "returning_users_7d": active_7d.filter(date_joined__lt=week_ago).count(),
+        "active_7d": active_7d.count(),
+    }
+
+
 def admin_dashboard(days: int = 14) -> dict:
     """Vue d'ensemble + activité + progression des revenus pour l'admin."""
     return {
         "overview": platform_overview(),
+        "growth": growth_metrics(),
         "revenue": _revenue_series(max(1, min(days, 90))),
     }
 

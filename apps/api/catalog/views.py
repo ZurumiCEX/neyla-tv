@@ -109,7 +109,11 @@ def discover_search(request: Request) -> Response:
         return Response({"channels": [], "games": []})
     channels = (
         Channel.objects.select_related("user", "category")
-        .filter(Q(slug__icontains=q) | Q(user__display_name__icontains=q))
+        .filter(
+            Q(slug__icontains=q)
+            | Q(user__display_name__icontains=q)
+            | Q(tags__contains=[q.lower()])
+        )
         .order_by("-is_live", "slug")[:20]
     )
     games = Game.objects.filter(name__icontains=q).order_by("name")[:20]

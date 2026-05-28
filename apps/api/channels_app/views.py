@@ -128,7 +128,14 @@ def set_live(request: Request) -> Response:
     """Bascule live manuelle (repli/démo quand le webhook encodeur n'est pas branché)."""
     channel = _get_my_channel(request.user)
     going_live = bool(request.data.get("live", True))
-    changed = mark_live(channel) if going_live else mark_offline(channel)
+    if going_live:
+        changed = mark_live(channel)
+        if changed:
+            from notifications.services import notify_followers_live
+
+            notify_followers_live(channel)
+    else:
+        changed = mark_offline(channel)
     return Response({"is_live": channel.is_live, "changed": changed})
 
 
