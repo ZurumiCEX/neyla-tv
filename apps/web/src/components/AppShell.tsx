@@ -1,0 +1,20 @@
+"use client";
+
+import { usePathname } from "next/navigation";
+import { Navbar } from "@/components/Navbar";
+import { Sidebar } from "@/components/Sidebar";
+
+/** Masque la navigation globale sur les routes overlay (browser source OBS). */
+export function AppShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  if (pathname?.startsWith("/overlay")) return <>{children}</>;
+  return (
+    <>
+      <Navbar />
+      <div className="flex">
+        <Sidebar />
+        <div className="min-w-0 flex-1">{children}</div>
+      </div>
+    </>
+  );
+}

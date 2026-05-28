@@ -32,6 +32,15 @@ def _get_my_channel(user) -> Channel:
     return channel
 
 
+def _ensure_overlay_token(channel: Channel) -> Channel:
+    if not channel.overlay_token:
+        import secrets
+
+        channel.overlay_token = secrets.token_urlsafe(24)
+        channel.save(update_fields=["overlay_token", "updated_at"])
+    return channel
+
+
 @api_view(["GET", "PATCH"])
 @permission_classes([IsAuthenticated])
 def my_channel(request: Request) -> Response:
@@ -40,6 +49,7 @@ def my_channel(request: Request) -> Response:
         from chat.redis_store import get_viewers_count
         from social.models import Follow
 
+        _ensure_overlay_token(channel)
         data = MyChannelSerializer(channel).data
         data["follower_count"] = Follow.objects.filter(followee=request.user).count()
         data["viewers"] = get_viewers_count(channel.id)
@@ -119,6 +129,34 @@ def my_activity(request: Request) -> Response:
 
     events.sort(key=lambda e: e["created_at"], reverse=True)
     return Response({"results": events[:limit]})
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def overlay_token(request: Request) -> Response:
+    """(Re)génère le jeton secret de l'overlay d'alertes."""
+    import secrets
+
+    channel = _get_my_channel(request.user)
+    channel.overlay_token = secrets.token_urlsafe(24)
+    channel.save(update_fields=["overlay_token", "updated_at"])
+    return Response({"overlay_token": channel.overlay_token})
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@ratelimit(key="user", rate="30/h", method="POST", block=True)
+def overlay_test(request: Request) -> Response:
+    """Envoie une alerte de test à l'overlay du streamer."""
+    from .alerts import send_overlay_alert
+
+    channel = _ensure_overlay_token(_get_my_channel(request.user))
+    kind = request.data.get("kind") or "follow"
+    if kind not in ("follow", "tip", "subscribe"):
+        kind = "follow"
+    name = request.user.display_name or request.user.username
+    send_overlay_alert(channel.id, kind, actor=name, amount=100 if kind == "tip" else None)
+    return Response({"sent": True})
 
 
 @api_view(["POST"])

@@ -28,6 +28,7 @@ type MyChannel = {
   last_live_started_at: string | null;
   category: Category | null;
   tags: string[];
+  overlay_token: string;
   follower_count?: number;
   viewers?: number;
 };
@@ -206,6 +207,33 @@ export default function DashboardPage() {
       // ignore
     } finally {
       setLiveBusy(false);
+    }
+  }
+
+  const [origin, setOrigin] = useState("");
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
+
+  async function regenOverlay() {
+    try {
+      const data = await authFetch<{ overlay_token: string }>("/api/channels/me/overlay/token", {
+        method: "POST",
+      });
+      setChannel((c) => (c ? { ...c, overlay_token: data.overlay_token } : c));
+    } catch {
+      // ignore
+    }
+  }
+
+  async function testAlert(kind: "follow" | "tip" | "subscribe") {
+    try {
+      await authFetch("/api/channels/me/overlay/test", {
+        method: "POST",
+        body: JSON.stringify({ kind }),
+      });
+    } catch {
+      // ignore
     }
   }
 
@@ -651,6 +679,54 @@ export default function DashboardPage() {
                     {rotating ? t("dash.rotating") : t("dash.rotateKey")}
                   </button>
                   <p className="mt-1 text-xs text-neutral-500">{t("dash.rotateWarn")}</p>
+                </div>
+
+                <div className="space-y-3 border-t border-neutral-800 pt-5">
+                  <div>
+                    <p className="font-semibold text-neutral-100">{t("dash.overlayTitle")}</p>
+                    <p className="text-xs text-neutral-400">{t("dash.overlayDesc")}</p>
+                  </div>
+                  <Field label={t("dash.overlayUrl")}>
+                    <div className="flex items-center gap-2">
+                      <code className="break-all text-emerald-300">
+                        {origin ? `${origin}/overlay/${channel.overlay_token}` : "…"}
+                      </code>
+                      {origin && channel.overlay_token && (
+                        <CopyButton value={`${origin}/overlay/${channel.overlay_token}`} />
+                      )}
+                    </div>
+                  </Field>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs text-neutral-500">{t("dash.overlayTest")} :</span>
+                    <button
+                      type="button"
+                      onClick={() => testAlert("follow")}
+                      className="rounded-lg border border-neutral-700 px-3 py-1 text-xs hover:border-emerald-500"
+                    >
+                      {t("dash.alertFollow")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => testAlert("subscribe")}
+                      className="rounded-lg border border-neutral-700 px-3 py-1 text-xs hover:border-fuchsia-500"
+                    >
+                      {t("dash.alertSub")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => testAlert("tip")}
+                      className="rounded-lg border border-neutral-700 px-3 py-1 text-xs hover:border-blue-500"
+                    >
+                      {t("dash.alertTip")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={regenOverlay}
+                      className="ml-auto rounded-lg border border-amber-500/40 px-3 py-1 text-xs text-amber-300 hover:bg-amber-500/10"
+                    >
+                      {t("dash.overlayRegen")}
+                    </button>
+                  </div>
                 </div>
               </section>
             ) : (

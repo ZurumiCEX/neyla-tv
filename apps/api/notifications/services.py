@@ -13,7 +13,32 @@ def is_enabled(user, type) -> bool:
     return pref is None or pref.enabled
 
 
+_OVERLAY_KINDS = {
+    Notification.Type.NEW_FOLLOWER: "follow",
+    Notification.Type.TIP_RECEIVED: "tip",
+    Notification.Type.SUBSCRIPTION: "subscribe",
+}
+
+
+def _maybe_overlay_alert(recipient, type, actor, payload) -> None:
+    """Pousse une alerte overlay (indépendante des préférences in-app)."""
+    kind = _OVERLAY_KINDS.get(type)
+    if kind is None:
+        return
+    channel_id = getattr(getattr(recipient, "channel", None), "id", None)
+    if channel_id is None:
+        return
+    from channels_app.alerts import send_overlay_alert
+
+    actor_name = ""
+    if actor is not None:
+        actor_name = getattr(actor, "display_name", "") or getattr(actor, "username", "")
+    amount = (payload or {}).get("aura")
+    send_overlay_alert(channel_id, kind, actor=actor_name, amount=amount)
+
+
 def create_notification(recipient, type, actor=None, payload=None) -> Notification | None:
+    _maybe_overlay_alert(recipient, type, actor, payload)
     if not is_enabled(recipient, type):
         return None
     return Notification.objects.create(

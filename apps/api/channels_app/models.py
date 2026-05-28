@@ -22,6 +22,8 @@ class Channel(models.Model):
     social_links = models.JSONField(default=dict, blank=True)
     # Tags libres de découverte (list[str], normalisés côté serializer).
     tags = models.JSONField(default=list, blank=True)
+    # Jeton secret pour l'overlay d'alertes (browser source OBS, non authentifié).
+    overlay_token = models.CharField(max_length=64, blank=True, db_index=True)
     category = models.ForeignKey(
         "catalog.Game",
         null=True,

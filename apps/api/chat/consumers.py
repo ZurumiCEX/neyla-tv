@@ -409,3 +409,34 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             )
 
         await self.send_json({"type": "error", "detail": "Commande inconnue."})
+
+
+@database_sync_to_async
+def _channel_id_by_overlay_token(token: str) -> int | None:
+    if not token:
+        return None
+    row = Channel.objects.filter(overlay_token=token).only("id").first()
+    return row.id if row else None
+
+
+class OverlayConsumer(AsyncJsonWebsocketConsumer):
+    """Flux temps réel d'alertes pour l'overlay OBS (auth par jeton dans l'URL)."""
+
+    group_name: str = ""
+
+    async def connect(self) -> None:
+        token = self.scope["url_route"]["kwargs"]["token"]
+        channel_id = await _channel_id_by_overlay_token(token)
+        if not channel_id:
+            await self.close(code=CLOSE_FORBIDDEN)
+            return
+        self.group_name = f"overlay.{channel_id}"
+        await self.channel_layer.group_add(self.group_name, self.channel_name)
+        await self.accept()
+
+    async def disconnect(self, code: int) -> None:  # noqa: ARG002
+        if self.group_name:
+            await self.channel_layer.group_discard(self.group_name, self.channel_name)
+
+    async def overlay_alert(self, event):
+        await self.send_json({"type": "alert", "alert": event["alert"]})
