@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
-from .models import USERNAME_REGEX, User
+from .models import USERNAME_REGEX, User, UserSession
 
 
 class RegisterSerializer(serializers.Serializer):
@@ -103,6 +103,13 @@ class AdminUserSerializer(serializers.ModelSerializer):
             "last_active_at",
         )
         read_only_fields = ("id", "username", "email", "display_name", "date_joined")
+
+
+class UserSessionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserSession
+        fields = ("id", "device", "ip", "created_at", "last_seen_at")
+        read_only_fields = fields
 
 
 class EmailSerializer(serializers.Serializer):

@@ -8,6 +8,9 @@ urlpatterns = [
     path("refresh", views.refresh, name="auth-refresh"),
     path("logout", views.logout, name="auth-logout"),
     path("me", views.me, name="auth-me"),
+    path("sessions", views.list_sessions, name="auth-sessions"),
+    path("sessions/revoke-others", views.revoke_other_sessions, name="auth-sessions-revoke-others"),
+    path("sessions/<int:pk>", views.revoke_session, name="auth-session-revoke"),
     path("email/verify", views.email_verify, name="auth-email-verify"),
     path("email/resend", views.email_resend, name="auth-email-resend"),
     path(
