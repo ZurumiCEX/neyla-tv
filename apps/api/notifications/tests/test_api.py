@@ -51,3 +51,29 @@ def test_notifications_isolated_per_user(auth_client_factory):
     services.create_notification(other, Notification.Type.NEW_FOLLOWER)
     client = auth_client_factory(mine)
     assert client.get(reverse("notifications-list")).json()["results"] == []
+
+
+def test_email_live_followers_respects_optin():
+    from django.core import mail
+    from django.utils import timezone
+
+    from notifications.models import NotificationPreference
+    from notifications.tasks import email_live_followers
+
+    streamer = UserFactory(username="emstrm")
+    channel = Channel.objects.get(user=streamer)
+
+    verified = UserFactory(email="v@x.com", email_verified_at=timezone.now())
+    unverified = UserFactory(email="u@x.com")
+    opted_out = UserFactory(email="o@x.com", email_verified_at=timezone.now())
+    for fan in (verified, unverified, opted_out):
+        Follow.objects.create(follower=fan, followee=streamer)
+    NotificationPreference.objects.create(
+        user=opted_out, type=Notification.Type.LIVE_STARTED, enabled=False
+    )
+
+    mail.outbox.clear()
+    sent = email_live_followers(channel.id)
+    recipients = {addr for m in mail.outbox for addr in m.to}
+    assert sent == 1
+    assert recipients == {"v@x.com"}

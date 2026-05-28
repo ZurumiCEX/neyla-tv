@@ -23,8 +23,16 @@ type Totals = {
 
 type Point = Totals & { date: string };
 
+type Growth = {
+  new_users_7d: number;
+  new_users_30d: number;
+  returning_users_7d: number;
+  active_7d: number;
+};
+
 type Dashboard = {
   overview: Overview;
+  growth: Growth;
   revenue: { series: Point[]; totals: Totals };
 };
 
@@ -61,6 +69,14 @@ export default function AdminDashboardPage() {
     [t("admin.card.payouts"), `${tot.payouts_aura.toLocaleString("fr-FR")} Aura`],
   ];
 
+  const g = data.growth;
+  const growthCards: [string, string | number][] = [
+    [t("admin.card.newUsers7"), g.new_users_7d],
+    [t("admin.card.newUsers30"), g.new_users_30d],
+    [t("admin.card.returning7"), g.returning_users_7d],
+    [t("admin.card.active7"), g.active_7d],
+  ];
+
   const maxCommission = Math.max(1, ...data.revenue.series.map((p) => p.platform_commission_aura));
 
   return (
@@ -69,6 +85,18 @@ export default function AdminDashboardPage() {
         <h2 className="mb-3 text-lg font-bold">{t("admin.dash.activity")}</h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {overviewCards.map(([label, value]) => (
+            <div key={label} className="rounded-xl border border-neutral-800 bg-neutral-900/60 p-4">
+              <p className="text-xs uppercase tracking-wider text-neutral-500">{label}</p>
+              <p className="mt-1 text-2xl font-bold">{value}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <h2 className="mb-3 text-lg font-bold">{t("admin.dash.growth")}</h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {growthCards.map(([label, value]) => (
             <div key={label} className="rounded-xl border border-neutral-800 bg-neutral-900/60 p-4">
               <p className="text-xs uppercase tracking-wider text-neutral-500">{label}</p>
               <p className="mt-1 text-2xl font-bold">{value}</p>
