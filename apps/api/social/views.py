@@ -46,4 +46,10 @@ def my_followings(request: Request) -> Response:
     # Préserve l'ordre des follows (la requête DB ne le garantit pas).
     by_user = {c.user_id: c for c in channels}
     ordered = [by_user[uid] for uid in followee_ids if uid in by_user]
-    return Response({"results": PublicChannelSerializer(ordered, many=True).data})
+    from chat.redis_store import bulk_viewers_count
+
+    viewers_map = bulk_viewers_count([c.id for c in ordered])
+    data = PublicChannelSerializer(ordered, many=True).data
+    for channel, item in zip(ordered, data, strict=False):
+        item["viewers"] = viewers_map.get(channel.id, 0)
+    return Response({"results": data})

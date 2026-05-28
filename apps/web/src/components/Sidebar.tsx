@@ -9,6 +9,7 @@ import { useT } from "@/lib/i18n";
 type FollowedChannel = {
   slug: string;
   is_live: boolean;
+  viewers?: number;
   streamer: { display_name: string; avatar_url: string };
   category: { name: string } | null;
 };
@@ -142,7 +143,12 @@ export function Sidebar() {
                     </span>
                   )}
                   {!collapsed && c.is_live && (
-                    <span className="mt-0.5 h-2 w-2 shrink-0 self-start rounded-full bg-red-500" />
+                    <span className="flex shrink-0 items-center gap-1 self-start pt-0.5 text-xs text-neutral-400">
+                      <span className="h-2 w-2 rounded-full bg-red-500" />
+                      {typeof c.viewers === "number" && c.viewers > 0
+                        ? c.viewers.toLocaleString("fr-FR")
+                        : null}
+                    </span>
                   )}
                 </Link>
               ))}

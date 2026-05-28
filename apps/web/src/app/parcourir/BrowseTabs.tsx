@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { LiveCard, type LiveChannel } from "@/components/LiveCard";
+import { useT } from "@/lib/i18n";
 
 export type Category = { slug: string; name: string; live_count: number };
 
@@ -13,31 +14,32 @@ export function BrowseTabs({
   lives: LiveChannel[];
   categories: Category[];
 }) {
+  const t = useT();
   const [tab, setTab] = useState<"live" | "categories">("live");
 
   return (
     <>
       <div className="mb-6 flex gap-1 border-b border-neutral-800">
         <TabButton active={tab === "live"} onClick={() => setTab("live")}>
-          Diffusions en direct
+          {t("browse.liveTab")}
         </TabButton>
         <TabButton active={tab === "categories"} onClick={() => setTab("categories")}>
-          Catégories
+          {t("browse.categoriesTab")}
         </TabButton>
       </div>
 
       {tab === "live" ? (
         lives.length === 0 ? (
-          <p className="text-sm text-neutral-500">Aucun stream en direct pour le moment.</p>
+          <p className="text-sm text-neutral-500">{t("browse.noLive")}</p>
         ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {lives.map((c) => (
               <LiveCard key={c.slug} channel={c} />
             ))}
           </div>
         )
       ) : categories.length === 0 ? (
-        <p className="text-sm text-neutral-500">Aucune catégorie.</p>
+        <p className="text-sm text-neutral-500">{t("browse.noCategory")}</p>
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
           {categories.map((g) => (
@@ -48,7 +50,7 @@ export function BrowseTabs({
             >
               <p className="font-semibold">{g.name}</p>
               <p className="mt-1 text-xs text-neutral-500">
-                {g.live_count} live{g.live_count > 1 ? "s" : ""}
+                {t("home.liveShort", { count: g.live_count })}
               </p>
             </Link>
           ))}
