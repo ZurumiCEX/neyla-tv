@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.core.validators import RegexValidator
 from django.db import models
@@ -81,3 +82,27 @@ class User(AbstractBaseUser, PermissionsMixin):
     def is_staff_role(self) -> bool:
         """True pour support/modérateur/admin (rôles internes)."""
         return self.role in (self.Role.SUPPORT, self.Role.MODERATOR, self.Role.ADMIN)
+
+
+class UserSession(models.Model):
+    """Session d'appareil adossée au refresh token (jti courant).
+
+    Permet à l'utilisateur de voir ses appareils connectés et de les révoquer.
+    Le jti suit la rotation des refresh tokens.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="sessions"
+    )
+    jti = models.CharField(max_length=64, unique=True, db_index=True)
+    device = models.CharField(max_length=300, blank=True)
+    ip = models.GenericIPAddressField(null=True, blank=True)
+    revoked = models.BooleanField(default=False, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_seen_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-last_seen_at"]
+
+    def __str__(self) -> str:
+        return f"session:{self.user_id}:{self.jti[:8]}"

@@ -20,13 +20,15 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .models import User
+from . import sessions
+from .models import User, UserSession
 from .serializers import (
     EmailSerializer,
     MeSerializer,
     PasswordResetConfirmSerializer,
     RegisterSerializer,
     TokenSerializer,
+    UserSessionSerializer,
 )
 from .services import (
     RegistrationError,
@@ -97,6 +99,7 @@ def login(request: Request) -> Response:
 
     check_and_award(user, "first_login")
     refresh = RefreshToken.for_user(user)
+    sessions.record_login(user, request, refresh)
     response = Response(
         {"access": str(refresh.access_token), "user": MeSerializer(user).data},
         status=status.HTTP_200_OK,
@@ -113,6 +116,7 @@ def refresh(request: Request) -> Response:
         return Response({"detail": "Refresh manquant."}, status=status.HTTP_401_UNAUTHORIZED)
     try:
         old = RefreshToken(token)
+        old_jti = old.get("jti")
         old.blacklist()
         user = User.objects.filter(pk=old["user_id"]).first()
         if user is None or not user.is_active:
@@ -121,6 +125,7 @@ def refresh(request: Request) -> Response:
     except TokenError:
         response = Response({"detail": "Refresh invalide."}, status=status.HTTP_401_UNAUTHORIZED)
         return _clear_refresh_cookie(response)
+    sessions.record_rotation(old_jti, new, request)
     response = Response({"access": str(new.access_token)}, status=status.HTTP_200_OK)
     return _set_refresh_cookie(response, str(new))
 
@@ -132,7 +137,9 @@ def logout(request: Request) -> Response:
     token = request.COOKIES.get(settings.REFRESH_COOKIE_NAME) or request.data.get("refresh")
     if token:
         with contextlib.suppress(TokenError):
-            RefreshToken(token).blacklist()
+            parsed = RefreshToken(token)
+            sessions.revoke_jti(parsed.get("jti"))
+            parsed.blacklist()
     response = Response(status=status.HTTP_204_NO_CONTENT)
     return _clear_refresh_cookie(response)
 
@@ -159,6 +166,48 @@ def me(request: Request) -> Response:
     serializer.is_valid(raise_exception=True)
     serializer.save()
     return Response(serializer.data)
+
+
+def _active_sessions(user):
+    """Sessions non révoquées dont le refresh n'a pas expiré (approché via last_seen)."""
+    from django.utils import timezone
+
+    cutoff = timezone.now() - settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"]
+    return UserSession.objects.filter(user=user, revoked=False, last_seen_at__gte=cutoff)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def list_sessions(request: Request) -> Response:
+    cur = sessions.current_jti(request)
+    data = []
+    for s in _active_sessions(request.user):
+        item = UserSessionSerializer(s).data
+        item["is_current"] = s.jti == cur
+        data.append(item)
+    return Response({"results": data})
+
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def revoke_session(request: Request, pk: int) -> Response:
+    session = UserSession.objects.filter(pk=pk, user=request.user).first()
+    if session is None:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+    sessions.revoke_jti(session.jti)
+    return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def revoke_other_sessions(request: Request) -> Response:
+    """Déconnecte tous les autres appareils (garde la session courante)."""
+    cur = sessions.current_jti(request)
+    count = 0
+    for s in _active_sessions(request.user).exclude(jti=cur):
+        sessions.revoke_jti(s.jti)
+        count += 1
+    return Response({"revoked": count})
 
 
 @api_view(["POST"])
