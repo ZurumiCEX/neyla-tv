@@ -8,14 +8,16 @@ from django.views.decorators.http import require_POST
 from django_ratelimit.decorators import ratelimit
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 
 from . import services
-from .models import Purchase
+from .models import LedgerEntry, Purchase
 from .providers import get_provider
 from .serializers import (
+    LedgerEntrySerializer,
     PayoutSerializer,
     PurchaseSerializer,
     TipSerializer,
@@ -27,6 +29,16 @@ from .serializers import (
 @permission_classes([IsAuthenticated])
 def wallet(request: Request) -> Response:
     return Response(WalletSerializer(services.get_wallet(request.user)).data)
+
+
+class LedgerHistoryView(ListAPIView):
+    """Historique paginé du grand livre de l'utilisateur courant."""
+
+    serializer_class = LedgerEntrySerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return LedgerEntry.objects.filter(wallet__user=self.request.user)
 
 
 @api_view(["POST"])

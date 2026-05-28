@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAdminUser, IsAuthenticated
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
+
+from accounts.permissions import IsAdminRole
 
 from . import services
 
@@ -17,6 +19,13 @@ def my_analytics(request: Request) -> Response:
 
 
 @api_view(["GET"])
-@permission_classes([IsAdminUser])
+@permission_classes([IsAdminRole])
 def overview(request: Request) -> Response:  # noqa: ARG001
     return Response(services.platform_overview())
+
+
+@api_view(["GET"])
+@permission_classes([IsAdminRole])
+def dashboard(request: Request) -> Response:
+    days = int(request.query_params.get("days") or 14)
+    return Response(services.admin_dashboard(days))

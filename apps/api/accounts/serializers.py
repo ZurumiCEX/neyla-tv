@@ -61,6 +61,24 @@ class MeSerializer(serializers.ModelSerializer):
         )
 
 
+class AdminUserSerializer(serializers.ModelSerializer):
+    """Vue admin d'un utilisateur (liste + édition du rôle)."""
+
+    class Meta:
+        model = User
+        fields = (
+            "id",
+            "username",
+            "email",
+            "display_name",
+            "role",
+            "is_active",
+            "date_joined",
+            "last_active_at",
+        )
+        read_only_fields = ("id", "username", "email", "display_name", "date_joined")
+
+
 class EmailSerializer(serializers.Serializer):
     email = serializers.EmailField()
 

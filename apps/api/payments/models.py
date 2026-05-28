@@ -33,6 +33,10 @@ class LedgerEntry(models.Model):
     kind = models.CharField(max_length=16, choices=Kind.choices)
     reference = models.CharField(max_length=255, blank=True)
     balance_after = models.IntegerField()
+    currency = models.CharField(max_length=8, default="AURA")
+    related_type = models.CharField(max_length=32, blank=True)
+    related_id = models.PositiveBigIntegerField(null=True, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -40,6 +44,32 @@ class LedgerEntry(models.Model):
 
     def __str__(self) -> str:
         return f"{self.kind}:{self.amount}"
+
+
+class FeeRule(models.Model):
+    """Règle de commission plateforme par produit (remplace CREATOR_SHARE figé)."""
+
+    class Product(models.TextChoices):
+        TIP = "tip", "Tip"
+        SUBSCRIPTION = "subscription", "Abonnement"
+        PURCHASE = "purchase", "Achat"
+
+    class Mode(models.TextChoices):
+        PERCENTAGE = "percentage", "Pourcentage"
+        FIXED = "fixed", "Montant fixe"
+
+    product = models.CharField(max_length=16, choices=Product.choices, db_index=True)
+    mode = models.CharField(max_length=12, choices=Mode.choices, default=Mode.PERCENTAGE)
+    value = models.DecimalField(max_digits=9, decimal_places=2)  # commission plateforme
+    is_active = models.BooleanField(default=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["product", "-created_at"]
+
+    def __str__(self) -> str:
+        return f"fee:{self.product}:{self.mode}:{self.value}"
 
 
 class Purchase(models.Model):

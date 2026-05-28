@@ -2,14 +2,31 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
-from .models import LedgerEntry, Wallet
+from .models import FeeRule, LedgerEntry, Wallet
 
 
 class LedgerEntrySerializer(serializers.ModelSerializer):
     class Meta:
         model = LedgerEntry
-        fields = ("amount", "kind", "reference", "balance_after", "created_at")
+        fields = (
+            "amount",
+            "kind",
+            "reference",
+            "balance_after",
+            "currency",
+            "related_type",
+            "related_id",
+            "metadata",
+            "created_at",
+        )
         read_only_fields = fields
+
+
+class FeeRuleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FeeRule
+        fields = ("id", "product", "mode", "value", "is_active", "created_at", "updated_at")
+        read_only_fields = ("id", "created_at", "updated_at")
 
 
 class WalletSerializer(serializers.ModelSerializer):
