@@ -158,3 +158,50 @@ def test_my_sessions_lists_owner_sessions(auth_client_factory):
     results = response.json()["results"]
     assert len(results) == 1
     assert results[0]["ended_at"] is None
+
+
+def test_patch_my_channel_normalizes_tags(auth_client_factory):
+    user = UserFactory()
+    client = auth_client_factory(user)
+    response = client.patch(
+        reverse("channel-me"),
+        {"tags": ["  FPS ", "fps", "Chill"]},
+        format="json",
+    )
+    assert response.status_code == 200
+    assert response.json()["tags"] == ["fps", "chill"]
+
+
+def test_patch_my_channel_rejects_too_many_tags(auth_client_factory):
+    user = UserFactory()
+    client = auth_client_factory(user)
+    response = client.patch(
+        reverse("channel-me"),
+        {"tags": [f"tag{i}" for i in range(20)]},
+        format="json",
+    )
+    assert response.status_code == 400
+
+
+def test_set_live_toggles_state(auth_client_factory):
+    user = UserFactory()
+    client = auth_client_factory(user)
+    response = client.post(reverse("channel-set-live"), {"live": True}, format="json")
+    assert response.status_code == 200
+    assert response.json()["is_live"] is True
+    Channel.objects.get(user=user).refresh_from_db()
+    off = client.post(reverse("channel-set-live"), {"live": False}, format="json")
+    assert off.json()["is_live"] is False
+
+
+def test_activity_feed_includes_followers(auth_client_factory):
+    from social.services import follow_user
+
+    streamer = UserFactory()
+    fan = UserFactory()
+    follow_user(fan, streamer.username)
+    client = auth_client_factory(streamer)
+    response = client.get(reverse("channel-activity"))
+    assert response.status_code == 200
+    events = response.json()["results"]
+    assert any(e["type"] == "follow" for e in events)

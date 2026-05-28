@@ -31,6 +31,14 @@ function BrowseIcon() {
   );
 }
 
+function HeartIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M12 21s-7-4.35-9.5-8.5C1 9.5 2.5 6 6 6c2 0 3.2 1.2 4 2.5C10.8 7.2 12 6 14 6c3.5 0 5 3.5 3.5 6.5C19 16.65 12 21 12 21z" />
+    </svg>
+  );
+}
+
 export function Sidebar() {
   const { user, loading, authFetch } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
@@ -91,6 +99,16 @@ export function Sidebar() {
         >
           <BrowseIcon />
         </NavItem>
+        {user && (
+          <NavItem
+            href="/suivis"
+            label={t("nav.follows")}
+            collapsed={collapsed}
+            active={pathname?.startsWith("/suivis") ?? false}
+          >
+            <HeartIcon />
+          </NavItem>
+        )}
       </nav>
 
       {user && (

@@ -5,6 +5,7 @@ from . import admin_views, views
 urlpatterns = [
     path("payments/wallet", views.wallet, name="payments-wallet"),
     path("payments/history", views.LedgerHistoryView.as_view(), name="payments-history"),
+    path("payments/purchases", views.PurchaseHistoryView.as_view(), name="payments-purchases"),
     path("payments/purchase", views.purchase, name="payments-purchase"),
     path("payments/tip", views.tip, name="payments-tip"),
     path("payments/payout", views.payout, name="payments-payout"),

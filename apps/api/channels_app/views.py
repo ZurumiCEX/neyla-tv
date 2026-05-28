@@ -20,7 +20,7 @@ from .serializers import (
     PublicChannelSerializer,
     StreamSessionSerializer,
 )
-from .services import rotate_stream_key
+from .services import mark_live, mark_offline, rotate_stream_key
 
 
 def _get_my_channel(user) -> Channel:
@@ -61,6 +61,75 @@ def my_sessions(request: Request) -> Response:
         limit = 50
     sessions = channel.sessions.all()[:limit]
     return Response({"results": StreamSessionSerializer(sessions, many=True).data})
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def my_activity(request: Request) -> Response:
+    """Fil d'activité récent du streamer : nouveaux followers, tips, abonnements."""
+    from payments.models import Tip
+    from social.models import Follow
+    from subscriptions.models import Subscription
+
+    channel = _get_my_channel(request.user)
+    try:
+        limit = min(int(request.query_params.get("limit", 30)), 100)
+    except (TypeError, ValueError):
+        limit = 30
+
+    events: list[dict] = []
+    for f in (
+        Follow.objects.filter(followee=request.user)
+        .select_related("follower")
+        .order_by("-created_at")[:limit]
+    ):
+        events.append(
+            {
+                "type": "follow",
+                "actor": f.follower.display_name or f.follower.username,
+                "created_at": f.created_at,
+            }
+        )
+    for tp in (
+        Tip.objects.filter(to_channel=channel)
+        .select_related("from_user")
+        .order_by("-created_at")[:limit]
+    ):
+        events.append(
+            {
+                "type": "tip",
+                "actor": tp.from_user.display_name or tp.from_user.username,
+                "amount": tp.aura_amount,
+                "message": tp.message,
+                "created_at": tp.created_at,
+            }
+        )
+    for sub in (
+        Subscription.objects.filter(channel=channel)
+        .select_related("subscriber")
+        .order_by("-created_at")[:limit]
+    ):
+        events.append(
+            {
+                "type": "subscribe",
+                "actor": sub.subscriber.display_name or sub.subscriber.username,
+                "created_at": sub.created_at,
+            }
+        )
+
+    events.sort(key=lambda e: e["created_at"], reverse=True)
+    return Response({"results": events[:limit]})
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@ratelimit(key="user", rate="60/h", method="POST", block=True)
+def set_live(request: Request) -> Response:
+    """Bascule live manuelle (repli/démo quand le webhook encodeur n'est pas branché)."""
+    channel = _get_my_channel(request.user)
+    going_live = bool(request.data.get("live", True))
+    changed = mark_live(channel) if going_live else mark_offline(channel)
+    return Response({"is_live": channel.is_live, "changed": changed})
 
 
 @api_view(["POST"])

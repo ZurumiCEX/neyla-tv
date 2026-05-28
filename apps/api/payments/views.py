@@ -19,6 +19,7 @@ from .providers import get_provider
 from .serializers import (
     LedgerEntrySerializer,
     PayoutSerializer,
+    PurchaseHistorySerializer,
     PurchaseSerializer,
     TipSerializer,
     WalletSerializer,
@@ -39,6 +40,16 @@ class LedgerHistoryView(ListAPIView):
 
     def get_queryset(self):
         return LedgerEntry.objects.filter(wallet__user=self.request.user)
+
+
+class PurchaseHistoryView(ListAPIView):
+    """Historique paginé des achats fiat (packs d'Aura) de l'utilisateur courant."""
+
+    serializer_class = PurchaseHistorySerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Purchase.objects.filter(user=self.request.user)
 
 
 @api_view(["POST"])

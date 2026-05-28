@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
-from .models import FeeRule, LedgerEntry, Wallet
+from .models import FeeRule, LedgerEntry, Purchase, Wallet
 
 
 class LedgerEntrySerializer(serializers.ModelSerializer):
@@ -52,6 +52,21 @@ class WalletSerializer(serializers.ModelSerializer):
         from . import conversion, services
 
         return conversion.equivalents(services.aura_unit_price() * obj.aura_balance)
+
+
+class PurchaseHistorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Purchase
+        fields = (
+            "id",
+            "credits",
+            "fiat_amount",
+            "currency",
+            "provider",
+            "status",
+            "created_at",
+        )
+        read_only_fields = fields
 
 
 class PurchaseSerializer(serializers.Serializer):

@@ -123,3 +123,60 @@ def admin_dashboard(days: int = 14) -> dict:
         "overview": platform_overview(),
         "revenue": _revenue_series(max(1, min(days, 90))),
     }
+
+
+def _redis_ok() -> bool:
+    import redis
+    from django.conf import settings
+
+    try:
+        client = redis.Redis.from_url(settings.REDIS_URL, decode_responses=True)
+        return bool(client.ping())
+    except Exception:
+        return False
+
+
+def _db_ok() -> bool:
+    from django.db import connection
+
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+            cursor.fetchone()
+        return True
+    except Exception:
+        return False
+
+
+def monitoring() -> dict:
+    """État temps réel de la plateforme (santé services + activité live)."""
+    from payments.models import Payout
+    from subscriptions.models import Subscription
+
+    now = timezone.now()
+    live_channels = (
+        Channel.objects.select_related("user")
+        .filter(is_live=True)
+        .order_by("-last_live_started_at")[:20]
+    )
+    return {
+        "checked_at": now.isoformat(),
+        "online_users": User.objects.filter(last_active_at__gte=now - timedelta(minutes=5)).count(),
+        "live_now": Channel.objects.filter(is_live=True).count(),
+        "active_subscriptions": Subscription.objects.filter(
+            status=Subscription.Status.ACTIVE
+        ).count(),
+        "pending_payouts": Payout.objects.filter(status=Payout.Status.REQUESTED).count(),
+        "services": {
+            "database": _db_ok(),
+            "redis": _redis_ok(),
+        },
+        "live_channels": [
+            {
+                "slug": c.slug,
+                "username": c.user.username,
+                "started_at": c.last_live_started_at,
+            }
+            for c in live_channels
+        ],
+    }
