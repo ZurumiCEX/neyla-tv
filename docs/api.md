@@ -253,6 +253,43 @@ WebSocket
 └── ws/c/<slug>/chat                 (?token=<JWT>)
 ```
 
+> **Schéma complet & à jour** : OpenAPI auto-généré sur **`/api/schema`**
+> (Swagger UI : **`/api/docs`**). La liste ci-dessous résume les ajouts v2.
+
+### Routes v2 (résumé)
+
+```
+/api/
+├── auth/register                    POST  (+ champ `invite` optionnel)
+├── uploads/{avatar,banner,game/<slug>}      POST  (multipart → Cloudflare R2)
+├── payments/
+│   ├── wallet · purchase · tip · payout
+│   └── history                      GET   (ledger paginé)
+├── channels/<slug>/tier             GET   (palier public)
+├── streamer/tier                    GET, PUT
+├── subscriptions                    POST
+├── subscriptions/<slug>/status      GET
+├── subscriptions/<slug>             DELETE
+├── achievements                     GET   (catalogue + débloqués)
+├── invites                          GET, POST
+├── notifications/
+│   ├── (list) · read · preferences  GET/PUT
+│   └── <id>/read                    POST
+├── moderation/reports               GET   (modérateur, filtrable)
+├── moderation/reports/<id>          PATCH (statut/résolution/ban)
+├── moderation/banned-words/import   POST  (modérateur, texte/CSV)
+└── admin/
+    ├── dashboard                    GET   (activité + revenus)
+    ├── transactions                 GET   (unifiées, filtrables)
+    ├── fees · fees/<id>             GET/POST · PATCH/DELETE
+    ├── payouts/<id>/resolve         POST  (paid|fail)
+    ├── users · users/<id>           GET · PATCH (rôle)
+    └── messages                     POST  (support → utilisateur)
+```
+
+Permissions par rôle : `IsAdminRole` (hub admin / fees / transactions / users),
+`IsModerator` (signalements, mots interdits), `IsSupport` (messagerie).
+
 ## Stockage Redis (éphémère)
 
 | Clé | Type | Rôle |

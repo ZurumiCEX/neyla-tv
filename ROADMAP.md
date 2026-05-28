@@ -88,12 +88,43 @@ des endpoints : [`docs/api.md`](docs/api.md).
 **Apps backend** : `accounts`, `channels_app`, `chat`, `catalog`, `social`,
 `streamers`, `notifications`, `moderation`, `analytics`, `payments`, `health`.
 
-### Dette / à finaliser
+### Dette / à finaliser (MVP)
 - 💡 Worker Celery **désactivé** (Upstash free) : provisioning + notifications
   rendus **synchrones**. Rebrancher un worker (Valkey managé) pour les emails
   et tâches lourdes.
 - 💡 Paiements : **Stripe** à activer (clés) ; **mobile money** = stub provider à brancher.
 - 💡 Analytics calculées à la demande (pas de séries temporelles ni vrai watch-time/viewer).
+
+---
+
+## ✅ v2 — Plateforme « enterprise-grade » (livré)
+
+Incréments déployables, chacun avec migrations écrites à la main + tests.
+Devise **FCFA (XOF)**, médias sur **Cloudflare R2**, souscriptions **en Aura**,
+messagerie **support/système** (pas de DM 1:1).
+
+| Phase | Livré |
+|-------|-------|
+| **v2.1 Socle** | Rôles & badges (`user/support/moderator/admin`) + permissions DRF par rôle ; devise XOF + conversion EUR (parité fixe) / USD (taux manuel) ; OpenAPI (`/api/schema`, `/api/docs`), pagination/filtres DRF, handler d'erreurs, app `audit` ; header logo-gauche / recherche-droite |
+| **v2.2 Médias & i18n** | Upload avatar/bannière/vignettes (R2, mode FAKE) ; i18n FR/EN/PT + sélecteur |
+| **v2.3 Studio & subs** | Statut streamer exposé (masque « Devenir streamer », active le dashboard) ; studio OBS ; **souscriptions en Aura** (palier + perks + abonnement) |
+| **v2.4 Revenue & admin** | `FeeRule` + `split()` (remplace `CREATOR_SHARE`) ; ledger enrichi ; hub admin (transactions unifiées, commissions, dashboard revenus, utilisateurs) ; actions payouts |
+| **v2.5 Engagement** | Gamification (succès + hooks) ; notifications+ (types, préférences, messagerie support) ; invitations (parrainage) ; modération+ (import mots interdits, workflow de signalements + ban) |
+| **v2.6 Seed & QA** | `seed_demo` couvrant tout le périmètre v2 ; passe lint/format/tests + docs |
+
+**Apps backend ajoutées** : `audit`, `uploads`, `subscriptions`, `gamification`,
+`invitations`.
+
+**Migrations à appliquer** : `accounts/0004–0005`, `payments/0002–0003`,
+`subscriptions/0001`, `gamification/0001`, `invitations/0001`,
+`notifications/0002`, `moderation/0002` (+ médias/i18n des phases précédentes).
+
+### Dette / à finaliser (v2)
+- 💡 Worker Celery toujours désactivé (gamification & notifications de masse en
+  repli **synchrone**) ; rebrancher un Valkey managé pour l'asynchrone.
+- 💡 Hub admin **réservé au rôle `admin`** ; ouvrir les vues modération/support
+  aux rôles `moderator`/`support` côté front.
+- 💡 Cloudflare R2 + taux USD à configurer via secrets en prod.
 
 ---
 

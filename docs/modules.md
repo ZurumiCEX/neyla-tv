@@ -62,6 +62,32 @@ Chaque app est autonome : `models`, `views`, `serializers`, `services`,
 - **Rôle** : `/api/healthz` → ping Postgres + Redis (`200`/`503`). Sans modèle.
   Utilisé par les health checks de la plateforme.
 
+### Modules v2 (enterprise)
+
+- **`accounts` (étendu)** : `User.role` (`user/support/moderator/admin`) +
+  `permissions.py` (`IsAdminRole`/`IsModerator`/`IsSupport`), `invited_by`
+  (parrainage), `admin_views.py` (gestion utilisateurs).
+- **`payments` (étendu)** : devise **XOF** + `conversion.py` (EUR fixe / USD
+  manuel) ; `FeeRule` + `split(montant, produit)` (remplace `CREATOR_SHARE`) ;
+  ledger enrichi (`currency`/`related_*`/`metadata`) ; `admin_views.py`
+  (transactions unifiées, commissions, résolution payouts).
+- **`audit`** : `AuditEvent` (`actor`, `action`, `target`, `meta`) + `record()`,
+  appelé sur les actions sensibles (approbation, payout, changement de rôle…).
+- **`uploads`** : `services.upload_image()` vers **Cloudflare R2** (boto3, mode
+  FAKE hors-ligne) ; endpoints avatar / bannière / vignette de jeu.
+- **`subscriptions`** : `SubTier` (palier prix Aura + perks) et `Subscription`
+  (statut, période) ; `subscribe()` débite le wallet via `split`.
+- **`gamification`** : `Achievement` / `UserAchievement` ;
+  `check_and_award(user, event)` (best-effort) hooké dans login, candidature,
+  live, follow, tip, abonnement.
+- **`invitations`** : `Invite` (code, max_uses, expiry) ; redemption à
+  l'inscription (`?invite=CODE`) → `User.invited_by`.
+- **`notifications` (étendu)** : nouveaux types, `NotificationPreference` par
+  type, messagerie support (`POST /api/admin/messages`).
+- **`moderation` (étendu)** : import de mots interdits, workflow de signalements
+  (`assigned_to`/`resolution`/`resolved_at`, ban depuis le report).
+- **`analytics` (étendu)** : `admin_dashboard()` (activité + séries de revenus).
+
 ### `config` — projet Django
 - `settings/base.py` (commun), `dev.py` (DEBUG, hosts permissifs),
   `prod.py` (sécurité, WhiteNoise, logs JSON, Sentry).
