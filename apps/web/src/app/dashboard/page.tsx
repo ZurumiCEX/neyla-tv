@@ -7,6 +7,7 @@ import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useT } from "@/lib/i18n";
 import { CopyButton } from "@/components/CopyButton";
+import { ChatBansManager } from "@/components/ChatBansManager";
 import { HlsPlayer } from "@/components/HlsPlayer";
 import { LiveBadge } from "@/components/LiveBadge";
 
@@ -591,6 +592,8 @@ export default function DashboardPage() {
               </ul>
             )}
           </div>
+
+          <ChatBansManager />
         </section>
       )}
     </main>
