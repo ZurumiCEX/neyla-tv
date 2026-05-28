@@ -71,6 +71,18 @@ def test_expire_when_tier_inactive():
     assert sub.status == Subscription.Status.EXPIRED
 
 
+def test_beat_task_runs_and_renews():
+    from subscriptions.tasks import process_due_subscriptions_task
+
+    channel = _streamer(price=100)
+    fan = UserFactory()
+    pay.create_purchase(fan, 500)
+    sub = services.subscribe(fan, channel.slug)
+    _make_due(sub)
+
+    assert process_due_subscriptions_task() == {"renewed": 1, "expired": 0}
+
+
 def test_not_due_subscription_untouched():
     channel = _streamer(price=100)
     fan = UserFactory()

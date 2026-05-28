@@ -90,16 +90,26 @@ def confirm_purchase(purchase: Purchase) -> Purchase:
     return purchase
 
 
-def create_purchase(user, credits: int, currency: str = "XOF") -> tuple[Purchase, dict]:
+def create_purchase(
+    user, credits: int, currency: str = "XOF", idempotency_key: str | None = None
+) -> tuple[Purchase, dict]:
     credits = int(credits)
     if credits <= 0:
         raise PaymentError("Montant invalide.")
+    if idempotency_key:
+        existing = Purchase.objects.filter(idempotency_key=idempotency_key).first()
+        if existing is not None:
+            return existing, {
+                "checkout_url": None,
+                "auto_confirm": existing.status == Purchase.Status.PAID,
+            }
     purchase = Purchase.objects.create(
         user=user,
         credits=credits,
         fiat_amount=_fiat_for(credits),
         currency=currency,
         provider=get_provider_name(),
+        idempotency_key=idempotency_key or None,
     )
     result = get_provider().create_checkout(purchase)
     purchase.provider_ref = result.get("provider_ref", "")
@@ -111,12 +121,22 @@ def create_purchase(user, credits: int, currency: str = "XOF") -> tuple[Purchase
 
 
 @transaction.atomic
-def send_tip(from_user, channel_slug: str, aura_amount: int, message: str = "") -> Tip:
+def send_tip(
+    from_user,
+    channel_slug: str,
+    aura_amount: int,
+    message: str = "",
+    idempotency_key: str | None = None,
+) -> Tip:
     from channels_app.models import Channel
 
     aura_amount = int(aura_amount)
     if aura_amount <= 0:
         raise PaymentError("Montant invalide.")
+    if idempotency_key:
+        existing = Tip.objects.filter(idempotency_key=idempotency_key).first()
+        if existing is not None:
+            return existing
     channel = Channel.objects.select_related("user").filter(slug=channel_slug.lower()).first()
     if channel is None:
         raise PaymentError("Chaîne introuvable.")
@@ -144,6 +164,7 @@ def send_tip(from_user, channel_slug: str, aura_amount: int, message: str = "") 
         creator_share=creator_share,
         platform_fee=platform_fee,
         message=message[:200],
+        idempotency_key=idempotency_key or None,
     )
     _after_tip(tip, from_user, channel)
     return tip
@@ -171,16 +192,23 @@ def _after_tip(tip: Tip, from_user, channel) -> None:
 
 
 @transaction.atomic
-def request_payout(user, aura_amount: int) -> Payout:
+def request_payout(user, aura_amount: int, idempotency_key: str | None = None) -> Payout:
     aura_amount = int(aura_amount)
     if aura_amount <= 0:
         raise PaymentError("Montant invalide.")
+    if idempotency_key:
+        existing = Payout.objects.filter(idempotency_key=idempotency_key).first()
+        if existing is not None:
+            return existing
     wallet = Wallet.objects.select_for_update().get_or_create(user=user)[0]
     if wallet.aura_balance < aura_amount:
         raise InsufficientBalanceError("Solde Aura insuffisant.")
     _apply(wallet, -aura_amount, LedgerEntry.Kind.PAYOUT, "payout")
     payout = Payout.objects.create(
-        user=user, aura_amount=aura_amount, fiat_amount=_fiat_for(aura_amount)
+        user=user,
+        aura_amount=aura_amount,
+        fiat_amount=_fiat_for(aura_amount),
+        idempotency_key=idempotency_key or None,
     )
     from audit.services import record
 

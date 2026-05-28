@@ -47,7 +47,11 @@ class LedgerHistoryView(ListAPIView):
 def purchase(request: Request) -> Response:
     serializer = PurchaseSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
-    obj, result = services.create_purchase(request.user, serializer.validated_data["credits"])
+    obj, result = services.create_purchase(
+        request.user,
+        serializer.validated_data["credits"],
+        idempotency_key=request.headers.get("Idempotency-Key") or None,
+    )
     from . import conversion
 
     return Response(
@@ -72,7 +76,11 @@ def tip(request: Request) -> Response:
     data = serializer.validated_data
     try:
         result = services.send_tip(
-            request.user, data["channel_slug"], data["aura_amount"], data["message"]
+            request.user,
+            data["channel_slug"],
+            data["aura_amount"],
+            data["message"],
+            idempotency_key=request.headers.get("Idempotency-Key") or None,
         )
     except services.PaymentError as exc:
         return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
@@ -88,7 +96,11 @@ def payout(request: Request) -> Response:
     serializer = PayoutSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     try:
-        obj = services.request_payout(request.user, serializer.validated_data["aura_amount"])
+        obj = services.request_payout(
+            request.user,
+            serializer.validated_data["aura_amount"],
+            idempotency_key=request.headers.get("Idempotency-Key") or None,
+        )
     except services.PaymentError as exc:
         return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
     return Response(
