@@ -62,10 +62,21 @@ def discover_live(request: Request) -> Response:
 @permission_classes([AllowAny])
 def discover_categories(request: Request) -> Response:
     limit, offset = _paginate(request)
-    qs = Game.objects.annotate(
-        live_count=Count("channels", filter=Q(channels__is_live=True))
-    ).order_by("-live_count", "name")[offset : offset + limit]
-    return Response({"results": GameWithCountSerializer(qs, many=True).data})
+    games = list(
+        Game.objects.annotate(
+            live_count=Count("channels", filter=Q(channels__is_live=True))
+        ).order_by("-live_count", "name")[offset : offset + limit]
+    )
+    data = GameWithCountSerializer(games, many=True).data
+    # Total spectateurs par catégorie (somme des viewers Redis des lives).
+    live = Channel.objects.filter(is_live=True, category__in=games).values_list("id", "category_id")
+    viewers_map = bulk_viewers_count([cid for cid, _ in live])
+    totals: dict[int, int] = {}
+    for channel_id, category_id in live:
+        totals[category_id] = totals.get(category_id, 0) + viewers_map.get(channel_id, 0)
+    for item, game in zip(data, games, strict=True):
+        item["viewers"] = totals.get(game.id, 0)
+    return Response({"results": data})
 
 
 @api_view(["GET"])
