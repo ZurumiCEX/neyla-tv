@@ -10,6 +10,7 @@ type FollowedChannel = {
   slug: string;
   is_live: boolean;
   streamer: { display_name: string; avatar_url: string };
+  category: { name: string } | null;
 };
 
 function HomeIcon() {
@@ -54,7 +55,11 @@ export function Sidebar() {
       return;
     }
     authFetch<{ results: FollowedChannel[] }>("/api/follows/me")
-      .then((d) => setFollows(d.results))
+      .then((d) =>
+        setFollows(
+          [...d.results].sort((a, b) => Number(b.is_live) - Number(a.is_live)),
+        ),
+      )
       .catch(() => setFollows([]));
   }, [loading, user, authFetch]);
 
@@ -125,12 +130,19 @@ export function Sidebar() {
                     )}
                   </span>
                   {!collapsed && (
-                    <span className="min-w-0 flex-1 truncate text-sm text-neutral-300">
-                      {c.streamer.display_name || c.slug}
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm text-neutral-200">
+                        {c.streamer.display_name || c.slug}
+                      </span>
+                      {c.is_live && c.category && (
+                        <span className="block truncate text-xs text-neutral-500">
+                          {c.category.name}
+                        </span>
+                      )}
                     </span>
                   )}
                   {!collapsed && c.is_live && (
-                    <span className="text-[10px] font-bold uppercase text-red-400">live</span>
+                    <span className="mt-0.5 h-2 w-2 shrink-0 self-start rounded-full bg-red-500" />
                   )}
                 </Link>
               ))}
