@@ -22,7 +22,7 @@ class RegistrationError(Exception):
 
 
 @transaction.atomic
-def register_user(*, email: str, username: str, password: str) -> User:
+def register_user(*, email: str, username: str, password: str, invite_code: str = "") -> User:
     """Crée un utilisateur. Lève RegistrationError si conflit ou règle violée."""
     username_lc = username.lower()
     if username_lc in RESERVED_USERNAMES:
@@ -32,7 +32,12 @@ def register_user(*, email: str, username: str, password: str) -> User:
     if User.objects.filter(username=username_lc).exists():
         raise RegistrationError("Ce username est déjà pris.")
     validate_password(password)
-    return User.objects.create_user(email=email, username=username_lc, password=password)
+    user = User.objects.create_user(email=email, username=username_lc, password=password)
+    if invite_code:
+        from invitations.services import try_redeem
+
+        try_redeem(invite_code, user)
+    return user
 
 
 def verify_email_token(token: str) -> User:

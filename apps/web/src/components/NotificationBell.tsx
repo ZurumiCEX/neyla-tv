@@ -23,6 +23,15 @@ function describe(n: Notif): { text: string; href?: string } {
       return { text: `@${n.payload.username} te suit maintenant` };
     case "subscription":
       return { text: `@${n.payload.username} s'est abonné à ta chaîne` };
+    case "tip_received":
+      return {
+        text: `@${n.payload.username} t'a envoyé ${n.payload.aura} Aura`,
+        href: n.payload.slug ? `/c/${n.payload.slug}` : undefined,
+      };
+    case "achievement":
+      return { text: `Succès débloqué : ${n.payload.icon ?? "🏆"} ${n.payload.name}`, href: "/achievements" };
+    case "support_message":
+      return { text: `Support : ${n.payload.title}`, href: "/inbox" };
     case "application_decided":
       return {
         text:

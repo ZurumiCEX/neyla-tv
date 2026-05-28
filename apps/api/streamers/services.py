@@ -33,6 +33,9 @@ def submit_application(user, motivation: str = "") -> StreamerApplication:
         defaults={"motivation": motivation},
     )
     if created:
+        from gamification.services import check_and_award
+
+        check_and_award(user, "first_application")
         return application
     if application.status == StreamerApplication.Status.APPROVED:
         raise AlreadyStreamerError("Tu es déjà streamer.")

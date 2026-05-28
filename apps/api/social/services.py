@@ -28,6 +28,9 @@ def follow_user(follower: User, target_username: str) -> Follow:
             actor=follower,
             payload={"username": follower.username},
         )
+        from gamification.services import check_and_award
+
+        check_and_award(target, "follow_received")
     return follow
 
 

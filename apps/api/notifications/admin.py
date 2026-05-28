@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from django.contrib import admin
 
-from .models import Notification
+from .models import Notification, NotificationPreference
 
 
 @admin.register(Notification)
@@ -11,3 +11,10 @@ class NotificationAdmin(admin.ModelAdmin):
     list_filter = ("type",)
     search_fields = ("recipient__username", "recipient__email")
     readonly_fields = ("recipient", "type", "actor", "payload", "read_at", "created_at")
+
+
+@admin.register(NotificationPreference)
+class NotificationPreferenceAdmin(admin.ModelAdmin):
+    list_display = ("user", "type", "enabled")
+    list_filter = ("type", "enabled")
+    search_fields = ("user__username",)

@@ -12,6 +12,9 @@ class Notification(models.Model):
         NEW_FOLLOWER = "new_follower", "Nouveau follower"
         APPLICATION_DECIDED = "application_decided", "Candidature traitée"
         SUBSCRIPTION = "subscription", "Nouvel abonné"
+        TIP_RECEIVED = "tip_received", "Tip reçu"
+        ACHIEVEMENT = "achievement", "Succès débloqué"
+        SUPPORT_MESSAGE = "support_message", "Message du support"
 
     recipient = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -37,3 +40,19 @@ class Notification(models.Model):
 
     def __str__(self) -> str:
         return f"{self.type} → {self.recipient_id}"
+
+
+class NotificationPreference(models.Model):
+    """Préférence d'un utilisateur pour un type de notification (absent = activé)."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="notification_prefs"
+    )
+    type = models.CharField(max_length=32, choices=Notification.Type.choices)
+    enabled = models.BooleanField(default=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["user", "type"], name="uniq_notif_pref")]
+
+    def __str__(self) -> str:
+        return f"pref:{self.user_id}:{self.type}={self.enabled}"

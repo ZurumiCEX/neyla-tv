@@ -69,8 +69,10 @@ def _clear_refresh_cookie(response: Response) -> Response:
 def register(request: Request) -> Response:
     serializer = RegisterSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
+    data = dict(serializer.validated_data)
+    invite_code = data.pop("invite", "")
     try:
-        user = register_user(**serializer.validated_data)
+        user = register_user(**data, invite_code=invite_code)
     except RegistrationError as exc:
         return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
     except DjangoValidationError as exc:
@@ -91,6 +93,9 @@ def login(request: Request) -> Response:
     user = authenticate(request, email=email, password=password)
     if user is None or not user.is_active:
         return Response(GENERIC_AUTH_ERROR, status=status.HTTP_401_UNAUTHORIZED)
+    from gamification.services import check_and_award
+
+    check_and_award(user, "first_login")
     refresh = RefreshToken.for_user(user)
     response = Response(
         {"access": str(refresh.access_token), "user": MeSerializer(user).data},
