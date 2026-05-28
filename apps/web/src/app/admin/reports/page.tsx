@@ -78,13 +78,13 @@ export default function AdminReportsPage() {
   }
 
   return (
-    <div className="space-y-8">
-      <section>
-        <div className="mb-4 flex items-center gap-3">
+    <div className="space-y-6">
+      <section className="space-y-4">
+        <div className="flex items-center gap-3 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-4">
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm"
+            className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-emerald-500"
           >
             {STATUSES.map((s) => (
               <option key={s.value} value={s.value}>
@@ -94,16 +94,16 @@ export default function AdminReportsPage() {
           </select>
         </div>
 
-        {error && <p className="mb-3 text-sm text-red-300">{error}</p>}
+        {error && <p className="text-sm text-red-300">{error}</p>}
 
         <ul className="space-y-3">
           {rows.map((r) => (
-            <li key={r.id} className="rounded-xl border border-neutral-800 bg-neutral-900/40 p-4">
+            <li key={r.id} className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-4">
               <div className="flex items-start justify-between gap-4">
                 <div className="text-sm">
-                  <p>
-                    <span className="font-semibold capitalize">{r.reason}</span> ·{" "}
-                    <span className="text-neutral-400">{r.status}</span>
+                  <p className="flex items-center gap-2">
+                    <span className="font-semibold capitalize">{r.reason}</span>
+                    <ReportStatusPill status={r.status} label={t(`admin.rstatus.${r.status}`)} />
                   </p>
                   <p className="mt-1 text-neutral-400">
                     {t("admin.reports.by")} @{r.reporter}
@@ -139,7 +139,7 @@ export default function AdminReportsPage() {
         )}
       </section>
 
-      <section className="rounded-xl border border-neutral-800 bg-neutral-900/60 p-4">
+      <section className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-6">
         <h2 className="mb-2 text-lg font-bold">{t("admin.reports.importTitle")}</h2>
         <p className="mb-2 text-xs text-neutral-400">{t("admin.reports.importDesc")}</p>
         <textarea
@@ -163,4 +163,16 @@ export default function AdminReportsPage() {
       </section>
     </div>
   );
+}
+
+function ReportStatusPill({ status, label }: { status: string; label: string }) {
+  const cls =
+    status === "open"
+      ? "border-amber-500/40 text-amber-300"
+      : status === "actioned"
+        ? "border-red-500/40 text-red-300"
+        : status === "reviewed"
+          ? "border-blue-500/40 text-blue-300"
+          : "border-neutral-700 text-neutral-400";
+  return <span className={`rounded-full border px-2 py-0.5 text-xs ${cls}`}>{label}</span>;
 }
