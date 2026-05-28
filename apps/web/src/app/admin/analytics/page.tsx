@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { useT } from "@/lib/i18n";
 
 type Overview = {
   users_total: number;
@@ -19,6 +20,7 @@ type Overview = {
 
 export default function AdminAnalyticsPage() {
   const router = useRouter();
+  const t = useT();
   const { user, loading, authFetch } = useAuth();
   const [data, setData] = useState<Overview | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -27,9 +29,9 @@ export default function AdminAnalyticsPage() {
     try {
       setData(await authFetch<Overview>("/api/analytics/overview"));
     } catch {
-      setError("Accès refusé (réservé aux administrateurs).");
+      setError(t("admin.an.accessDenied"));
     }
-  }, [authFetch]);
+  }, [authFetch, t]);
 
   useEffect(() => {
     if (loading) return;
@@ -40,25 +42,25 @@ export default function AdminAnalyticsPage() {
     load();
   }, [loading, user, load, router]);
 
-  if (loading) return <main className="p-8 text-neutral-500">Chargement…</main>;
+  if (loading) return <main className="p-8 text-neutral-500">{t("common.loading")}</main>;
   if (error) return <main className="p-8 text-sm text-red-300">{error}</main>;
-  if (!data) return <main className="p-8 text-neutral-500">Chargement…</main>;
+  if (!data) return <main className="p-8 text-neutral-500">{t("common.loading")}</main>;
 
   const cards: [string, string | number][] = [
-    ["Utilisateurs", data.users_total],
-    ["Actifs (24 h)", data.dau],
-    ["Actifs (30 j)", data.mau],
-    ["Streamers", data.streamers_total],
-    ["En direct", data.live_now],
-    ["Streams (total)", data.streams_total],
-    ["Streams (7 j)", data.streams_7d],
-    ["Heures diffusées", `${data.broadcast_hours} h`],
-    ["Pic spectateurs", data.peak_concurrent],
+    [t("admin.card.users"), data.users_total],
+    [t("admin.card.dau"), data.dau],
+    [t("admin.card.mau"), data.mau],
+    [t("admin.card.streamers"), data.streamers_total],
+    [t("admin.card.liveNow"), data.live_now],
+    [t("admin.card.streamsTotal"), data.streams_total],
+    [t("admin.card.streams7d"), data.streams_7d],
+    [t("admin.card.broadcastHours"), `${data.broadcast_hours} h`],
+    [t("admin.card.peakViewers"), data.peak_concurrent],
   ];
 
   return (
     <main className="mx-auto max-w-5xl p-8">
-      <h1 className="mb-6 text-2xl font-bold">Analytics</h1>
+      <h1 className="mb-6 text-2xl font-bold">{t("admin.an.title")}</h1>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         {cards.map(([label, value]) => (
@@ -72,16 +74,16 @@ export default function AdminAnalyticsPage() {
         ))}
       </div>
 
-      <h2 className="mb-3 mt-10 text-lg font-bold">Top streamers</h2>
+      <h2 className="mb-3 mt-10 text-lg font-bold">{t("admin.an.topStreamers")}</h2>
       {data.top_streamers.length === 0 ? (
-        <p className="text-sm text-neutral-500">Aucun streamer.</p>
+        <p className="text-sm text-neutral-500">{t("admin.an.noStreamer")}</p>
       ) : (
         <table className="w-full text-left text-sm">
           <thead className="text-xs uppercase tracking-wider text-neutral-500">
             <tr>
-              <th className="pb-2">Streamer</th>
-              <th className="pb-2">Followers</th>
-              <th className="pb-2">Statut</th>
+              <th className="pb-2">{t("admin.an.colStreamer")}</th>
+              <th className="pb-2">{t("admin.an.colFollowers")}</th>
+              <th className="pb-2">{t("admin.an.colStatus")}</th>
             </tr>
           </thead>
           <tbody>
@@ -91,9 +93,9 @@ export default function AdminAnalyticsPage() {
                 <td className="py-2 text-neutral-300">{s.followers}</td>
                 <td className="py-2">
                   {s.is_live ? (
-                    <span className="text-red-400">en direct</span>
+                    <span className="text-red-400">{t("admin.an.live")}</span>
                   ) : (
-                    <span className="text-neutral-500">hors-ligne</span>
+                    <span className="text-neutral-500">{t("admin.an.offline")}</span>
                   )}
                 </td>
               </tr>
