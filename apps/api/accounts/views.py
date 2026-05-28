@@ -20,7 +20,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from . import sessions
+from . import sessions, totp, two_factor
 from .models import User, UserSession
 from .serializers import (
     EmailSerializer,
@@ -37,7 +37,14 @@ from .services import (
     verify_email_token,
 )
 from .tasks import send_email_verification, send_password_reset
-from .tokens import InvalidToken
+from .tokens import (
+    TWO_FACTOR_PURPOSE,
+    TWO_FACTOR_TTL,
+    InvalidToken,
+    InvalidTokenError,
+    make_token,
+    read_token,
+)
 
 GENERIC_AUTH_ERROR = {"detail": "Identifiants invalides."}
 GENERIC_RESET_OK = {"detail": "Si un compte existe, un email a été envoyé."}
@@ -95,6 +102,21 @@ def login(request: Request) -> Response:
     user = authenticate(request, email=email, password=password)
     if user is None or not user.is_active:
         return Response(GENERIC_AUTH_ERROR, status=status.HTTP_401_UNAUTHORIZED)
+
+    # 2FA activée : on ne délivre pas de tokens, on demande un second facteur.
+    if two_factor.is_enabled(user):
+        return Response(
+            {
+                "two_factor_required": True,
+                "token": make_token(user.pk, TWO_FACTOR_PURPOSE),
+            },
+            status=status.HTTP_200_OK,
+        )
+    return _issue_session(user, request)
+
+
+def _issue_session(user, request) -> Response:
+    """Délivre access + refresh (cookie) après une authentification réussie."""
     from gamification.services import check_and_award
 
     check_and_award(user, "first_login")
@@ -105,6 +127,26 @@ def login(request: Request) -> Response:
         status=status.HTTP_200_OK,
     )
     return _set_refresh_cookie(response, str(refresh))
+
+
+@api_view(["POST"])
+@authentication_classes([])
+@permission_classes([AllowAny])
+@ratelimit(key="ip", rate="10/5m", method="POST", block=True)
+def two_factor_login(request: Request) -> Response:
+    """Second facteur : valide le token éphémère + le code TOTP/secours."""
+    token = request.data.get("token") or ""
+    code = request.data.get("code") or ""
+    try:
+        user_id = read_token(token, TWO_FACTOR_PURPOSE, TWO_FACTOR_TTL)
+    except InvalidTokenError:
+        return Response(GENERIC_AUTH_ERROR, status=status.HTTP_401_UNAUTHORIZED)
+    user = User.objects.filter(pk=user_id, is_active=True).first()
+    if user is None or not two_factor.verify(user, code):
+        return Response(
+            {"detail": "Code de vérification invalide."}, status=status.HTTP_401_UNAUTHORIZED
+        )
+    return _issue_session(user, request)
 
 
 @api_view(["POST"])
@@ -208,6 +250,37 @@ def revoke_other_sessions(request: Request) -> Response:
         sessions.revoke_jti(s.jti)
         count += 1
     return Response({"revoked": count})
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def two_factor_setup(request: Request) -> Response:
+    if two_factor.is_enabled(request.user):
+        return Response({"detail": "2FA déjà activée."}, status=status.HTTP_400_BAD_REQUEST)
+    tf = two_factor.begin_setup(request.user)
+    return Response(
+        {
+            "secret": tf.secret,
+            "otpauth_uri": totp.provisioning_uri(tf.secret, request.user.email),
+        }
+    )
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def two_factor_enable(request: Request) -> Response:
+    recovery = two_factor.enable(request.user, (request.data.get("code") or "").strip())
+    if recovery is None:
+        return Response({"detail": "Code invalide."}, status=status.HTTP_400_BAD_REQUEST)
+    return Response({"enabled": True, "recovery_codes": recovery})
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def two_factor_disable(request: Request) -> Response:
+    if not two_factor.disable(request.user, (request.data.get("code") or "").strip()):
+        return Response({"detail": "Code invalide."}, status=status.HTTP_400_BAD_REQUEST)
+    return Response({"enabled": False})
 
 
 @api_view(["POST"])

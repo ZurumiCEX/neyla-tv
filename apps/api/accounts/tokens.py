@@ -15,6 +15,9 @@ EMAIL_VERIFY_TTL = 60 * 60 * 24  # 24h
 PASSWORD_RESET_PURPOSE = "password-reset"  # noqa: S105 (purpose, pas un secret)
 PASSWORD_RESET_TTL = 60 * 60  # 1h
 
+TWO_FACTOR_PURPOSE = "two-factor-login"  # noqa: S105 (purpose, pas un secret)
+TWO_FACTOR_TTL = 60 * 5  # 5 min pour saisir le code
+
 
 class InvalidTokenError(Exception):
     """Token absent, mal signé, ou expiré."""

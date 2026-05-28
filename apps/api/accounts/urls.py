@@ -5,6 +5,10 @@ from . import views
 urlpatterns = [
     path("register", views.register, name="auth-register"),
     path("login", views.login, name="auth-login"),
+    path("2fa/login", views.two_factor_login, name="auth-2fa-login"),
+    path("2fa/setup", views.two_factor_setup, name="auth-2fa-setup"),
+    path("2fa/enable", views.two_factor_enable, name="auth-2fa-enable"),
+    path("2fa/disable", views.two_factor_disable, name="auth-2fa-disable"),
     path("refresh", views.refresh, name="auth-refresh"),
     path("logout", views.logout, name="auth-logout"),
     path("me", views.me, name="auth-me"),
