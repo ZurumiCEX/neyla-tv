@@ -23,6 +23,7 @@ type PublicChannel = {
   last_live_started_at: string | null;
   streamer: { username: string; display_name: string; avatar_url: string; bio: string };
   category: { slug: string; name: string } | null;
+  tags: string[];
 };
 
 async function getChannel(slug: string): Promise<PublicChannel | null> {
@@ -94,14 +95,25 @@ export default async function ChannelPage({
                   {t("channel.by")} <span className="text-neutral-200">{displayName}</span>{" "}
                   <span className="text-neutral-500">@{channel.slug}</span>
                 </p>
-                {channel.category && (
-                  <Link
-                    href={`/categories/${channel.category.slug}`}
-                    className="mt-2 inline-block rounded-full border border-neutral-700 px-3 py-0.5 text-xs text-neutral-300 hover:border-emerald-500"
-                  >
-                    {channel.category.name}
-                  </Link>
-                )}
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  {channel.category && (
+                    <Link
+                      href={`/categories/${channel.category.slug}`}
+                      className="inline-block rounded-full border border-neutral-700 px-3 py-0.5 text-xs text-neutral-300 hover:border-emerald-500"
+                    >
+                      {channel.category.name}
+                    </Link>
+                  )}
+                  {channel.tags?.map((tag) => (
+                    <Link
+                      key={tag}
+                      href={`/search?q=${encodeURIComponent(tag)}`}
+                      className="inline-block rounded-full bg-neutral-800 px-2.5 py-0.5 text-xs text-neutral-400 hover:text-emerald-300"
+                    >
+                      #{tag}
+                    </Link>
+                  ))}
+                </div>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
