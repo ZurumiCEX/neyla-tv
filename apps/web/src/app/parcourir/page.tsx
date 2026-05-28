@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { apiFetchServer } from "@/lib/api";
 import type { LiveChannel } from "@/components/LiveCard";
+import { getServerT } from "@/lib/i18n-server";
 import { BrowseTabs, type Category } from "./BrowseTabs";
 
 export const metadata: Metadata = { title: "Parcourir — Neyla TV" };
@@ -17,14 +18,17 @@ async function safeFetch<T>(path: string, fallback: T): Promise<T> {
 }
 
 export default async function BrowsePage() {
-  const [lives, cats] = await Promise.all([
-    safeFetch<LiveListResp>("/api/discover/live?limit=24", { results: [], total: 0 }),
-    safeFetch<CategoryListResp>("/api/discover/categories?limit=48", { results: [] }),
+  const [t, [lives, cats]] = await Promise.all([
+    getServerT(),
+    Promise.all([
+      safeFetch<LiveListResp>("/api/discover/live?limit=24", { results: [], total: 0 }),
+      safeFetch<CategoryListResp>("/api/discover/categories?limit=48", { results: [] }),
+    ]),
   ]);
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-6">
-      <h1 className="mb-4 text-2xl font-bold">Parcourir</h1>
+    <main className="mx-auto max-w-7xl px-4 py-6">
+      <h1 className="mb-4 text-2xl font-bold">{t("nav.browse")}</h1>
       <BrowseTabs lives={lives.results} categories={cats.results} />
     </main>
   );
