@@ -37,41 +37,41 @@ export default function AdminMonitoringPage() {
   if (error) return <p className="text-sm text-red-300">{error}</p>;
   if (!data) return <p className="text-neutral-500">{t("common.loading")}</p>;
 
-  const cards: [string, string | number][] = [
-    [t("admin.mon.online"), data.online_users],
-    [t("admin.mon.live"), data.live_now],
-    [t("admin.mon.subs"), data.active_subscriptions],
-    [t("admin.mon.payouts"), data.pending_payouts],
+  const cards: [string, string | number, string][] = [
+    [t("admin.mon.online"), data.online_users, "#10b981"],
+    [t("admin.mon.live"), data.live_now, "#ef4444"],
+    [t("admin.mon.subs"), data.active_subscriptions, "#d946ef"],
+    [t("admin.mon.payouts"), data.pending_payouts, "#f59e0b"],
   ];
 
   return (
-    <div className="space-y-8">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {cards.map(([label, value]) => (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        {cards.map(([label, value, color]) => (
           <div
             key={label}
-            className="rounded-xl border border-neutral-800 bg-neutral-900/40 p-4"
+            className="relative overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-900/60 p-4"
           >
+            <span
+              className="absolute left-0 top-0 h-full w-1"
+              style={{ backgroundColor: color }}
+            />
             <p className="text-xs uppercase tracking-wider text-neutral-500">{label}</p>
             <p className="mt-1 text-2xl font-bold">{value}</p>
           </div>
         ))}
       </div>
 
-      <section>
-        <h2 className="mb-3 text-sm uppercase tracking-wider text-neutral-500">
-          {t("admin.mon.services")}
-        </h2>
+      <section className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-6">
+        <h2 className="mb-3 text-lg font-bold">{t("admin.mon.services")}</h2>
         <div className="flex gap-3">
           <ServicePill label="Database" ok={data.services.database} />
           <ServicePill label="Redis" ok={data.services.redis} />
         </div>
       </section>
 
-      <section>
-        <h2 className="mb-3 text-sm uppercase tracking-wider text-neutral-500">
-          {t("admin.mon.liveChannels")}
-        </h2>
+      <section className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-6">
+        <h2 className="mb-3 text-lg font-bold">{t("admin.mon.liveChannels")}</h2>
         {data.live_channels.length === 0 ? (
           <p className="text-sm text-neutral-500">{t("admin.mon.noLive")}</p>
         ) : (
