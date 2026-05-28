@@ -52,15 +52,21 @@ class Command(BaseCommand):
         random.seed(42)
         if opts["flush"]:
             self._flush()
-        admin = self._staff()
+        staff = self._staff()
+        admin = staff["admin"]
+        self._fees()
         games = self._games()
         streamers = self._streamers(admin, games, opts["streamers"])
-        self._viewers(streamers, opts["viewers"])
+        viewers = self._viewers(streamers, opts["viewers"])
+        self._subscriptions(streamers, viewers)
+        self._invitations(streamers, viewers)
+        self._support(staff.get("support"), viewers)
+        self._achievements(streamers, viewers)
         self._banned_words(admin)
         self._reports(streamers)
         self.stdout.write(
             self.style.SUCCESS(
-                f"Seed OK : {len(streamers)} streamers, {opts['viewers']} viewers. "
+                f"Seed OK : {len(streamers)} streamers, {len(viewers)} viewers. "
                 f"Connexion : <email>{DOMAIN} / {PASSWORD}"
             )
         )
@@ -86,14 +92,30 @@ class Command(BaseCommand):
         self.stdout.write(f"[flush] {n} objets démo supprimés.")
 
     def _staff(self):
-        admin = None
+        staff = {}
         for handle, role, display in STAFF:
             u = self._mkuser(handle, display, role=role)
             if role == "admin":
                 u.is_staff = True
                 u.save(update_fields=["is_staff"])
-                admin = u
-        return admin
+            staff[role] = u
+        return staff
+
+    def _fees(self):
+        from payments.models import FeeRule
+
+        FeeRule.objects.get_or_create(
+            product=FeeRule.Product.TIP,
+            mode=FeeRule.Mode.PERCENTAGE,
+            value=30,
+            defaults={"is_active": True},
+        )
+        FeeRule.objects.get_or_create(
+            product=FeeRule.Product.SUBSCRIPTION,
+            mode=FeeRule.Mode.PERCENTAGE,
+            value=30,
+            defaults={"is_active": True},
+        )
 
     def _games(self):
         from catalog.models import Game
@@ -111,6 +133,7 @@ class Command(BaseCommand):
         from channels_app.models import Channel
         from streamers import services as streamer_services
         from streamers.services import AlreadyStreamerError
+        from subscriptions import services as sub_services
 
         streamers = []
         for i in range(count):
@@ -128,6 +151,11 @@ class Command(BaseCommand):
             channel.banner_url = f"{FAKE_IMG}/banner/{handle}.png"
             channel.social_links = {"twitter": f"https://x.com/{handle}"}
             channel.save()
+            sub_services.set_tier(
+                channel,
+                price_aura=random.choice([50, 100, 200]),
+                perks=["Badge abonné", "Stickers exclusifs"],
+            )
             self._sessions(channel)
             streamers.append((user, channel))
         # ~moitié en direct
@@ -199,10 +227,12 @@ class Command(BaseCommand):
         from payments.services import PaymentError
         from social.services import follow_user
 
+        viewers = []
         if not streamers:
-            return
+            return viewers
         for i in range(count):
             viewer = self._mkuser(f"viewer{i+1}", f"Viewer {i+1}")
+            viewers.append(viewer)
             for _user, channel in random.sample(streamers, min(3, len(streamers))):
                 try:
                     follow_user(viewer, channel.slug)
@@ -222,6 +252,57 @@ class Command(BaseCommand):
                 pay.request_payout(channel.user, 5)
         except Exception:  # noqa: BLE001
             pass
+        return viewers
+
+    def _subscriptions(self, streamers, viewers):
+        from payments.services import PaymentError
+        from subscriptions import services as sub_services
+        from subscriptions.services import SubscriptionError
+
+        if not streamers or not viewers:
+            return
+        for viewer in viewers[: max(1, len(viewers) // 2)]:
+            _user, channel = random.choice(streamers)
+            try:
+                sub_services.subscribe(viewer, channel.slug)
+            except (SubscriptionError, PaymentError):
+                pass
+
+    def _invitations(self, streamers, viewers):
+        from invitations import services as invite_services
+
+        if not streamers or len(viewers) < 2:
+            return
+        inviter = streamers[0][0]
+        invite = invite_services.create_invite(inviter, max_uses=50)
+        # Relie quelques viewers existants comme filleuls (sans recréer de compte).
+        for viewer in viewers[:3]:
+            if viewer.invited_by_id is None:
+                viewer.invited_by = inviter
+                viewer.save(update_fields=["invited_by"])
+                invite.used_count += 1
+        invite.save(update_fields=["used_count"])
+
+    def _support(self, support_user, viewers):
+        from notifications import services as notif_services
+
+        if support_user is None or not viewers:
+            return
+        notif_services.send_support_message(
+            viewers[0],
+            "Bienvenue sur Neyla TV",
+            "Merci d'avoir rejoint la plateforme. L'équipe support est là pour t'aider.",
+            sender=support_user,
+        )
+
+    def _achievements(self, streamers, viewers):
+        from gamification.services import check_and_award
+
+        for _user, channel in streamers:
+            check_and_award(channel.user, "first_login")
+            check_and_award(channel.user, "first_stream")
+        for viewer in viewers:
+            check_and_award(viewer, "first_login")
 
     def _banned_words(self, admin):
         from moderation.models import BannedWord
