@@ -13,6 +13,28 @@ from .models import Channel, StreamSession
 ALLOWED_SOCIAL_KEYS = frozenset({"twitter", "youtube", "instagram", "tiktok", "discord", "website"})
 
 
+MAX_TAGS = 8
+
+
+def _clean_tags(value):
+    if not isinstance(value, list):
+        raise serializers.ValidationError("Format attendu : liste de tags.")
+    cleaned: list[str] = []
+    for raw in value:
+        if not isinstance(raw, str):
+            raise serializers.ValidationError("Chaque tag doit être une chaîne.")
+        tag = raw.strip().lower()
+        if not tag:
+            continue
+        if len(tag) > 24:
+            raise serializers.ValidationError("Tag trop long (24 caractères max).")
+        if tag not in cleaned:
+            cleaned.append(tag)
+    if len(cleaned) > MAX_TAGS:
+        raise serializers.ValidationError(f"{MAX_TAGS} tags maximum.")
+    return cleaned
+
+
 def _clean_social_links(value):
     if not isinstance(value, dict):
         raise serializers.ValidationError("Format attendu : objet {réseau: lien}.")
@@ -68,6 +90,7 @@ class PublicChannelSerializer(serializers.ModelSerializer):
             "thumbnail_url",
             "banner_url",
             "social_links",
+            "tags",
             "hls_playback_url",
             "is_live",
             "last_live_started_at",
@@ -91,9 +114,13 @@ class MyChannelSerializer(serializers.ModelSerializer):
         allow_null=True,
     )
     social_links = serializers.JSONField(required=False)
+    tags = serializers.JSONField(required=False)
 
     def validate_social_links(self, value):
         return _clean_social_links(value)
+
+    def validate_tags(self, value):
+        return _clean_tags(value)
 
     class Meta:
         model = Channel
@@ -103,6 +130,7 @@ class MyChannelSerializer(serializers.ModelSerializer):
             "thumbnail_url",
             "banner_url",
             "social_links",
+            "tags",
             "rtmps_url",
             "rtmps_key",
             "hls_playback_url",

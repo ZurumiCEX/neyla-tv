@@ -48,3 +48,17 @@ def test_dashboard_returns_revenue_series(auth_client_factory):
 
 def test_dashboard_forbidden_for_non_admin(auth_client_factory):
     assert auth_client_factory(UserFactory()).get(reverse("admin-dashboard")).status_code == 403
+
+
+def test_monitoring_forbidden_for_non_admin(auth_client_factory):
+    assert auth_client_factory(UserFactory()).get(reverse("admin-monitoring")).status_code == 403
+
+
+def test_monitoring_ok_for_admin(auth_client_factory):
+    admin = UserFactory(role=User.Role.ADMIN)
+    streamer = UserFactory()
+    mark_live(Channel.objects.get(user=streamer))
+    data = auth_client_factory(admin).get(reverse("admin-monitoring")).json()
+    assert data["live_now"] >= 1
+    assert "services" in data and "database" in data["services"]
+    assert any(c["username"] == streamer.username for c in data["live_channels"])

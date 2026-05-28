@@ -28,12 +28,35 @@ class MeSerializer(serializers.ModelSerializer):
 
     is_email_verified = serializers.BooleanField(read_only=True)
     is_streamer = serializers.SerializerMethodField()
+    social_links = serializers.JSONField(required=False)
+
+    _ALLOWED_SOCIAL = frozenset({"twitter", "youtube", "instagram", "tiktok", "discord", "website"})
 
     def get_is_streamer(self, obj) -> bool:
         try:
             return obj.channel.is_provisioned
         except Exception:
             return False
+
+    def validate_social_links(self, value):
+        if not isinstance(value, dict):
+            raise serializers.ValidationError("Format attendu : objet {réseau: lien}.")
+        cleaned = {}
+        for key, link in value.items():
+            if key not in self._ALLOWED_SOCIAL:
+                raise serializers.ValidationError(f"Réseau non supporté : {key}.")
+            if link in (None, ""):
+                continue
+            if not isinstance(link, str) or len(link) > 200:
+                raise serializers.ValidationError(f"Lien invalide pour {key}.")
+            cleaned[key] = link
+        return cleaned
+
+    def validate_country(self, value):
+        value = (value or "").strip().upper()
+        if value and len(value) != 2:
+            raise serializers.ValidationError("Code pays ISO à 2 lettres attendu.")
+        return value
 
     class Meta:
         model = User
@@ -44,6 +67,8 @@ class MeSerializer(serializers.ModelSerializer):
             "display_name",
             "avatar_url",
             "bio",
+            "country",
+            "social_links",
             "is_email_verified",
             "is_staff",
             "is_streamer",

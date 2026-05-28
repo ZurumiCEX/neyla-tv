@@ -20,6 +20,8 @@ class Channel(models.Model):
     # Liens réseaux sociaux : {"twitter": "...", "youtube": "...", ...}
     # (clés validées contre une allowlist côté serializer).
     social_links = models.JSONField(default=dict, blank=True)
+    # Tags libres de découverte (list[str], normalisés côté serializer).
+    tags = models.JSONField(default=list, blank=True)
     category = models.ForeignKey(
         "catalog.Game",
         null=True,

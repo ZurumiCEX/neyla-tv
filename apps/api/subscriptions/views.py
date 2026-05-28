@@ -11,7 +11,8 @@ from rest_framework.response import Response
 from channels_app.models import Channel
 
 from . import services
-from .serializers import SubTierSerializer, TierWriteSerializer
+from .models import Subscription
+from .serializers import MySubscriptionSerializer, SubTierSerializer, TierWriteSerializer
 
 
 @api_view(["GET"])
@@ -57,6 +58,18 @@ def subscribe(request: Request) -> Response:
         {"channel": sub.channel.slug, "current_period_end": sub.current_period_end},
         status=status.HTTP_201_CREATED,
     )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def my_subscriptions(request: Request) -> Response:
+    """Abonnements actifs de l'utilisateur courant (page Suivis)."""
+    subs = (
+        Subscription.objects.filter(subscriber=request.user, status=Subscription.Status.ACTIVE)
+        .select_related("channel__user", "channel__category", "tier")
+        .order_by("-created_at")
+    )
+    return Response({"results": MySubscriptionSerializer(subs, many=True).data})
 
 
 @api_view(["GET"])

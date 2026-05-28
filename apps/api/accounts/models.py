@@ -45,6 +45,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     display_name = models.CharField(max_length=60, blank=True)
     avatar_url = models.URLField(blank=True)
     bio = models.TextField(max_length=500, blank=True)
+    country = models.CharField(max_length=2, blank=True)  # code ISO-3166-1 alpha-2
+    social_links = models.JSONField(default=dict, blank=True)
     email_verified_at = models.DateTimeField(null=True, blank=True)
 
     role = models.CharField(max_length=12, choices=Role.choices, default=Role.USER, db_index=True)

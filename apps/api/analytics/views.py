@@ -29,3 +29,9 @@ def overview(request: Request) -> Response:  # noqa: ARG001
 def dashboard(request: Request) -> Response:
     days = int(request.query_params.get("days") or 14)
     return Response(services.admin_dashboard(days))
+
+
+@api_view(["GET"])
+@permission_classes([IsAdminRole])
+def monitoring(request: Request) -> Response:  # noqa: ARG001
+    return Response(services.monitoring())
