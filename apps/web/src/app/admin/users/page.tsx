@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { useT } from "@/lib/i18n";
 
 type AdminUser = {
   id: number;
@@ -17,6 +18,7 @@ type Page = { count: number; results: AdminUser[] };
 const ROLES = ["user", "support", "moderator", "admin"];
 
 export default function AdminUsersPage() {
+  const t = useT();
   const { authFetch } = useAuth();
   const [rows, setRows] = useState<AdminUser[]>([]);
   const [q, setQ] = useState("");
@@ -32,9 +34,9 @@ export default function AdminUsersPage() {
       const data = await authFetch<Page>(`/api/admin/users?${params.toString()}`);
       setRows(data.results);
     } catch {
-      setError("Chargement impossible.");
+      setError(t("common.loadError"));
     }
-  }, [authFetch, q, roleFilter]);
+  }, [authFetch, q, roleFilter, t]);
 
   useEffect(() => {
     load();
@@ -48,7 +50,7 @@ export default function AdminUsersPage() {
       });
       load();
     } catch {
-      setError("Modification impossible.");
+      setError(t("admin.users.changeError"));
     }
   }
 
@@ -58,7 +60,7 @@ export default function AdminUsersPage() {
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Rechercher…"
+          placeholder={t("admin.users.search")}
           className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm"
         />
         <select
@@ -66,7 +68,7 @@ export default function AdminUsersPage() {
           onChange={(e) => setRoleFilter(e.target.value)}
           className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm"
         >
-          <option value="">Tous les rôles</option>
+          <option value="">{t("admin.users.allRoles")}</option>
           {ROLES.map((r) => (
             <option key={r} value={r}>
               {r}
@@ -80,10 +82,10 @@ export default function AdminUsersPage() {
       <table className="w-full text-left text-sm">
         <thead className="text-xs uppercase tracking-wider text-neutral-500">
           <tr>
-            <th className="pb-2">Utilisateur</th>
-            <th className="pb-2">Email</th>
-            <th className="pb-2">Rôle</th>
-            <th className="pb-2">Inscrit</th>
+            <th className="pb-2">{t("admin.users.colUser")}</th>
+            <th className="pb-2">{t("admin.users.colEmail")}</th>
+            <th className="pb-2">{t("admin.users.colRole")}</th>
+            <th className="pb-2">{t("admin.users.colJoined")}</th>
           </tr>
         </thead>
         <tbody>
@@ -112,7 +114,7 @@ export default function AdminUsersPage() {
         </tbody>
       </table>
       {rows.length === 0 && !error && (
-        <p className="mt-4 text-sm text-neutral-500">Aucun utilisateur.</p>
+        <p className="mt-4 text-sm text-neutral-500">{t("admin.users.empty")}</p>
       )}
     </div>
   );

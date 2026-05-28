@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { useT } from "@/lib/i18n";
 
 type Report = {
   id: number;
@@ -18,14 +19,15 @@ type Report = {
 type Page = { count: number; results: Report[] };
 
 const STATUSES = [
-  { value: "", label: "Tous" },
-  { value: "open", label: "Ouverts" },
-  { value: "reviewed", label: "Examinés" },
-  { value: "actioned", label: "Action prise" },
-  { value: "dismissed", label: "Rejetés" },
+  { value: "", key: "admin.rstatus.all" },
+  { value: "open", key: "admin.rstatus.open" },
+  { value: "reviewed", key: "admin.rstatus.reviewed" },
+  { value: "actioned", key: "admin.rstatus.actioned" },
+  { value: "dismissed", key: "admin.rstatus.dismissed" },
 ];
 
 export default function AdminReportsPage() {
+  const t = useT();
   const { authFetch } = useAuth();
   const [rows, setRows] = useState<Report[]>([]);
   const [statusFilter, setStatusFilter] = useState("open");
@@ -41,9 +43,9 @@ export default function AdminReportsPage() {
       const data = await authFetch<Page>(`/api/moderation/reports?${params.toString()}`);
       setRows(data.results);
     } catch {
-      setError("Chargement impossible.");
+      setError(t("common.loadError"));
     }
-  }, [authFetch, statusFilter]);
+  }, [authFetch, statusFilter, t]);
 
   useEffect(() => {
     load();
@@ -57,7 +59,7 @@ export default function AdminReportsPage() {
       });
       load();
     } catch {
-      setError("Action impossible.");
+      setError(t("admin.actionError"));
     }
   }
 
@@ -68,10 +70,10 @@ export default function AdminReportsPage() {
         "/api/moderation/banned-words/import",
         { method: "POST", body: JSON.stringify({ words }) },
       );
-      setImportMsg(`${res.added} ajouté(s), ${res.skipped} ignoré(s).`);
+      setImportMsg(t("admin.reports.importResult", { added: res.added, skipped: res.skipped }));
       setWords("");
     } catch {
-      setImportMsg("Import impossible.");
+      setImportMsg(t("admin.reports.importError"));
     }
   }
 
@@ -86,7 +88,7 @@ export default function AdminReportsPage() {
           >
             {STATUSES.map((s) => (
               <option key={s.value} value={s.value}>
-                {s.label}
+                {t(s.key)}
               </option>
             ))}
           </select>
@@ -104,9 +106,9 @@ export default function AdminReportsPage() {
                     <span className="text-neutral-400">{r.status}</span>
                   </p>
                   <p className="mt-1 text-neutral-400">
-                    par @{r.reporter}
-                    {r.target_user && <> · cible @{r.target_user}</>}
-                    {r.channel && <> · chaîne @{r.channel}</>}
+                    {t("admin.reports.by")} @{r.reporter}
+                    {r.target_user && <> · {t("admin.reports.target")} @{r.target_user}</>}
+                    {r.channel && <> · {t("admin.reports.channel")} @{r.channel}</>}
                   </p>
                   {r.details && <p className="mt-1 text-neutral-300">{r.details}</p>}
                 </div>
@@ -116,7 +118,7 @@ export default function AdminReportsPage() {
                     onClick={() => act(r.id, { status: "dismissed", assign_to_self: true })}
                     className="rounded bg-neutral-700 px-2 py-1 text-xs font-semibold hover:bg-neutral-600"
                   >
-                    Rejeter
+                    {t("admin.reports.reject")}
                   </button>
                   {r.target_user && r.channel && (
                     <button
@@ -124,7 +126,7 @@ export default function AdminReportsPage() {
                       onClick={() => act(r.id, { ban: true })}
                       className="rounded bg-red-500/80 px-2 py-1 text-xs font-semibold text-neutral-950 hover:bg-red-400"
                     >
-                      Bannir + clôturer
+                      {t("admin.reports.banClose")}
                     </button>
                   )}
                 </div>
@@ -133,15 +135,13 @@ export default function AdminReportsPage() {
           ))}
         </ul>
         {rows.length === 0 && !error && (
-          <p className="text-sm text-neutral-500">Aucun signalement.</p>
+          <p className="text-sm text-neutral-500">{t("admin.reports.empty")}</p>
         )}
       </section>
 
       <section className="rounded-xl border border-neutral-800 bg-neutral-900/60 p-4">
-        <h2 className="mb-2 text-lg font-bold">Importer des mots interdits</h2>
-        <p className="mb-2 text-xs text-neutral-400">
-          Séparés par virgule, point-virgule ou retour à la ligne. Les doublons sont ignorés.
-        </p>
+        <h2 className="mb-2 text-lg font-bold">{t("admin.reports.importTitle")}</h2>
+        <p className="mb-2 text-xs text-neutral-400">{t("admin.reports.importDesc")}</p>
         <textarea
           value={words}
           onChange={(e) => setWords(e.target.value)}
@@ -156,7 +156,7 @@ export default function AdminReportsPage() {
             disabled={!words.trim()}
             className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
           >
-            Importer
+            {t("admin.reports.import")}
           </button>
           {importMsg && <span className="text-sm text-neutral-400">{importMsg}</span>}
         </div>

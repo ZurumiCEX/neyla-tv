@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { useT } from "@/lib/i18n";
 
 type Tx = {
   type: string;
@@ -16,14 +17,15 @@ type Tx = {
 type Page = { count: number; next: string | null; results: Tx[] };
 
 const TYPES = [
-  { value: "", label: "Tous" },
-  { value: "purchase", label: "Achats" },
-  { value: "tip", label: "Tips" },
-  { value: "subscription", label: "Abonnements" },
-  { value: "payout", label: "Retraits" },
+  { value: "", key: "admin.txtype.all" },
+  { value: "purchase", key: "admin.txtype.purchase" },
+  { value: "tip", key: "admin.txtype.tip" },
+  { value: "subscription", key: "admin.txtype.subscription" },
+  { value: "payout", key: "admin.txtype.payout" },
 ];
 
 export default function AdminTransactionsPage() {
+  const t = useT();
   const { authFetch } = useAuth();
   const [rows, setRows] = useState<Tx[]>([]);
   const [count, setCount] = useState(0);
@@ -41,9 +43,9 @@ export default function AdminTransactionsPage() {
       setRows(data.results);
       setCount(data.count);
     } catch {
-      setError("Chargement impossible.");
+      setError(t("common.loadError"));
     }
-  }, [authFetch, type, q]);
+  }, [authFetch, type, q, t]);
 
   useEffect(() => {
     load();
@@ -57,7 +59,7 @@ export default function AdminTransactionsPage() {
       });
       load();
     } catch {
-      setError("Action impossible.");
+      setError(t("admin.actionError"));
     }
   }
 
@@ -69,19 +71,19 @@ export default function AdminTransactionsPage() {
           onChange={(e) => setType(e.target.value)}
           className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm"
         >
-          {TYPES.map((t) => (
-            <option key={t.value} value={t.value}>
-              {t.label}
+          {TYPES.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {t(opt.key)}
             </option>
           ))}
         </select>
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Rechercher un utilisateur…"
+          placeholder={t("admin.tx.searchUser")}
           className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm"
         />
-        <span className="text-sm text-neutral-500">{count} résultat(s)</span>
+        <span className="text-sm text-neutral-500">{t("admin.tx.results", { count })}</span>
       </div>
 
       {error && <p className="mb-3 text-sm text-red-300">{error}</p>}
@@ -89,12 +91,12 @@ export default function AdminTransactionsPage() {
       <table className="w-full text-left text-sm">
         <thead className="text-xs uppercase tracking-wider text-neutral-500">
           <tr>
-            <th className="pb-2">Type</th>
-            <th className="pb-2">Utilisateur</th>
-            <th className="pb-2">Aura</th>
-            <th className="pb-2">Détail</th>
-            <th className="pb-2">Statut</th>
-            <th className="pb-2">Date</th>
+            <th className="pb-2">{t("admin.tx.colType")}</th>
+            <th className="pb-2">{t("admin.tx.colUser")}</th>
+            <th className="pb-2">{t("admin.tx.colAura")}</th>
+            <th className="pb-2">{t("admin.tx.colDetail")}</th>
+            <th className="pb-2">{t("admin.tx.colStatus")}</th>
+            <th className="pb-2">{t("admin.tx.colDate")}</th>
             <th className="pb-2" />
           </tr>
         </thead>
@@ -120,14 +122,14 @@ export default function AdminTransactionsPage() {
                       onClick={() => resolvePayout(r.id, "paid")}
                       className="rounded bg-emerald-500 px-2 py-1 text-xs font-semibold text-neutral-950 hover:bg-emerald-400"
                     >
-                      Payer
+                      {t("admin.tx.pay")}
                     </button>
                     <button
                       type="button"
                       onClick={() => resolvePayout(r.id, "fail")}
                       className="rounded bg-red-500/80 px-2 py-1 text-xs font-semibold text-neutral-950 hover:bg-red-400"
                     >
-                      Rejeter
+                      {t("admin.tx.reject")}
                     </button>
                   </span>
                 )}
@@ -137,7 +139,7 @@ export default function AdminTransactionsPage() {
         </tbody>
       </table>
       {rows.length === 0 && !error && (
-        <p className="mt-4 text-sm text-neutral-500">Aucune transaction.</p>
+        <p className="mt-4 text-sm text-neutral-500">{t("admin.tx.empty")}</p>
       )}
     </div>
   );

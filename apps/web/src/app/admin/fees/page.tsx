@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { useT } from "@/lib/i18n";
 
 type Fee = {
   id: number;
@@ -11,13 +12,10 @@ type Fee = {
   is_active: boolean;
 };
 
-const PRODUCTS = [
-  { value: "tip", label: "Tip" },
-  { value: "subscription", label: "Abonnement" },
-  { value: "purchase", label: "Achat" },
-];
+const PRODUCTS = ["tip", "subscription", "purchase"];
 
 export default function AdminFeesPage() {
+  const t = useT();
   const { authFetch } = useAuth();
   const [fees, setFees] = useState<Fee[]>([]);
   const [product, setProduct] = useState("tip");
@@ -29,9 +27,9 @@ export default function AdminFeesPage() {
     try {
       setFees(await authFetch<Fee[]>("/api/admin/fees"));
     } catch {
-      setError("Chargement impossible.");
+      setError(t("common.loadError"));
     }
-  }, [authFetch]);
+  }, [authFetch, t]);
 
   useEffect(() => {
     load();
@@ -46,7 +44,7 @@ export default function AdminFeesPage() {
       });
       load();
     } catch {
-      setError("Création impossible.");
+      setError(t("admin.fees.createError"));
     }
   }
 
@@ -65,39 +63,36 @@ export default function AdminFeesPage() {
 
   return (
     <div className="space-y-6">
-      <p className="text-sm text-neutral-400">
-        La règle active la plus récente d&apos;un produit définit la commission plateforme.
-        Sans règle, le partage par défaut (70 % créateur) s&apos;applique.
-      </p>
+      <p className="text-sm text-neutral-400">{t("admin.fees.intro")}</p>
 
       <div className="flex flex-wrap items-end gap-3 rounded-xl border border-neutral-800 bg-neutral-900/60 p-4">
         <label className="flex flex-col gap-1 text-xs text-neutral-500">
-          Produit
+          {t("admin.fees.product")}
           <select
             value={product}
             onChange={(e) => setProduct(e.target.value)}
             className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100"
           >
             {PRODUCTS.map((p) => (
-              <option key={p.value} value={p.value}>
-                {p.label}
+              <option key={p} value={p}>
+                {t(`admin.product.${p}`)}
               </option>
             ))}
           </select>
         </label>
         <label className="flex flex-col gap-1 text-xs text-neutral-500">
-          Mode
+          {t("admin.fees.mode")}
           <select
             value={mode}
             onChange={(e) => setMode(e.target.value)}
             className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100"
           >
-            <option value="percentage">Pourcentage</option>
-            <option value="fixed">Montant fixe</option>
+            <option value="percentage">{t("admin.feemode.percentage")}</option>
+            <option value="fixed">{t("admin.feemode.fixed")}</option>
           </select>
         </label>
         <label className="flex flex-col gap-1 text-xs text-neutral-500">
-          Commission {mode === "percentage" ? "(%)" : "(Aura)"}
+          {t("admin.fees.commission")} {mode === "percentage" ? "(%)" : "(Aura)"}
           <input
             type="number"
             min={0}
@@ -111,7 +106,7 @@ export default function AdminFeesPage() {
           onClick={create}
           className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-emerald-400"
         >
-          Ajouter
+          {t("admin.fees.add")}
         </button>
       </div>
 
@@ -120,18 +115,18 @@ export default function AdminFeesPage() {
       <table className="w-full text-left text-sm">
         <thead className="text-xs uppercase tracking-wider text-neutral-500">
           <tr>
-            <th className="pb-2">Produit</th>
-            <th className="pb-2">Mode</th>
-            <th className="pb-2">Commission</th>
-            <th className="pb-2">Active</th>
+            <th className="pb-2">{t("admin.fees.product")}</th>
+            <th className="pb-2">{t("admin.fees.mode")}</th>
+            <th className="pb-2">{t("admin.fees.commission")}</th>
+            <th className="pb-2">{t("admin.fees.colActive")}</th>
             <th className="pb-2" />
           </tr>
         </thead>
         <tbody>
           {fees.map((f) => (
             <tr key={f.id} className="border-t border-neutral-800/60">
-              <td className="py-2 capitalize text-neutral-200">{f.product}</td>
-              <td className="py-2 text-neutral-400">{f.mode}</td>
+              <td className="py-2 text-neutral-200">{t(`admin.product.${f.product}`)}</td>
+              <td className="py-2 text-neutral-400">{t(`admin.feemode.${f.mode}`)}</td>
               <td className="py-2 text-neutral-300">
                 {f.value}
                 {f.mode === "percentage" ? " %" : " Aura"}
@@ -146,7 +141,7 @@ export default function AdminFeesPage() {
                       : "bg-neutral-700 text-neutral-300"
                   }`}
                 >
-                  {f.is_active ? "Active" : "Inactive"}
+                  {f.is_active ? t("admin.fees.active") : t("admin.fees.inactive")}
                 </button>
               </td>
               <td className="py-2">
@@ -155,14 +150,14 @@ export default function AdminFeesPage() {
                   onClick={() => remove(f.id)}
                   className="text-xs text-red-300 hover:underline"
                 >
-                  Supprimer
+                  {t("admin.fees.delete")}
                 </button>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-      {fees.length === 0 && <p className="text-sm text-neutral-500">Aucune règle définie.</p>}
+      {fees.length === 0 && <p className="text-sm text-neutral-500">{t("admin.fees.empty")}</p>}
     </div>
   );
 }
