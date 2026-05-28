@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { useT } from "@/lib/i18n";
 import { ImageUpload } from "@/components/ImageUpload";
 import { NotificationPreferences } from "@/components/NotificationPreferences";
 
@@ -20,6 +21,7 @@ type MyChannel = { banner_url: string; social_links: Record<string, string> };
 
 export default function SettingsPage() {
   const router = useRouter();
+  const t = useT();
   const { user, loading, authFetch } = useAuth();
   const [displayName, setDisplayName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
@@ -40,9 +42,9 @@ export default function SettingsPage() {
       setBannerUrl(channel.banner_url ?? "");
       setSocials(channel.social_links ?? {});
     } catch {
-      setError("Échec du chargement du profil.");
+      setError(t("settings.loadError"));
     }
-  }, [authFetch]);
+  }, [authFetch, t]);
 
   useEffect(() => {
     if (loading) return;
@@ -73,22 +75,22 @@ export default function SettingsPage() {
         method: "PATCH",
         body: JSON.stringify({ banner_url: bannerUrl, social_links: cleanSocials }),
       });
-      setMessage("Profil enregistré.");
+      setMessage(t("settings.saved"));
     } catch (err) {
       const e = err as { data?: { detail?: string } };
-      setError(e.data?.detail ?? "Échec de l'enregistrement.");
+      setError(e.data?.detail ?? t("dash.saveError"));
     } finally {
       setSaving(false);
     }
   }
 
   if (loading || (!user && !error)) {
-    return <main className="p-8 text-neutral-500">Chargement…</main>;
+    return <main className="p-8 text-neutral-500">{t("common.loading")}</main>;
   }
 
   return (
     <main className="mx-auto max-w-2xl p-8">
-      <h1 className="mb-6 text-2xl font-bold">Paramètres du profil</h1>
+      <h1 className="mb-6 text-2xl font-bold">{t("settings.title")}</h1>
 
       {error && (
         <p className="mb-4 rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-300">
@@ -102,28 +104,28 @@ export default function SettingsPage() {
       )}
 
       <section className="space-y-4 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-6">
-        <Field label="Nom affiché">
+        <Field label={t("settings.displayName")}>
           <Input value={displayName} onChange={setDisplayName} maxLength={60} />
         </Field>
         <ImageUpload
-          label="Photo de profil"
+          label={t("settings.avatarPhoto")}
           currentUrl={avatarUrl}
           uploadPath="/api/uploads/avatar"
           onUploaded={setAvatarUrl}
         />
         <ImageUpload
-          label="Bannière"
+          label={t("settings.banner")}
           currentUrl={bannerUrl}
           uploadPath="/api/uploads/banner"
           onUploaded={setBannerUrl}
         />
-        <Field label="Avatar (URL — ou colle un lien)">
+        <Field label={t("settings.avatarUrl")}>
           <Input value={avatarUrl} onChange={setAvatarUrl} placeholder="https://…" />
         </Field>
-        <Field label="Bannière (URL — ou colle un lien)">
+        <Field label={t("settings.bannerUrl")}>
           <Input value={bannerUrl} onChange={setBannerUrl} placeholder="https://…" />
         </Field>
-        <Field label="Bio">
+        <Field label={t("settings.bio")}>
           <textarea
             value={bio}
             onChange={(e) => setBio(e.target.value)}
@@ -135,7 +137,7 @@ export default function SettingsPage() {
 
         <div className="border-t border-neutral-800 pt-4">
           <p className="mb-2 text-xs uppercase tracking-wider text-neutral-500">
-            Réseaux sociaux
+            {t("settings.socials")}
           </p>
           <div className="space-y-2">
             {SOCIAL_KEYS.map((key) => (
@@ -157,7 +159,7 @@ export default function SettingsPage() {
           disabled={saving}
           className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
         >
-          {saving ? "Enregistrement…" : "Enregistrer"}
+          {saving ? t("common.saving") : t("common.save")}
         </button>
       </section>
 

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { useT } from "@/lib/i18n";
 
 type Notif = {
   id: number;
@@ -14,6 +15,7 @@ type Notif = {
 
 export default function InboxPage() {
   const router = useRouter();
+  const t = useT();
   const { user, loading, authFetch } = useAuth();
   const [items, setItems] = useState<Notif[]>([]);
 
@@ -42,20 +44,20 @@ export default function InboxPage() {
     );
   }
 
-  if (loading || !user) return <main className="p-8 text-neutral-500">Chargement…</main>;
+  if (loading || !user) return <main className="p-8 text-neutral-500">{t("common.loading")}</main>;
 
   const support = items.filter((n) => n.type === "support_message");
   const others = items.filter((n) => n.type !== "support_message");
 
   return (
     <main className="mx-auto max-w-2xl p-8">
-      <h1 className="mb-6 text-2xl font-bold">Boîte de réception</h1>
+      <h1 className="mb-6 text-2xl font-bold">{t("inbox.title")}</h1>
 
       <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-neutral-500">
-        Messages du support
+        {t("inbox.supportSection")}
       </h2>
       {support.length === 0 ? (
-        <p className="mb-6 text-sm text-neutral-500">Aucun message.</p>
+        <p className="mb-6 text-sm text-neutral-500">{t("inbox.noMessages")}</p>
       ) : (
         <ul className="mb-8 space-y-3">
           {support.map((n) => (
@@ -78,7 +80,7 @@ export default function InboxPage() {
                     onClick={() => markRead(n.id)}
                     className="shrink-0 text-xs text-fuchsia-300 hover:underline"
                   >
-                    Marquer lu
+                    {t("inbox.markRead")}
                   </button>
                 )}
               </div>
@@ -88,7 +90,7 @@ export default function InboxPage() {
       )}
 
       <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-neutral-500">
-        Autres notifications
+        {t("inbox.othersSection")}
       </h2>
       <ul className="space-y-2">
         {others.map((n) => (

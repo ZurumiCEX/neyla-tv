@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { useT } from "@/lib/i18n";
 
 type Achievement = {
   key: string;
@@ -17,6 +18,7 @@ type Resp = { results: Achievement[]; unlocked: number; total: number };
 
 export default function AchievementsPage() {
   const router = useRouter();
+  const t = useT();
   const { user, loading, authFetch } = useAuth();
   const [data, setData] = useState<Resp | null>(null);
 
@@ -31,13 +33,15 @@ export default function AchievementsPage() {
       .catch(() => undefined);
   }, [loading, user, authFetch, router]);
 
-  if (loading || !user) return <main className="p-8 text-neutral-500">Chargement…</main>;
+  if (loading || !user) return <main className="p-8 text-neutral-500">{t("common.loading")}</main>;
 
   return (
     <main className="mx-auto max-w-3xl p-8">
-      <h1 className="mb-1 text-2xl font-bold">Succès</h1>
+      <h1 className="mb-1 text-2xl font-bold">{t("ach.title")}</h1>
       <p className="mb-6 text-sm text-neutral-400">
-        {data ? `${data.unlocked}/${data.total} débloqués` : "Chargement…"}
+        {data
+          ? t("ach.progress", { unlocked: data.unlocked, total: data.total })
+          : t("common.loading")}
       </p>
 
       <div className="grid gap-3 sm:grid-cols-2">

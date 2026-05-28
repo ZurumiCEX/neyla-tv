@@ -2,18 +2,20 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { useT } from "@/lib/i18n";
 
-const LABELS: Record<string, string> = {
-  live_started: "Live d'une chaîne suivie",
-  new_follower: "Nouvel abonné (follow)",
-  application_decided: "Candidature streamer traitée",
-  subscription: "Nouvel abonné payant",
-  tip_received: "Tip reçu",
-  achievement: "Succès débloqué",
-  support_message: "Message du support",
-};
+const TYPES = [
+  "live_started",
+  "new_follower",
+  "application_decided",
+  "subscription",
+  "tip_received",
+  "achievement",
+  "support_message",
+];
 
 export function NotificationPreferences() {
+  const t = useT();
   const { authFetch } = useAuth();
   const [prefs, setPrefs] = useState<Record<string, boolean> | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -38,9 +40,9 @@ export function NotificationPreferences() {
         method: "PUT",
         body: JSON.stringify({ [type]: enabled }),
       });
-      setMessage("Préférences enregistrées.");
+      setMessage(t("settings.notifSaved"));
     } catch {
-      setMessage("Échec de l'enregistrement.");
+      setMessage(t("settings.notifError"));
       load();
     }
   }
@@ -49,13 +51,11 @@ export function NotificationPreferences() {
 
   return (
     <section className="mt-6 space-y-3 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-6">
-      <h2 className="text-lg font-bold">Notifications</h2>
-      <p className="text-xs text-neutral-500">
-        Choisis les notifications que tu souhaites recevoir.
-      </p>
-      {Object.keys(LABELS).map((type) => (
+      <h2 className="text-lg font-bold">{t("settings.notifTitle")}</h2>
+      <p className="text-xs text-neutral-500">{t("settings.notifDesc")}</p>
+      {TYPES.map((type) => (
         <label key={type} className="flex items-center justify-between gap-3 text-sm">
-          <span className="text-neutral-300">{LABELS[type]}</span>
+          <span className="text-neutral-300">{t(`notif.${type}`)}</span>
           <input
             type="checkbox"
             checked={prefs[type] ?? true}

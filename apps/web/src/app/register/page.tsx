@@ -27,10 +27,10 @@ export default function RegisterPage() {
         method: "POST",
         body: JSON.stringify({ email, username, password, invite }),
       });
-      setStatus({ ok: true, msg: "Compte créé. Vérifie tes emails." });
+      setStatus({ ok: true, msg: t("auth.registerOk") });
     } catch (err) {
       const e = err as { data?: { detail?: string } };
-      setStatus({ ok: false, msg: e.data?.detail ?? "Échec de la création." });
+      setStatus({ ok: false, msg: e.data?.detail ?? t("auth.registerFail") });
     } finally {
       setBusy(false);
     }
@@ -58,7 +58,7 @@ export default function RegisterPage() {
           minLength={10}
         />
         <Field
-          label="Code d'invitation (optionnel)"
+          label={t("auth.inviteOptional")}
           type="text"
           value={invite}
           onValueChange={(v) => setInvite(v.toUpperCase())}
