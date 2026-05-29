@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from django_ratelimit.decorators import ratelimit
 from rest_framework import status
 from rest_framework.decorators import (
@@ -22,6 +24,8 @@ from .serializers import (
 )
 from .services import mark_live, mark_offline, rotate_stream_key
 
+logger = logging.getLogger(__name__)
+
 
 def _get_my_channel(user) -> Channel:
     """Récupère la chaîne de l'utilisateur (créée à l'inscription, non provisionnée).
@@ -41,6 +45,27 @@ def _ensure_overlay_token(channel: Channel) -> Channel:
     return channel
 
 
+def _reconcile_provisioning(channel: Channel, user) -> None:
+    """Auto-répare : un streamer approuvé dont la chaîne n'est pas provisionnée
+    (approbation hors flux normal, worker indisponible…) est provisionné ici."""
+    if channel.is_provisioned:
+        return
+    try:
+        from streamers.models import StreamerApplication
+
+        approved = StreamerApplication.objects.filter(
+            user=user, status=StreamerApplication.Status.APPROVED
+        ).exists()
+        if not approved:
+            return
+        from .services import provision_channel
+
+        provision_channel(channel)
+        channel.refresh_from_db()
+    except Exception:  # noqa: BLE001 — best-effort, ne bloque jamais le dashboard
+        logger.exception("reconcile provisioning failed for user %s", user.pk)
+
+
 @api_view(["GET", "PATCH"])
 @permission_classes([IsAuthenticated])
 def my_channel(request: Request) -> Response:
@@ -49,6 +74,7 @@ def my_channel(request: Request) -> Response:
         from chat.redis_store import get_viewers_count
         from social.models import Follow
 
+        _reconcile_provisioning(channel, request.user)
         _ensure_overlay_token(channel)
         data = MyChannelSerializer(channel).data
         data["follower_count"] = Follow.objects.filter(followee=request.user).count()

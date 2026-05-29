@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useT } from "@/lib/i18n";
 import { AuraBalance } from "@/components/AuraBalance";
+import { GuidesMenu } from "@/components/GuidesMenu";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { NotificationBell } from "@/components/NotificationBell";
 import { ProfileMenu } from "@/components/ProfileMenu";
@@ -70,6 +71,7 @@ export function Navbar() {
 
         {/* Droite : contrôles */}
         <div className="flex shrink-0 items-center gap-2 text-sm">
+          <GuidesMenu />
           <LanguageSwitcher />
 
           {loading ? (
