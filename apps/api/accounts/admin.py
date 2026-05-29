@@ -6,7 +6,10 @@ from .models import GuideProgress, TwoFactor, User, UserSession
 
 @admin.register(User)
 class UserAdmin(DjangoUserAdmin):
-    ordering = ("email",)
+    ordering = ("-date_joined",)
+    date_hierarchy = "date_joined"
+    list_per_page = 50
+    list_editable = ("role", "is_active")
     list_display = (
         "email",
         "username",
