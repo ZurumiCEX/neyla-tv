@@ -159,7 +159,7 @@ export default function AdminTransactionsPage() {
 }
 
 const TYPE_COLORS: Record<string, string> = {
-  purchase: "#10b981",
+  purchase: "#5D1C6A",
   tip: "#3b82f6",
   subscription: "#d946ef",
   payout: "#f59e0b",
