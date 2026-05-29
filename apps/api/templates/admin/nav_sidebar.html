@@ -1,0 +1,32 @@
+{% load i18n %}
+<button class="sticky toggle-nav-sidebar" id="toggle-nav-sidebar" aria-label="{% translate 'Toggle navigation' %}"></button>
+<nav class="sticky neyla-nav" id="nav-sidebar" aria-label="{% translate 'Sidebar' %}">
+  {% if nav_groups %}
+    {% url 'admin:index' as index_url %}
+    <a class="neyla-nav-dash{% if request.path == index_url %} active{% endif %}" href="{{ index_url }}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      <span>Tableau de bord</span>
+    </a>
+
+    <input type="search" id="nav-filter"
+           placeholder="{% translate 'Start typing to filter…' %}"
+           aria-label="{% translate 'Filter navigation items' %}">
+
+    {% for g in nav_groups %}
+    <div class="neyla-nav-group">
+      <div class="neyla-nav-cat">{{ g.icon }}<span>{{ g.name }}</span></div>
+      <ul>
+        {% for it in g.items %}
+        <li{% if it.active %} class="active"{% endif %}><a href="{{ it.url }}">{{ it.label }}</a></li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endfor %}
+  {% else %}
+    {# Repli : navigation native de Django si le regroupement échoue. #}
+    <input type="search" id="nav-filter"
+           placeholder="{% translate 'Start typing to filter…' %}"
+           aria-label="{% translate 'Filter navigation items' %}">
+    {% include 'admin/app_list.html' with app_list=available_apps show_changelinks=False %}
+  {% endif %}
+</nav>

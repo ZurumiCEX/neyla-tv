@@ -44,6 +44,16 @@ def test_admin_index_renders_dashboard_for_staff(staff_client):
     assert "<svg" in html
 
 
+def test_admin_sidebar_shows_categorized_nav(staff_client):
+    resp = staff_client.get(reverse("admin:index"))
+    html = resp.content.decode()
+    # Menu latéral groupé par catégorie métier + lien vers un module réel
+    assert "neyla-nav" in html
+    assert "Monétisation" in html
+    assert "Comptes &amp; audience" in html
+    assert reverse("admin:payments_wallet_changelist") in html
+
+
 def test_channel_change_page_shows_session_inline_and_summary(staff_client):
     channel = Channel.objects.get(user=UserFactory())
     resp = staff_client.get(reverse("admin:channels_app_channel_change", args=[channel.pk]))

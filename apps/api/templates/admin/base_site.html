@@ -107,11 +107,57 @@ div.breadcrumbs {
 /* ---- Liens ---- */
 a:link, a:visited { color: var(--link-fg); }
 
-/* ---- Sidebar de navigation ---- */
-#nav-sidebar { background: var(--darkened-bg); border-right: 1px solid var(--hairline-color); }
-#nav-sidebar .module caption,
-.toggle-nav-sidebar { color: var(--body-quiet-color); }
-#nav-sidebar a { color: var(--body-fg); }
+/* ---- Sidebar de navigation (menu groupé par catégorie) ---- */
+#nav-sidebar {
+  background: var(--header-bg);
+  border-right: 1px solid var(--hairline-color);
+  width: 264px; flex: 0 0 264px;
+  padding: 14px 12px 40px;
+}
+.toggle-nav-sidebar {
+  background: var(--header-bg); color: var(--body-quiet-color);
+  border-right: 1px solid var(--hairline-color);
+}
+.toggle-nav-sidebar:hover { background: var(--darkened-bg); color: var(--primary); }
+
+.neyla-nav #nav-filter,
+.neyla-nav input#nav-filter {
+  width: 100%; margin: 0 0 14px; box-sizing: border-box;
+  background: #0f1015; border: 1px solid var(--hairline-color);
+  border-radius: 9px; padding: 8px 11px; color: var(--body-fg); font-size: 13px;
+}
+.neyla-nav #nav-filter:focus { border-color: var(--primary); }
+
+.neyla-nav-dash {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; margin-bottom: 8px;
+  border-radius: 10px; font-weight: 600; font-size: 14px;
+  color: var(--body-fg) !important;
+}
+.neyla-nav-dash:hover { background: var(--darkened-bg); }
+.neyla-nav-dash.active { background: rgba(16,185,129,.14); color: var(--primary) !important; }
+.neyla-nav-dash svg { color: var(--primary); flex: 0 0 auto; }
+
+.neyla-nav-group { margin-top: 14px; }
+.neyla-nav-cat {
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 12px 7px; font-size: 10.5px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .09em; color: #6b7280;
+}
+.neyla-nav-cat svg { width: 15px; height: 15px; color: #6b7280; }
+.neyla-nav-group ul { list-style: none; margin: 0; padding: 0; }
+.neyla-nav-group li { margin: 1px 0; }
+.neyla-nav-group li a {
+  display: block; padding: 8px 12px 8px 35px;
+  border-radius: 9px; font-size: 13.5px;
+  color: #c4cad6 !important; border-left: 2px solid transparent;
+}
+.neyla-nav-group li a:hover { background: var(--darkened-bg); color: #fff !important; }
+.neyla-nav-group li.active a {
+  background: rgba(16,185,129,.12);
+  color: var(--primary) !important;
+  border-left-color: var(--primary);
+}
 
 /* ---- Modules / cartes (liste des apps & changelists) ---- */
 .module {
