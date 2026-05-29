@@ -38,13 +38,13 @@ export function LiveBadge({
   return (
     <span
       className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wider ${
-        isLive ? "bg-red-500/15 text-red-300" : "bg-neutral-800 text-neutral-400"
+        isLive ? "bg-secondary/20 text-secondary-light" : "bg-neutral-800 text-neutral-400"
       }`}
       aria-live="polite"
     >
       <span
-        className={`h-2 w-2 rounded-full ${
-          isLive ? "animate-pulse bg-red-400" : "bg-neutral-500"
+        className={`h-2 w-2 rounded-[1px] ${
+          isLive ? "animate-pulse bg-secondary" : "bg-neutral-500"
         }`}
       />
       {isLive ? "En direct" : "Hors-ligne"}

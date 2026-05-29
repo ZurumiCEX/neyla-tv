@@ -37,12 +37,14 @@ export function LiveCard({ channel }: { channel: LiveChannel }) {
           </div>
         )}
         {channel.is_live && (
-          <span className="absolute left-2 top-2 rounded bg-red-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-neutral-950">
+          <span className="absolute left-2 top-2 flex items-center gap-1 rounded bg-secondary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+            <span className="h-1.5 w-1.5 rounded-[1px] bg-white" />
             LIVE
           </span>
         )}
         {typeof channel.viewers === "number" && (
-          <span className="absolute bottom-2 left-2 rounded bg-black/70 px-1.5 py-0.5 text-xs text-neutral-100">
+          <span className="absolute bottom-2 left-2 flex items-center gap-1 rounded bg-black/70 px-1.5 py-0.5 text-xs text-neutral-100">
+            <span className="h-2 w-2 rounded-[1px] bg-secondary" />
             {t("card.viewers", { n: channel.viewers.toLocaleString("fr-FR") })}
           </span>
         )}

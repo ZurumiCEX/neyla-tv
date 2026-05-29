@@ -200,7 +200,7 @@ function Section({
   return (
     <section>
       <h2 className="mb-4 flex items-center gap-2 text-lg font-bold">
-        <span className="inline-block h-2.5 w-2.5 rounded-full bg-red-500" />
+        <span className="inline-block h-2.5 w-2.5 rounded-[2px] bg-secondary" />
         {title}
       </h2>
       {items.length === 0 ? <Empty text={empty} /> : children}

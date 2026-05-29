@@ -180,7 +180,7 @@ export function Sidebar() {
                       </span>
                     )}
                     {c.is_live && (
-                      <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-neutral-950 bg-red-500" />
+                      <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-[1px] border-2 border-neutral-950 bg-secondary" />
                     )}
                   </span>
                   {!collapsed && (
@@ -197,7 +197,7 @@ export function Sidebar() {
                   )}
                   {!collapsed && c.is_live && (
                     <span className="flex shrink-0 items-center gap-1 self-start pt-0.5 text-xs text-neutral-400">
-                      <span className="h-2 w-2 rounded-full bg-red-500" />
+                      <span className="h-2 w-2 rounded-[1px] bg-secondary" />
                       {typeof c.viewers === "number" && c.viewers > 0
                         ? c.viewers.toLocaleString("fr-FR")
                         : null}

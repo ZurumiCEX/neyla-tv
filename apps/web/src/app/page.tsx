@@ -87,7 +87,7 @@ export default async function HomePage() {
       <section>
         <div className="flex items-baseline justify-between">
           <h2 className="flex items-center gap-2 text-xl font-bold">
-            <span className="inline-block h-2.5 w-2.5 rounded-full bg-red-500" />
+            <span className="inline-block h-2.5 w-2.5 rounded-[2px] bg-secondary" />
             {t("home.live")}
           </h2>
           <span className="text-sm text-neutral-400">
