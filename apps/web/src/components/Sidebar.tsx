@@ -95,35 +95,6 @@ export function Sidebar() {
       : []),
   ];
 
-  const space: NavItemDef[] = user
-    ? [
-        {
-          href: "/dashboard",
-          label: t("nav.dashboard"),
-          icon: <Icon path={ICONS.dashboard} />,
-          active: is("/dashboard"),
-        },
-        {
-          href: "/wallet",
-          label: t("nav.wallet"),
-          icon: <Icon path={ICONS.wallet} />,
-          active: is("/wallet"),
-        },
-        {
-          href: "/achievements",
-          label: t("nav.achievements"),
-          icon: <Icon path={ICONS.trophy} />,
-          active: is("/achievements"),
-        },
-        {
-          href: "/inbox",
-          label: t("nav.inbox"),
-          icon: <Icon path={ICONS.inbox} />,
-          active: is("/inbox"),
-        },
-      ]
-    : [];
-
   const adminHref =
     user?.role === "moderator"
       ? "/admin/reports"
@@ -144,7 +115,6 @@ export function Sidebar() {
 
   const sections: { label: string; items: NavItemDef[] }[] = [
     { label: t("side.section.menu"), items: menu },
-    { label: t("side.section.space"), items: space },
     { label: t("side.section.admin"), items: admin },
   ];
 

@@ -205,3 +205,15 @@ def test_activity_feed_includes_followers(auth_client_factory):
     assert response.status_code == 200
     events = response.json()["results"]
     assert any(e["type"] == "follow" for e in events)
+
+
+def test_approved_streamer_auto_provisioned_on_dashboard(auth_client_factory):
+    """Bug fix : approuve mais non provisionne -> auto-repare au chargement."""
+    from streamers.models import StreamerApplication
+
+    user = UserFactory()
+    channel = Channel.objects.get(user=user)
+    assert not channel.is_provisioned
+    StreamerApplication.objects.create(user=user, status=StreamerApplication.Status.APPROVED)
+    data = auth_client_factory(user).get(reverse("channel-me")).json()
+    assert data["is_provisioned"] is True

@@ -21,7 +21,7 @@ from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from . import sessions, totp, two_factor
-from .models import User, UserSession
+from .models import GuideProgress, User, UserSession
 from .serializers import (
     EmailSerializer,
     MeSerializer,
@@ -335,3 +335,22 @@ def password_reset_confirm(request: Request) -> Response:
     except DjangoValidationError as exc:
         return Response({"password": list(exc.messages)}, status=status.HTTP_400_BAD_REQUEST)
     return Response({"detail": "Mot de passe mis à jour."})
+
+
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
+def guide_progress(request: Request) -> Response:
+    """Suivi des acquis : liste des cles validees, ou (de)valide une etape."""
+    if request.method == "GET":
+        keys = list(GuideProgress.objects.filter(user=request.user).values_list("key", flat=True))
+        return Response({"completed": keys})
+    key = (request.data.get("key") or "").strip()[:120]
+    if not key:
+        return Response({"detail": "Cle requise."}, status=status.HTTP_400_BAD_REQUEST)
+    done = bool(request.data.get("done", True))
+    if done:
+        GuideProgress.objects.get_or_create(user=request.user, key=key)
+    else:
+        GuideProgress.objects.filter(user=request.user, key=key).delete()
+    keys = list(GuideProgress.objects.filter(user=request.user).values_list("key", flat=True))
+    return Response({"completed": keys})

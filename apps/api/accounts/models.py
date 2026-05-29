@@ -124,3 +124,24 @@ class TwoFactor(models.Model):
 
     def __str__(self) -> str:
         return f"2fa:{self.user_id}:{'on' if self.enabled else 'off'}"
+
+
+class GuideProgress(models.Model):
+    """Suivi des acquis : étapes de tutoriels validées par un utilisateur.
+
+    `key` = "<guide_slug>:<step_id>". Le contenu des guides vit côté front
+    (i18n), la persistance ne stocke que les clés validées.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="guide_progress"
+    )
+    key = models.CharField(max_length=120)
+    completed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["user", "key"], name="uniq_guide_progress")]
+        indexes = [models.Index(fields=["user"])]
+
+    def __str__(self) -> str:
+        return f"guide:{self.user_id}:{self.key}"
