@@ -73,7 +73,11 @@ export function ProfileMenu() {
                 key={it.href + it.label}
                 href={it.href}
                 onClick={() => setOpen(false)}
-                className="block px-3 py-2 text-sm text-neutral-200 hover:bg-neutral-800"
+                className={`block px-3 py-2 text-sm hover:bg-neutral-800 ${
+                  it.href === "/become-streamer"
+                    ? "font-semibold text-secondary-light"
+                    : "text-neutral-200"
+                }`}
               >
                 {it.label}
               </Link>
