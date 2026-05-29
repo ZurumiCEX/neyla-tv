@@ -67,3 +67,104 @@ def test_overview(auth_client_factory):
     mod = UserFactory(role=User.Role.MODERATOR)
     data = auth_client_factory(mod).get(reverse("safety-overview")).json()
     assert "open_risk_events" in data and "pending_flags" in data
+
+
+def test_view_inflation_flagged():
+    creator = UserFactory()
+    channel = Channel.objects.get(user=creator)
+    # 0 follower, 0 IP distincte → tout viewer élevé est suspect.
+    anticheat.evaluate_view_inflation(channel, 200)
+    assert RiskEvent.objects.filter(user=creator, kind=RiskEvent.Kind.VIEW_INFLATION).exists()
+
+
+def test_view_inflation_ignored_under_min():
+    creator = UserFactory()
+    channel = Channel.objects.get(user=creator)
+    anticheat.evaluate_view_inflation(channel, anticheat.VIEW_MIN_SUSPICIOUS - 1)
+    assert not RiskEvent.objects.filter(user=creator, kind=RiskEvent.Kind.VIEW_INFLATION).exists()
+
+
+def test_subscription_churn_flagged():
+    creator = UserFactory()
+    channel = Channel.objects.get(user=creator)
+    from subscriptions import services as subs
+
+    subs.set_tier(channel, price_aura=10, perks=[])
+    fan = UserFactory()
+    pay.create_purchase(fan, 1000)
+    # Plusieurs cycles abonnement → paiements SUB_PAID répétés.
+    for _ in range(anticheat.SUB_CHURN_MAX):
+        subs.subscribe(fan, channel.slug)
+        subs.cancel(fan, channel.slug)
+    assert RiskEvent.objects.filter(user=fan, kind=RiskEvent.Kind.SUB_ABUSE).exists()
+
+
+def test_subscription_creator_burst_flagged():
+    creator = UserFactory()
+    channel = Channel.objects.get(user=creator)
+    from subscriptions import services as subs
+
+    subs.set_tier(channel, price_aura=1, perks=[])
+    for _ in range(anticheat.SUB_CREATOR_MAX):
+        fan = UserFactory()
+        pay.create_purchase(fan, 100)
+        subs.subscribe(fan, channel.slug)
+    assert RiskEvent.objects.filter(user=creator, kind=RiskEvent.Kind.SUB_ABUSE).exists()
+
+
+def test_self_deal_shared_ip_flagged():
+    from chat.models import ChatUserIp
+
+    creator = UserFactory()
+    channel = Channel.objects.get(user=creator)
+    fan = UserFactory()
+    # Comptes liés : même IP enregistrée pour les deux.
+    ChatUserIp.objects.create(channel=channel, user=creator, ip="7.7.7.7")
+    ChatUserIp.objects.create(channel=channel, user=fan, ip="7.7.7.7")
+    anticheat.evaluate_self_deal(fan, channel)
+    assert RiskEvent.objects.filter(user=creator, kind=RiskEvent.Kind.SELF_DEAL).exists()
+
+
+def test_self_deal_distinct_ip_not_flagged():
+    from chat.models import ChatUserIp
+
+    creator = UserFactory()
+    channel = Channel.objects.get(user=creator)
+    fan = UserFactory()
+    ChatUserIp.objects.create(channel=channel, user=creator, ip="1.1.1.1")
+    ChatUserIp.objects.create(channel=channel, user=fan, ip="2.2.2.2")
+    anticheat.evaluate_self_deal(fan, channel)
+    assert not RiskEvent.objects.filter(user=creator, kind=RiskEvent.Kind.SELF_DEAL).exists()
+
+
+def test_detect_chat_spam_repeat():
+    entries = [(1000 + i, "gg") for i in range(anticheat.CHAT_REPEAT_MAX)]
+    suspect, reason = anticheat.detect_chat_spam(entries)
+    assert suspect and reason == "repeat"
+
+
+def test_detect_chat_spam_burst():
+    entries = [(1000 + i, f"msg{i}") for i in range(anticheat.CHAT_BURST_MAX)]
+    suspect, reason = anticheat.detect_chat_spam(entries)
+    assert suspect and reason == "burst"
+
+
+def test_detect_chat_spam_link_flood():
+    entries = [(1000 + i * 100, f"visit https://x{i}.com") for i in range(anticheat.CHAT_LINK_MAX)]
+    # Pas une rafale (intervalles), mais flood de liens.
+    entries = [(1000, "https://a.com"), (1200, "https://b.com"), (1400, "https://c.com")]
+    suspect, reason = anticheat.detect_chat_spam(entries)
+    assert suspect and reason == "link_flood"
+
+
+def test_detect_chat_spam_clean():
+    entries = [(1000, "salut"), (5000, "ça va ?"), (12000, "cool stream")]
+    suspect, _ = anticheat.detect_chat_spam(entries)
+    assert not suspect
+
+
+def test_flag_chat_bot_creates_event():
+    user = UserFactory()
+    channel = Channel.objects.get(user=UserFactory())
+    anticheat.flag_chat_bot(user, channel, "repeat")
+    assert RiskEvent.objects.filter(user=user, kind=RiskEvent.Kind.CHAT_BOT).exists()

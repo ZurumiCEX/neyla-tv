@@ -22,6 +22,22 @@ TIP_MAX_PER_WINDOW = 8
 FOLLOW_WINDOW_SECONDS = 60
 FOLLOW_MAX_PER_WINDOW = 20
 
+# Gonflage de vues : viewers anormalement élevés vs. base réelle (followers/IP).
+VIEW_MIN_SUSPICIOUS = 50
+VIEW_INFLATION_FACTOR = 5
+
+# Abonnements : churn (ré-abonnements répétés) et rafale de subs côté créateur.
+SUB_CHURN_WINDOW_SECONDS = 3600
+SUB_CHURN_MAX = 5
+SUB_CREATOR_WINDOW_SECONDS = 600
+SUB_CREATOR_MAX = 15
+
+# Détection de bots de chat (répétition / rafale / flood de liens).
+CHAT_WINDOW_MS = 15_000
+CHAT_BURST_MAX = 6
+CHAT_REPEAT_MAX = 4
+CHAT_LINK_MAX = 3
+
 
 def flag(user, kind: str, severity: int = RiskEvent.Severity.LOW, detail=None) -> RiskEvent | None:
     """Enregistre un signal de risque (idempotence souple par déduplication courte)."""
@@ -91,3 +107,131 @@ def evaluate_multi_account(channel, user, ip: str | None) -> None:
                 RiskEvent.Severity.MEDIUM,
                 {"ip": ip, "accounts": len(users), "channel": channel.slug},
             )
+
+
+def evaluate_view_inflation(channel, viewers: int) -> None:
+    """Viewers concurrents très supérieurs à la base réelle (followers / IP distinctes)."""
+    if viewers < VIEW_MIN_SUSPICIOUS:
+        return
+    with contextlib.suppress(Exception):
+        from chat.models import ChatUserIp
+        from social.models import Follow
+
+        followers = Follow.objects.filter(followee=channel.user).count()
+        distinct_ips = ChatUserIp.objects.filter(channel=channel).values("ip").distinct().count()
+        baseline = max(followers, distinct_ips, 1)
+        if viewers > baseline * VIEW_INFLATION_FACTOR:
+            sev = (
+                RiskEvent.Severity.HIGH
+                if viewers > baseline * VIEW_INFLATION_FACTOR * 2
+                else RiskEvent.Severity.MEDIUM
+            )
+            flag(
+                channel.user,
+                RiskEvent.Kind.VIEW_INFLATION,
+                sev,
+                {
+                    "viewers": viewers,
+                    "followers": followers,
+                    "distinct_ips": distinct_ips,
+                    "channel": channel.slug,
+                },
+            )
+
+
+def evaluate_subscription(subscriber, channel) -> None:
+    """Churn d'abonnement (ré-abonnements répétés) + rafale de subs côté créateur."""
+    with contextlib.suppress(Exception):
+        from payments.models import LedgerEntry
+
+        # Churn côté abonné : nombre de paiements d'abonnement sur une fenêtre.
+        since = timezone.now() - timezone.timedelta(seconds=SUB_CHURN_WINDOW_SECONDS)
+        paid = LedgerEntry.objects.filter(
+            wallet__user=subscriber,
+            kind=LedgerEntry.Kind.SUB_PAID,
+            created_at__gte=since,
+        ).count()
+        if paid >= SUB_CHURN_MAX:
+            flag(
+                subscriber,
+                RiskEvent.Kind.SUB_ABUSE,
+                RiskEvent.Severity.MEDIUM,
+                {"sub_payments": paid, "window_s": SUB_CHURN_WINDOW_SECONDS},
+            )
+
+    with contextlib.suppress(Exception):
+        from subscriptions.models import Subscription
+
+        # Rafale côté créateur : nouveaux abonnements gagnés sur une courte fenêtre.
+        since = timezone.now() - timezone.timedelta(seconds=SUB_CREATOR_WINDOW_SECONDS)
+        gained = Subscription.objects.filter(channel=channel, started_at__gte=since).count()
+        if gained >= SUB_CREATOR_MAX:
+            flag(
+                channel.user,
+                RiskEvent.Kind.SUB_ABUSE,
+                RiskEvent.Severity.HIGH,
+                {
+                    "new_subs": gained,
+                    "window_s": SUB_CREATOR_WINDOW_SECONDS,
+                    "channel": channel.slug,
+                },
+            )
+
+
+def _users_share_ip(user_a_id: int, user_b_id: int) -> str | None:
+    """Renvoie une IP partagée entre deux comptes (via le tracking chat), sinon None."""
+    from chat.models import ChatUserIp
+
+    ips_a = set(ChatUserIp.objects.filter(user_id=user_a_id).values_list("ip", flat=True))
+    if not ips_a:
+        return None
+    row = ChatUserIp.objects.filter(user_id=user_b_id, ip__in=ips_a).first()
+    return row.ip if row else None
+
+
+def evaluate_self_deal(from_user, channel) -> None:
+    """Auto-transaction via comptes liés : le bénéficiaire et l'émetteur partagent une IP."""
+    if from_user.id == channel.user_id:
+        return  # bloqué en amont, mais on s'en assure
+    with contextlib.suppress(Exception):
+        shared = _users_share_ip(from_user.id, channel.user_id)
+        if shared:
+            flag(
+                channel.user,
+                RiskEvent.Kind.SELF_DEAL,
+                RiskEvent.Severity.HIGH,
+                {"from_user": from_user.username, "shared_ip": shared, "channel": channel.slug},
+            )
+
+
+def detect_chat_spam(entries: list[tuple[int, str]]) -> tuple[bool, str]:
+    """Heuristique pure de détection de bot de chat sur les messages récents d'un user.
+
+    `entries` = liste (timestamp_ms, texte) la plus récente en dernier.
+    Renvoie (suspect, raison).
+    """
+    if not entries:
+        return (False, "")
+    now = entries[-1][0]
+    window = [e for e in entries if now - e[0] <= CHAT_WINDOW_MS]
+    if len(window) >= CHAT_BURST_MAX:
+        return (True, "burst")
+    last_text = entries[-1][1].strip().lower()
+    repeats = sum(1 for _, txt in window if txt.strip().lower() == last_text)
+    if repeats >= CHAT_REPEAT_MAX:
+        return (True, "repeat")
+    links = sum(1 for _, txt in window if "http://" in txt or "https://" in txt)
+    if links >= CHAT_LINK_MAX:
+        return (True, "link_flood")
+    return (False, "")
+
+
+def flag_chat_bot(user, channel, reason: str) -> None:
+    """Enregistre un signal de bot de chat (best-effort)."""
+    with contextlib.suppress(Exception):
+        flag(
+            user,
+            RiskEvent.Kind.CHAT_BOT,
+            RiskEvent.Severity.MEDIUM,
+            {"reason": reason, "channel": getattr(channel, "slug", "")},
+        )

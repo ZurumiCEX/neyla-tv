@@ -199,9 +199,10 @@ def _after_tip(tip: Tip, from_user, channel) -> None:
     check_and_award(channel.user, "tip_received")
 
     with contextlib.suppress(Exception):
-        from safety.anticheat import evaluate_tip
+        from safety.anticheat import evaluate_self_deal, evaluate_tip
 
         evaluate_tip(from_user, channel)
+        evaluate_self_deal(from_user, channel)
 
 
 @transaction.atomic

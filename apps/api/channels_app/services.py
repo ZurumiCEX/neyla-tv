@@ -109,3 +109,9 @@ def record_session_peak(channel_id: int, viewers: int) -> None:
     if session is not None and viewers > session.peak_viewers:
         session.peak_viewers = viewers
         session.save(update_fields=["peak_viewers"])
+        import contextlib
+
+        with contextlib.suppress(Exception):
+            from safety.anticheat import evaluate_view_inflation
+
+            evaluate_view_inflation(session.channel, viewers)
