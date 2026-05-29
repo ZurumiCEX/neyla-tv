@@ -102,7 +102,7 @@ export function Sidebar() {
         ? "/console/messages"
         : "/console/dashboard";
   const admin: NavItemDef[] =
-    user && ["admin", "moderator", "support"].includes(user.role)
+    user && (["admin", "moderator", "support"].includes(user.role) || user.is_staff)
       ? [
           {
             href: adminHref,

@@ -8,6 +8,10 @@ class StreamSessionAdmin(admin.ModelAdmin):
     list_display = ("channel", "started_at", "ended_at", "peak_viewers")
     list_filter = ("started_at",)
     search_fields = ("channel__slug",)
+    date_hierarchy = "started_at"
+    list_select_related = ("channel",)
+    list_per_page = 50
+    ordering = ("-started_at",)
     readonly_fields = (
         "channel",
         "started_at",
@@ -24,12 +28,19 @@ class ChannelAdmin(admin.ModelAdmin):
         "slug",
         "user",
         "is_live",
-        "is_provisioned",
+        "collaborations_open",
+        "category",
         "last_live_started_at",
         "created_at",
     )
-    list_filter = ("is_live",)
+    list_display_links = ("slug",)
+    list_editable = ("is_live", "collaborations_open")
+    list_filter = ("is_live", "collaborations_open", "category")
     search_fields = ("slug", "user__email", "user__username")
+    date_hierarchy = "created_at"
+    list_select_related = ("user", "category")
+    list_per_page = 50
+    ordering = ("-created_at",)
     readonly_fields = (
         "live_input_uid",
         "rtmps_url",

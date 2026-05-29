@@ -27,13 +27,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const t = useT();
   const { user, loading } = useAuth();
 
-  const isStaff = !!user && STAFF_ROLES.includes(user.role);
+  // Accès si rôle interne OU compte staff/superuser Django (is_staff).
+  const isStaff = !!user && (STAFF_ROLES.includes(user.role) || user.is_staff);
+  // Un compte staff sans rôle interne explicite est traité comme admin.
+  const effectiveRole = user
+    ? STAFF_ROLES.includes(user.role)
+      ? user.role
+      : user.is_staff
+        ? "admin"
+        : user.role
+    : "";
 
   useEffect(() => {
     if (loading) return;
     if (!user) {
       router.replace("/login");
-    } else if (!STAFF_ROLES.includes(user.role)) {
+    } else if (!(STAFF_ROLES.includes(user.role) || user.is_staff)) {
       router.replace("/");
     }
   }, [loading, user, router]);
@@ -42,7 +51,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return <main className="p-8 text-neutral-500">{t("common.loading")}</main>;
   }
 
-  const visibleTabs = TABS.filter((tab) => tab.roles.includes(user.role));
+  const visibleTabs = TABS.filter((tab) => tab.roles.includes(effectiveRole));
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6">

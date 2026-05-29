@@ -22,7 +22,7 @@ export default function AdminIndexPage() {
         ? "/console/reports"
         : user.role === "support"
           ? "/console/messages"
-          : user.role === "admin"
+          : user.role === "admin" || user.is_staff
             ? "/console/dashboard"
             : "/";
     router.replace(dest);
