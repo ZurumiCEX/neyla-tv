@@ -10,34 +10,9 @@ import logging
 from django.contrib.admin import AdminSite
 from django.utils.safestring import mark_safe
 
+from config.admin_widgets import svg_area as _svg_area
+
 logger = logging.getLogger(__name__)
-
-
-def _svg_area(values: list[float], color: str, w: int = 280, h: int = 60) -> str:
-    """Mini graphe (aire + ligne) en SVG inline, sans dépendance."""
-    n = len(values)
-    if n == 0:
-        return ""
-    vmax = max(values) or 1
-    vmin = min(values + [0])
-    rng = (vmax - vmin) or 1
-    pad = 4
-
-    def x(i: int) -> float:
-        return pad + (i / (n - 1) * (w - 2 * pad) if n > 1 else (w - 2 * pad) / 2)
-
-    def y(v: float) -> float:
-        return h - pad - (v - vmin) / rng * (h - 2 * pad)
-
-    line = " ".join(f"{'M' if i == 0 else 'L'}{x(i):.1f} {y(v):.1f}" for i, v in enumerate(values))
-    area = f"{line} L{x(n - 1):.1f} {h} L{x(0):.1f} {h} Z"
-    return (
-        f'<svg viewBox="0 0 {w} {h}" preserveAspectRatio="none" '
-        f'style="width:100%;height:{h}px">'
-        f'<path d="{area}" fill="{color}" opacity="0.18"/>'
-        f'<path d="{line}" fill="none" stroke="{color}" stroke-width="2" '
-        f'vector-effect="non-scaling-stroke"/></svg>'
-    )
 
 
 class NeylaAdminSite(AdminSite):

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from django.contrib import admin, messages
+from django.db.models import Sum
+
+from config.admin_widgets import stat_grid
 
 from .models import FeeRule, LedgerEntry, Payout, PayoutOtp, Purchase, Tip, Wallet
 
@@ -36,7 +39,23 @@ class WalletAdmin(admin.ModelAdmin):
     ordering = ("-aura_balance",)
     list_per_page = 50
     inlines = (LedgerEntryInline,)
-    readonly_fields = ("user", "aura_balance", "created_at")
+    readonly_fields = ("ledger_summary", "user", "aura_balance", "created_at")
+
+    @admin.display(description="Synthèse des mouvements")
+    def ledger_summary(self, obj: Wallet):
+        if obj is None or obj.pk is None:
+            return "—"
+        entries = obj.entries.all()
+        credits = entries.filter(amount__gt=0).aggregate(s=Sum("amount"))["s"] or 0
+        debits = entries.filter(amount__lt=0).aggregate(s=Sum("amount"))["s"] or 0
+        return stat_grid(
+            [
+                ("Solde", obj.aura_balance),
+                ("Crédits cumulés", credits),
+                ("Débits cumulés", abs(debits)),
+                ("Mouvements", entries.count()),
+            ]
+        )
 
 
 @admin.register(LedgerEntry)
