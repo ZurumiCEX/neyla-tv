@@ -38,7 +38,7 @@ export default function AdminMonitoringPage() {
   if (!data) return <p className="text-neutral-500">{t("common.loading")}</p>;
 
   const cards: [string, string | number, string][] = [
-    [t("admin.mon.online"), data.online_users, "#5D1C6A"],
+    [t("admin.mon.online"), data.online_users, "#FFC81E"],
     [t("admin.mon.live"), data.live_now, "#ef4444"],
     [t("admin.mon.subs"), data.active_subscriptions, "#d946ef"],
     [t("admin.mon.payouts"), data.pending_payouts, "#f59e0b"],

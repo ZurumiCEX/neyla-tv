@@ -29,7 +29,7 @@ def _icon(name: str, size: int = 20) -> str:
 
 # Catégories métier du menu latéral : (nom, icône, couleur). Ordre = ordre d'affichage.
 _NAV_CATEGORIES: list[tuple[str, str, str]] = [
-    ("Audience & comptes", "users", "#9b4dab"),
+    ("Audience & comptes", "users", "#FFC81E"),
     ("Création & live", "broadcast", "#3b82f6"),
     ("Monétisation", "cash", "#f59e0b"),
     ("Engagement & gamification", "trophy", "#d946ef"),
@@ -225,7 +225,7 @@ class NeylaAdminSite(AdminSite):
                 f"+{gr['new_users_7d']} cette semaine",
                 "users",
                 new_users,
-                "#9b4dab",
+                "#FFC81E",
             ),
             self._hero(
                 "Revenus 30j (FCFA)",
@@ -317,7 +317,7 @@ class NeylaAdminSite(AdminSite):
         ]
 
         charts = [
-            self._chart("Inscriptions / jour", new_users, "#9b4dab"),
+            self._chart("Inscriptions / jour", new_users, "#FFC81E"),
             self._chart("Revenus achats / jour (FCFA)", purchases, "#3b82f6"),
             self._chart("Commission / jour (Aura)", commission, "#f59e0b"),
             self._chart("Tips / jour (Aura)", tips, "#d946ef"),
@@ -325,7 +325,7 @@ class NeylaAdminSite(AdminSite):
 
         breakdown = [
             ("Tips créateurs", creator_share, "#d946ef"),
-            ("Abonnements", totals["subs_aura"], "#9b4dab"),
+            ("Abonnements", totals["subs_aura"], "#FFC81E"),
             ("Commission", totals["platform_commission_aura"], "#f59e0b"),
         ]
         donut = {
