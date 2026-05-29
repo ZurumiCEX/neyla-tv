@@ -2,37 +2,48 @@
 
 {% block content %}
 {% if dashboard %}
-<style>
-  .neyla-kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin:0 0 22px}
-  .neyla-kpi{border:1px solid var(--hairline-color,#e0e0e0);border-radius:10px;padding:12px 14px;background:var(--darkened-bg,#f8f8f8)}
-  .neyla-kpi .v{font-size:22px;font-weight:700;line-height:1.1}
-  .neyla-kpi .l{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--body-quiet-color,#666);margin-top:4px}
-  .neyla-kpi .g{font-size:10px;color:var(--link-fg,#447e9b);margin-bottom:6px;text-transform:uppercase}
-  .neyla-charts{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin:0 0 26px}
-  .neyla-chart{border:1px solid var(--hairline-color,#e0e0e0);border-radius:10px;padding:12px 14px;background:var(--darkened-bg,#f8f8f8)}
-  .neyla-chart h3{font-size:12px;margin:0 0 8px;color:var(--body-quiet-color,#666);font-weight:600}
-  .neyla-h{font-size:16px;font-weight:700;margin:0 0 12px}
-</style>
+<div class="neyla-dash">
+  <p class="neyla-sub">Suivi de l'activité — 30 derniers jours</p>
 
-<p class="neyla-h">Suivi de l'activité — 30 derniers jours</p>
-
-<div class="neyla-kpis">
-  {% for k in dashboard.kpis %}
-  <div class="neyla-kpi">
-    <div class="g">{{ k.group }}</div>
-    <div class="v">{{ k.value }}</div>
-    <div class="l">{{ k.label }}</div>
+  {# ---- Cartes phares (KPI + sparkline) ---- #}
+  <div class="neyla-hero-grid">
+    {% for h in dashboard.hero %}
+    <div class="neyla-hero">
+      <div class="top">
+        <span class="label">{{ h.label }}</span>
+        <span class="chip" style="background:{{ h.color }}1f;color:{{ h.color }}">{{ h.icon }}</span>
+      </div>
+      <div class="value">{{ h.value }}</div>
+      <div class="delta">{{ h.sub }}</div>
+      <span class="spark">{{ h.svg }}</span>
+    </div>
+    {% endfor %}
   </div>
-  {% endfor %}
-</div>
 
-<div class="neyla-charts">
-  {% for c in dashboard.charts %}
-  <div class="neyla-chart">
-    <h3>{{ c.title }}</h3>
-    {{ c.svg }}
+  {# ---- Tendances (graphiques) ---- #}
+  <div class="neyla-h">Tendances (30 jours)</div>
+  <div class="neyla-charts">
+    {% for c in dashboard.charts %}
+    <div class="neyla-chart">
+      <h3>{{ c.title }}</h3>
+      {{ c.svg }}
+    </div>
+    {% endfor %}
   </div>
-  {% endfor %}
+
+  {# ---- Indicateurs détaillés par domaine ---- #}
+  <div class="neyla-sections">
+    {% for s in dashboard.sections %}
+    <div class="neyla-card">
+      <div class="neyla-h">{{ s.icon }} {{ s.name }}</div>
+      <div class="rows">
+        {% for item in s.items %}
+        <div class="neyla-row"><span class="l">{{ item.label }}</span><span class="v">{{ item.value }}</span></div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
 </div>
 {% endif %}
 

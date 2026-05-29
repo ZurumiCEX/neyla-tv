@@ -37,9 +37,10 @@ def test_admin_index_renders_dashboard_for_staff(staff_client):
     resp = staff_client.get(reverse("admin:index"))
     assert resp.status_code == 200
     html = resp.content.decode()
-    # KPIs + graphiques SVG rendus dans la page d'accueil
+    # Cartes phares + graphiques SVG rendus dans la page d'accueil
     assert "Suivi de l'activité" in html
-    assert "neyla-kpi" in html
+    assert "neyla-hero" in html
+    assert "Tendances" in html
     assert "<svg" in html
 
 

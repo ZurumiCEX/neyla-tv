@@ -1,0 +1,224 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Neyla TV Admin') }}{% endblock %}
+
+{% block branding %}
+<div id="site-name">
+  <a href="{% url 'admin:index' %}">
+    <span class="neyla-logo">N</span>
+    <span class="neyla-wordmark">Neyla&nbsp;TV <em>Admin</em></span>
+  </a>
+</div>
+{% endblock %}
+
+{% block extrastyle %}{{ block.super }}
+<style>
+/* ============================================================
+   Thème « Neyla Admin » — UI/UX premium sombre (style Apex)
+   Surcharge les variables natives de l'admin Django 5.x.
+   ============================================================ */
+:root,
+html[data-theme="light"],
+html[data-theme="dark"] {
+  --primary: #10b981;
+  --primary-fg: #04140d;
+  --secondary: #5D1C6A;
+  --accent: #10b981;
+
+  --body-bg: #0b0b0f;
+  --body-fg: #e7e9ee;
+  --body-quiet-color: #9aa3b2;
+  --body-loud-color: #ffffff;
+
+  --header-color: #cbd5e1;
+  --header-branding-color: #ffffff;
+  --header-bg: #111218;
+  --header-link-color: #e7e9ee;
+
+  --breadcrumbs-fg: #9aa3b2;
+  --breadcrumbs-link-fg: #cbd5e1;
+  --breadcrumbs-bg: #14151c;
+
+  --link-fg: #34d399;
+  --link-hover-color: #6ee7b7;
+  --link-selected-fg: #6ee7b7;
+
+  --hairline-color: #23252e;
+  --border-color: #23252e;
+
+  --button-bg: #10b981;
+  --button-fg: #04140d;
+  --button-hover-bg: #34d399;
+  --default-button-bg: #10b981;
+  --default-button-hover-bg: #34d399;
+  --close-button-bg: #2a2c36;
+  --close-button-hover-bg: #3a3d4a;
+
+  --object-tools-fg: #04140d;
+  --object-tools-bg: #10b981;
+  --object-tools-hover-bg: #34d399;
+
+  --darkened-bg: #14151c;
+  --selected-bg: #181a22;
+  --selected-row: #1c2733;
+  --message-success-bg: #10311f;
+  --message-error-bg: #3a1414;
+  --message-warning-bg: #3a2c14;
+
+  --font-family-primary: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    system-ui, Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+html, body { background: var(--body-bg); color: var(--body-fg); }
+
+/* ---- En-tête ---- */
+#header {
+  background: var(--header-bg);
+  border-bottom: 1px solid var(--hairline-color);
+  box-shadow: none;
+  padding: 14px 40px;
+  color: var(--header-color);
+}
+#branding #site-name { margin: 0; font-weight: 700; }
+#branding #site-name a { display: flex; align-items: center; gap: 12px; color: #fff; }
+.neyla-logo {
+  width: 34px; height: 34px; border-radius: 9px;
+  background: linear-gradient(135deg, #10b981, #5D1C6A);
+  color: #fff; font-weight: 800; font-size: 18px;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.neyla-wordmark { font-size: 19px; letter-spacing: .2px; }
+.neyla-wordmark em { color: var(--primary); font-style: normal; font-weight: 600; }
+#user-tools { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--body-quiet-color); }
+#user-tools a { color: var(--header-link-color); border-bottom: none; }
+#user-tools a:hover { color: var(--primary); }
+
+/* ---- Fil d'ariane ---- */
+div.breadcrumbs {
+  background: var(--breadcrumbs-bg);
+  border-bottom: 1px solid var(--hairline-color);
+  padding: 11px 40px; font-size: 12.5px;
+}
+
+/* ---- Contenu ---- */
+#content { padding: 26px 40px 60px; }
+#content > h1, .dashboard #content-main > h1 { color: #fff; font-weight: 700; }
+
+/* ---- Liens ---- */
+a:link, a:visited { color: var(--link-fg); }
+
+/* ---- Sidebar de navigation ---- */
+#nav-sidebar { background: var(--darkened-bg); border-right: 1px solid var(--hairline-color); }
+#nav-sidebar .module caption,
+.toggle-nav-sidebar { color: var(--body-quiet-color); }
+#nav-sidebar a { color: var(--body-fg); }
+
+/* ---- Modules / cartes (liste des apps & changelists) ---- */
+.module {
+  background: #121319;
+  border: 1px solid var(--hairline-color);
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.4);
+  overflow: hidden;
+}
+.module > h2, .module caption, .inline-group h2 {
+  background: transparent;
+  color: var(--body-quiet-color);
+  font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .08em;
+  padding: 14px 18px; border-bottom: 1px solid var(--hairline-color);
+}
+.dashboard .module table th, .dashboard .module table td { border-bottom: 1px solid var(--hairline-color); }
+.dashboard .module table td a { color: var(--body-fg); }
+.dashboard .module table td a:hover { color: var(--primary); }
+.module table tr:last-child td, .module table tr:last-child th { border-bottom: none; }
+.addlink, .changelink, .viewlink { color: var(--body-quiet-color); }
+.addlink:hover, .changelink:hover { color: var(--primary); }
+
+/* « Actions récentes » */
+#recent-actions-module ul.actionlist li { border: none; }
+.module ul li, ul.messagelist li { background: transparent; }
+
+/* ---- Tableaux (changelist) ---- */
+#changelist table thead th { background: #15161d; color: var(--body-quiet-color); }
+#changelist-filter { background: var(--darkened-bg); border-left: 1px solid var(--hairline-color); border-radius: 0 14px 14px 0; }
+.results, #changelist .results { border-radius: 12px; }
+tr:hover > td, tr:hover > th { background: var(--selected-row) !important; }
+
+/* ---- Boutons ---- */
+.button, input[type=submit], input[type=button], .submit-row input, a.button {
+  border-radius: 9px; font-weight: 600; box-shadow: none;
+}
+.object-tools a { border-radius: 9px; font-weight: 600; }
+
+/* ---- Formulaires ---- */
+.module fieldset .form-row { border-bottom: 1px solid var(--hairline-color); }
+input, textarea, select, .vTextField {
+  background: #0f1015; color: var(--body-fg);
+  border: 1px solid var(--hairline-color); border-radius: 8px;
+}
+input:focus, textarea:focus, select:focus { border-color: var(--primary); outline: none; }
+
+/* ============================================================
+   Tableau de bord (KPIs + graphiques) — page d'accueil
+   ============================================================ */
+.neyla-dash { margin-bottom: 30px; }
+.neyla-dash .neyla-sub {
+  color: var(--body-quiet-color); font-size: 13px; margin: -6px 0 20px;
+}
+
+.neyla-hero-grid {
+  display: grid; gap: 16px; margin-bottom: 26px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+.neyla-hero {
+  position: relative; overflow: hidden;
+  background: #121319; border: 1px solid var(--hairline-color);
+  border-radius: 16px; padding: 18px 18px 0;
+}
+.neyla-hero .top { display: flex; align-items: center; justify-content: space-between; }
+.neyla-hero .label { font-size: 12.5px; color: var(--body-quiet-color); font-weight: 500; }
+.neyla-hero .chip {
+  width: 38px; height: 38px; border-radius: 11px;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.neyla-hero .value { font-size: 30px; font-weight: 800; color: #fff; margin: 10px 0 2px; line-height: 1.05; }
+.neyla-hero .delta { font-size: 12px; color: var(--body-quiet-color); margin-bottom: 12px; }
+.neyla-hero .spark { margin: 0 -18px; display: block; }
+
+.neyla-h {
+  display: flex; align-items: center; gap: 9px;
+  font-size: 13px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--body-quiet-color);
+  margin: 0 0 14px;
+}
+.neyla-h svg { color: var(--primary); }
+
+.neyla-charts {
+  display: grid; gap: 16px; margin-bottom: 28px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+.neyla-chart {
+  background: #121319; border: 1px solid var(--hairline-color);
+  border-radius: 16px; padding: 16px 18px 12px;
+}
+.neyla-chart h3 { font-size: 12.5px; margin: 0 0 12px; color: var(--body-quiet-color); font-weight: 600; }
+
+.neyla-sections {
+  display: grid; gap: 16px; margin-bottom: 30px;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+}
+.neyla-card {
+  background: #121319; border: 1px solid var(--hairline-color);
+  border-radius: 16px; padding: 16px 18px;
+}
+.neyla-card .rows { display: flex; flex-direction: column; gap: 2px; }
+.neyla-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 0; border-bottom: 1px solid var(--hairline-color);
+}
+.neyla-row:last-child { border-bottom: none; }
+.neyla-row .l { color: var(--body-quiet-color); font-size: 13px; }
+.neyla-row .v { color: #fff; font-weight: 700; font-size: 15px; }
+</style>
+{% endblock %}

@@ -14,6 +14,44 @@ from config.admin_widgets import svg_area as _svg_area
 
 logger = logging.getLogger(__name__)
 
+# Icônes inline (style Heroicons outline, héritent de currentColor).
+_ICONS = {
+    "users": (
+        '<path d="M17 20h5v-2a4 4 0 0 0-3-3.87M9 20H4v-2a4 4 0 0 1 3-3.87'
+        'm6-1.13a4 4 0 1 0-4 0M17 7a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>'
+    ),
+    "cash": (
+        '<rect x="2" y="6" width="20" height="12" rx="2"/>'
+        '<circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/>'
+    ),
+    "live": (
+        '<circle cx="12" cy="12" r="3"/>'
+        '<path d="M5.5 5.5a9 9 0 0 0 0 13M18.5 5.5a9 9 0 0 1 0 13"/>'
+    ),
+    "shield": '<path d="M12 3 4 6v6c0 5 3.5 7.5 8 9 4.5-1.5 8-4 8-9V6l-8-3Z"/>',
+    "play": '<path d="M5 4v16M19 4v16M5 9h14M5 15h14"/>',
+    "gift": (
+        '<rect x="3" y="8" width="18" height="13" rx="1"/>'
+        '<path d="M3 12h18M12 8v13M12 8S9 3 7 5s5 3 5 3 3-5 5-3-5 3-5 3"/>'
+    ),
+}
+
+
+def _icon(name: str) -> str:
+    body = _ICONS.get(name, "")
+    return mark_safe(  # noqa: S308 — SVG littéral interne, aucune donnée externe
+        f'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        f'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" '
+        f'width="20" height="20">{body}</svg>'
+    )
+
+
+def _fmt(value) -> str:
+    """Sépare les milliers par une espace fine (lisibilité FR), sinon tel quel."""
+    if isinstance(value, int):
+        return f"{value:,}".replace(",", " ")
+    return str(value)
+
 
 class NeylaAdminSite(AdminSite):
     site_header = "Neyla TV — Administration"
@@ -42,39 +80,97 @@ class NeylaAdminSite(AdminSite):
         commission = [p["platform_commission_aura"] for p in series]
         tips = [p["tips_aura"] for p in series]
 
-        kpis = [
-            {"label": "Utilisateurs", "value": ov["users_total"], "group": "Audience"},
-            {"label": "Actifs 24h (DAU)", "value": ov["dau"], "group": "Audience"},
-            {"label": "Actifs 30j (MAU)", "value": ov["mau"], "group": "Audience"},
-            {"label": "Inscrits 7j", "value": gr["new_users_7d"], "group": "Audience"},
-            {"label": "Streamers", "value": ov["streamers_total"], "group": "Contenu"},
-            {"label": "En direct", "value": ov["live_now"], "group": "Contenu"},
-            {"label": "Streams 7j", "value": ov["streams_7d"], "group": "Contenu"},
-            {"label": "Heures diffusées", "value": ov["broadcast_hours"], "group": "Contenu"},
-            {"label": "Revenus 30j (FCFA)", "value": totals["purchases_xof"], "group": "Revenus"},
-            {"label": "Tips 30j (Aura)", "value": totals["tips_aura"], "group": "Revenus"},
-            {"label": "Abos 30j (Aura)", "value": totals["subs_aura"], "group": "Revenus"},
-            {
-                "label": "Commission 30j (Aura)",
-                "value": totals["platform_commission_aura"],
-                "group": "Revenus",
-            },
-            {"label": "Signalements ouverts", "value": mod["open_reports"], "group": "Modération"},
-            {"label": "Contenus à examiner", "value": mod["pending_flags"], "group": "Modération"},
-            {"label": "Risques ouverts", "value": mod["open_risk"], "group": "Modération"},
-            {
-                "label": "Retraits en attente",
-                "value": mod["pending_payouts"],
-                "group": "Modération",
-            },
+        hero = [
+            self._hero(
+                "Utilisateurs",
+                ov["users_total"],
+                f"+{gr['new_users_7d']} cette semaine",
+                "users",
+                new_users,
+                "#10b981",
+            ),
+            self._hero(
+                "Revenus 30j (FCFA)",
+                totals["purchases_xof"],
+                "Achats crédités",
+                "cash",
+                purchases,
+                "#3b82f6",
+            ),
+            self._hero(
+                "Commission 30j",
+                totals["platform_commission_aura"],
+                "Aura plateforme",
+                "shield",
+                commission,
+                "#f59e0b",
+            ),
+            self._hero(
+                "Tips 30j",
+                totals["tips_aura"],
+                "Aura offerts aux créateurs",
+                "gift",
+                tips,
+                "#d946ef",
+            ),
         ]
         charts = [
-            self._chart("Inscriptions / jour (30j)", new_users, "#10b981"),
+            self._chart("Inscriptions / jour", new_users, "#10b981"),
             self._chart("Revenus achats / jour (FCFA)", purchases, "#3b82f6"),
             self._chart("Commission / jour (Aura)", commission, "#f59e0b"),
             self._chart("Tips / jour (Aura)", tips, "#d946ef"),
         ]
-        return {"kpis": kpis, "charts": charts}
+        sections = [
+            {
+                "name": "Audience",
+                "icon": _icon("users"),
+                "items": [
+                    {"label": "Actifs 24h (DAU)", "value": _fmt(ov["dau"])},
+                    {"label": "Actifs 30j (MAU)", "value": _fmt(ov["mau"])},
+                    {"label": "Inscrits 7j", "value": _fmt(gr["new_users_7d"])},
+                ],
+            },
+            {
+                "name": "Contenu",
+                "icon": _icon("play"),
+                "items": [
+                    {"label": "Streamers", "value": _fmt(ov["streamers_total"])},
+                    {"label": "En direct", "value": _fmt(ov["live_now"])},
+                    {"label": "Streams 7j", "value": _fmt(ov["streams_7d"])},
+                    {"label": "Heures diffusées", "value": _fmt(ov["broadcast_hours"])},
+                ],
+            },
+            {
+                "name": "Revenus",
+                "icon": _icon("cash"),
+                "items": [
+                    {"label": "Abos 30j (Aura)", "value": _fmt(totals["subs_aura"])},
+                    {"label": "Tips 30j (Aura)", "value": _fmt(totals["tips_aura"])},
+                ],
+            },
+            {
+                "name": "Modération",
+                "icon": _icon("shield"),
+                "items": [
+                    {"label": "Signalements ouverts", "value": _fmt(mod["open_reports"])},
+                    {"label": "Contenus à examiner", "value": _fmt(mod["pending_flags"])},
+                    {"label": "Risques ouverts", "value": _fmt(mod["open_risk"])},
+                    {"label": "Retraits en attente", "value": _fmt(mod["pending_payouts"])},
+                ],
+            },
+        ]
+        return {"hero": hero, "charts": charts, "sections": sections}
+
+    @staticmethod
+    def _hero(label, value, sub, icon, values, color) -> dict:
+        return {
+            "label": label,
+            "value": _fmt(value),
+            "sub": sub,
+            "icon": _icon(icon),
+            "color": color,
+            "svg": mark_safe(_svg_area(values, color, w=300, h=40)),  # noqa: S308
+        }
 
     @staticmethod
     def _chart(title: str, values: list, color: str) -> dict:
