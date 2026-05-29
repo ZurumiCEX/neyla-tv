@@ -16,6 +16,7 @@ class RiskEvent(models.Model):
         MULTI_ACCOUNT = "multi_account", "Multi-comptes (IP partagée)"
         VIEW_INFLATION = "view_inflation", "Gonflage de vues"
         SUB_ABUSE = "sub_abuse", "Abus d'abonnement"
+        CHAT_BOT = "chat_bot", "Bot de chat"
 
     class Severity(models.IntegerChoices):
         LOW = 1, "Faible"

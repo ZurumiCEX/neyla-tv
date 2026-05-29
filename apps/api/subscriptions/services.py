@@ -71,9 +71,10 @@ def subscribe(user, channel_slug: str) -> Subscription:
     import contextlib
 
     with contextlib.suppress(Exception):
-        from safety.anticheat import evaluate_subscription
+        from safety.anticheat import evaluate_self_deal, evaluate_subscription
 
         evaluate_subscription(user, channel)
+        evaluate_self_deal(user, channel)
     return sub
 
 

@@ -126,6 +126,24 @@ def _load_banned_words() -> set[str]:
     return get_banned_words()
 
 
+def _detect_chat_spam(entries: list[tuple[int, str]]) -> tuple[bool, str]:
+    from safety.anticheat import detect_chat_spam
+
+    return detect_chat_spam(entries)
+
+
+@database_sync_to_async
+def _flag_chat_bot(user_id: int, channel_id: int, reason: str) -> None:
+    from accounts.models import User
+    from channels_app.models import Channel
+    from safety.anticheat import flag_chat_bot
+
+    user = User.objects.filter(pk=user_id).first()
+    channel = Channel.objects.filter(pk=channel_id).first()
+    if user and channel:
+        flag_chat_bot(user, channel, reason)
+
+
 @database_sync_to_async
 def _load_subscriber_ids(channel) -> set[int]:
     from subscriptions.services import subscriber_user_ids
@@ -149,8 +167,12 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
     subscriber_ids: set[int] = frozenset()
     is_shadow_banned: bool = False
     client_ip: str | None = None
+    _msg_log: list | None = None
+    _bot_flagged: bool = False
 
     async def connect(self) -> None:
+        self._msg_log = []
+        self._bot_flagged = False
         slug = self.scope["url_route"]["kwargs"]["slug"]
         self.channel_obj = await _get_channel(slug)
         if self.channel_obj is None:
@@ -259,6 +281,15 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
         await append_message(self.channel_obj.id, msg)
         await self.channel_layer.group_send(self.group_name, {"type": "chat.message", "msg": msg})
+
+        # Détection de bot de chat (best-effort, une seule alerte par connexion).
+        self._msg_log.append((msg["ts"], text))
+        self._msg_log = self._msg_log[-20:]
+        if not self._bot_flagged:
+            suspect, reason = _detect_chat_spam(self._msg_log)
+            if suspect:
+                self._bot_flagged = True
+                await _flag_chat_bot(user.pk, self.channel_obj.id, reason)
 
     # Handler du group_send.
     async def chat_message(self, event):
