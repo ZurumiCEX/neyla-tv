@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useT } from "@/lib/i18n";
 import { ChatBansManager } from "@/components/ChatBansManager";
 import { ChatPanel } from "@/components/ChatPanel";
+import { CollaborationManager } from "@/components/CollaborationManager";
 import { CopyButton } from "@/components/CopyButton";
 import { HlsPlayer } from "@/components/HlsPlayer";
 import { LiveBadge } from "@/components/LiveBadge";
@@ -29,6 +30,7 @@ type MyChannel = {
   category: Category | null;
   tags: string[];
   overlay_token: string;
+  collaborations_open: boolean;
   follower_count?: number;
   viewers?: number;
 };
@@ -63,7 +65,13 @@ type SubTier = {
   is_active?: boolean;
 };
 
-type Tab = "overview" | "audience" | "community" | "monetization" | "broadcast";
+type Tab =
+  | "overview"
+  | "audience"
+  | "community"
+  | "monetization"
+  | "collaboration"
+  | "broadcast";
 
 function formatDuration(seconds: number | null, t: TFn): string {
   if (seconds === null) return t("dash.durationOngoing");
@@ -226,6 +234,20 @@ export default function DashboardPage() {
     }
   }
 
+  async function toggleCollabOpen() {
+    if (!channel) return;
+    const next = !channel.collaborations_open;
+    setChannel((c) => (c ? { ...c, collaborations_open: next } : c));
+    try {
+      await authFetch("/api/channels/me", {
+        method: "PATCH",
+        body: JSON.stringify({ collaborations_open: next }),
+      });
+    } catch {
+      setChannel((c) => (c ? { ...c, collaborations_open: !next } : c));
+    }
+  }
+
   async function testAlert(kind: "follow" | "tip" | "subscribe") {
     try {
       await authFetch("/api/channels/me/overlay/test", {
@@ -280,6 +302,7 @@ export default function DashboardPage() {
     { id: "audience", label: t("dash.tab.audience") },
     { id: "community", label: t("dash.tab.community") },
     { id: "monetization", label: t("dash.tab.monetization") },
+    { id: "collaboration", label: t("dash.tab.collaboration") },
     { id: "broadcast", label: t("dash.tab.broadcast") },
   ];
 
@@ -618,6 +641,34 @@ export default function DashboardPage() {
                   {t("dash.payoutLink")}
                 </Link>
               </section>
+            </div>
+          )}
+
+          {/* COLLABORATION */}
+          {tab === "collaboration" && (
+            <div className="space-y-6">
+              <section className="flex items-center justify-between rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
+                <div>
+                  <h2 className="font-semibold">{t("collab.openTitle")}</h2>
+                  <p className="text-sm text-neutral-400">{t("collab.openDesc")}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={toggleCollabOpen}
+                  role="switch"
+                  aria-checked={channel.collaborations_open}
+                  className={`relative h-6 w-11 shrink-0 rounded-full transition ${
+                    channel.collaborations_open ? "bg-emerald-500" : "bg-neutral-700"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${
+                      channel.collaborations_open ? "left-[22px]" : "left-0.5"
+                    }`}
+                  />
+                </button>
+              </section>
+              <CollaborationManager />
             </div>
           )}
 

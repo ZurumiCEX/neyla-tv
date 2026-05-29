@@ -132,6 +132,7 @@ class MyChannelSerializer(serializers.ModelSerializer):
             "social_links",
             "tags",
             "overlay_token",
+            "collaborations_open",
             "rtmps_url",
             "rtmps_key",
             "hls_playback_url",

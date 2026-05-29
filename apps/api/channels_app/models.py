@@ -24,6 +24,8 @@ class Channel(models.Model):
     tags = models.JSONField(default=list, blank=True)
     # Jeton secret pour l'overlay d'alertes (browser source OBS, non authentifié).
     overlay_token = models.CharField(max_length=64, blank=True, db_index=True)
+    # Ouvre/suspend la réception d'invitations de collaboration.
+    collaborations_open = models.BooleanField(default=True)
     category = models.ForeignKey(
         "catalog.Game",
         null=True,
