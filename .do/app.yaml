@@ -136,7 +136,7 @@ services:
     routes:
       - path: /api
         preserve_path_prefix: true
-      - path: /admin
+      - path: /django-admin
         preserve_path_prefix: true
       - path: /ws
         preserve_path_prefix: true
