@@ -9,6 +9,14 @@ urlpatterns = [
     path("payments/purchase", views.purchase, name="payments-purchase"),
     path("payments/tip", views.tip, name="payments-tip"),
     path("payments/payout", views.payout, name="payments-payout"),
+    path(
+        "payments/withdrawal/eligibility",
+        views.withdrawal_eligibility,
+        name="withdrawal-eligibility",
+    ),
+    path("payments/withdrawal/quote", views.withdrawal_quote, name="withdrawal-quote"),
+    path("payments/withdrawal/start", views.withdrawal_start, name="withdrawal-start"),
+    path("payments/withdrawal/confirm", views.withdrawal_confirm, name="withdrawal-confirm"),
     path("payments/webhook/<str:provider>", views.webhook, name="payments-webhook"),
     # Admin revenue hub
     path("admin/transactions", admin_views.transactions, name="admin-transactions"),

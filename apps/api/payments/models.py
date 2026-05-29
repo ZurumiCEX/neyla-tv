@@ -120,6 +120,25 @@ class Tip(models.Model):
         return f"tip:{self.aura_amount}→{self.to_channel_id}"
 
 
+class PayoutOtp(models.Model):
+    """Code OTP à usage unique confirmant une demande de retrait."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="payout_otps"
+    )
+    aura_amount = models.PositiveIntegerField()
+    code_hash = models.CharField(max_length=64)
+    consumed = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"payout-otp:{self.user_id}:{self.aura_amount}"
+
+
 class Payout(models.Model):
     class Status(models.TextChoices):
         REQUESTED = "requested", "Demandé"

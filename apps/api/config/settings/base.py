@@ -243,10 +243,15 @@ AURA_UNIT_PRICE_XOF = env("AURA_UNIT_PRICE_XOF", default="5")
 EUR_XOF_RATE = env("EUR_XOF_RATE", default="655.957")
 USD_XOF_RATE = env("USD_XOF_RATE", default="600")
 CREATOR_SHARE = env.float("CREATOR_SHARE", default=0.70)
-# fake (défaut, confirme tout de suite) | stripe | mobile_money
+# Commission plateforme prélevée sur un retrait (part créateur = 1 - ce taux).
+WITHDRAWAL_FEE_PCT = env.float("WITHDRAWAL_FEE_PCT", default=0.30)
+# fake (défaut, confirme tout de suite) | stripe | mobile_money | orange_money | wave
 PAYMENTS_PROVIDER = env("PAYMENTS_PROVIDER", default="fake")
 STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="")
 STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET", default="")
+# Mobile money (agrégateurs régionaux). Vides → repli FAKE (confirme en dev).
+ORANGE_MONEY_API_KEY = env("ORANGE_MONEY_API_KEY", default="")
+WAVE_API_KEY = env("WAVE_API_KEY", default="")
 
 # --- Cloudflare Stream ---
 # Si CLOUDFLARE_API_TOKEN est vide, on bascule sur un client FAKE en dev/tests

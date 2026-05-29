@@ -23,6 +23,8 @@ from .serializers import (
     PurchaseSerializer,
     TipSerializer,
     WalletSerializer,
+    WithdrawalConfirmSerializer,
+    WithdrawalStartSerializer,
 )
 
 
@@ -62,6 +64,7 @@ def purchase(request: Request) -> Response:
         request.user,
         serializer.validated_data["credits"],
         idempotency_key=request.headers.get("Idempotency-Key") or None,
+        method=serializer.validated_data.get("method", "card"),
     )
     from . import conversion
 
@@ -112,6 +115,60 @@ def payout(request: Request) -> Response:
             serializer.validated_data["aura_amount"],
             idempotency_key=request.headers.get("Idempotency-Key") or None,
         )
+    except services.PaymentError as exc:
+        return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+    return Response(
+        {"aura_amount": obj.aura_amount, "fiat_amount": str(obj.fiat_amount), "status": obj.status},
+        status=status.HTTP_201_CREATED,
+    )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def withdrawal_eligibility(request: Request) -> Response:
+    """État d'éligibilité au retrait + solde retirable + frais."""
+    wallet = services.get_wallet(request.user)
+    return Response(
+        {
+            "is_streamer": services.is_eligible_streamer(request.user),
+            "balance": wallet.aura_balance,
+            "withdrawable": services.withdrawable_balance(request.user),
+            "fee_pct": round(services.withdrawal_fee_pct() * 100),
+            "unit_price_xof": str(services.aura_unit_price()),
+        }
+    )
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@ratelimit(key="user", rate="10/h", method="POST", block=True)
+def withdrawal_quote(request: Request) -> Response:
+    serializer = WithdrawalStartSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    return Response(services.withdrawal_quote(serializer.validated_data["aura_amount"]))
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@ratelimit(key="user", rate="10/h", method="POST", block=True)
+def withdrawal_start(request: Request) -> Response:
+    serializer = WithdrawalStartSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    try:
+        services.start_withdrawal(request.user, serializer.validated_data["aura_amount"])
+    except services.PaymentError as exc:
+        return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+    return Response({"otp_sent": True, "ttl_minutes": services.WITHDRAWAL_OTP_TTL_MIN})
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@ratelimit(key="user", rate="15/h", method="POST", block=True)
+def withdrawal_confirm(request: Request) -> Response:
+    serializer = WithdrawalConfirmSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    try:
+        obj = services.confirm_withdrawal(request.user, serializer.validated_data["code"])
     except services.PaymentError as exc:
         return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
     return Response(

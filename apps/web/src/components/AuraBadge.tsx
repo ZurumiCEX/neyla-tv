@@ -35,6 +35,72 @@ export function nextAuraTier(balance: number): AuraTier | null {
   return AURA_TIERS.find((t) => balance < t.min) ?? null;
 }
 
+// Emblèmes par palier (inspirés de la charte). viewBox 48x48, centré en x=24,
+// dessiné en `currentColor` (couleur du palier).
+function Emblem({ tierKey }: { tierKey: string }) {
+  const stroke = {
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 3,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+  };
+  switch (tierKey) {
+    case "spark":
+      return (
+        <>
+          <polygon points="24,3 28,8 24,13 20,8" fill="currentColor" />
+          <path d="M13 17 L24 24 L35 17" {...stroke} />
+          <path d="M13 25 L24 32 L35 25" {...stroke} />
+          <circle cx="24" cy="41" r="3.2" fill="currentColor" />
+        </>
+      );
+    case "glow":
+      return (
+        <>
+          <polygon points="17,6 31,6 24,15" fill="currentColor" />
+          <circle cx="24" cy="22" r="6" {...stroke} />
+          <path d="M16 30 H32 L24 43 Z" fill="currentColor" />
+        </>
+      );
+    case "radiant":
+      return (
+        <>
+          <polygon points="24,3 30,9 24,15 18,9" fill="currentColor" />
+          <path d="M11 30 A13 13 0 0 1 37 30" {...stroke} />
+          <rect x="12" y="34" width="24" height="3.2" rx="1.6" fill="currentColor" />
+          <rect x="12" y="40" width="24" height="3.2" rx="1.6" fill="currentColor" />
+        </>
+      );
+    case "halo":
+      return (
+        <>
+          <polygon points="24,3 30,9 24,15 18,9" {...stroke} strokeWidth={2.5} />
+          <path d="M13 19 L24 26 L35 19" {...stroke} />
+          <path d="M13 27 L24 34 L35 27" {...stroke} />
+          <circle cx="24" cy="42" r="3.2" fill="currentColor" />
+        </>
+      );
+    case "nova":
+      return (
+        <>
+          <circle cx="24" cy="9" r="4.5" fill="currentColor" />
+          <path d="M13 42 V24 L24 18 L35 24 V42" {...stroke} strokeWidth={4} />
+        </>
+      );
+    case "supreme":
+      return (
+        <>
+          <path d="M12 6 L17 12 L24 5 L31 12 L36 6 L34 18 H14 Z" fill="currentColor" />
+          <polygon points="24,22 31,30 24,38 17,30" fill="currentColor" />
+          <circle cx="24" cy="43" r="3" fill="currentColor" />
+        </>
+      );
+    default:
+      return <polygon points="24,6 30,24 24,42 18,24" fill="currentColor" />;
+  }
+}
+
 export function AuraBadge({
   tier,
   size = 40,
@@ -44,39 +110,19 @@ export function AuraBadge({
   size?: number;
   locked?: boolean;
 }) {
-  const color = locked ? "#52525b" : tier.color;
-  const id = `aura-grad-${tier.key}`;
   return (
     <svg
       width={size}
       height={size}
       viewBox="0 0 48 48"
       aria-hidden
-      style={locked ? undefined : { filter: `drop-shadow(0 0 6px ${tier.glow})` }}
+      style={{
+        color: locked ? "#52525b" : tier.color,
+        opacity: locked ? 0.55 : 1,
+        filter: locked ? undefined : `drop-shadow(0 0 5px ${tier.glow})`,
+      }}
     >
-      <defs>
-        <radialGradient id={id} cx="50%" cy="40%" r="65%">
-          <stop offset="0%" stopColor="#ffffff" stopOpacity={locked ? 0.15 : 0.9} />
-          <stop offset="55%" stopColor={color} />
-          <stop offset="100%" stopColor={color} stopOpacity="0.7" />
-        </radialGradient>
-      </defs>
-      {/* Étoile Aura à 4 branches, taille du halo croissante avec le palier. */}
-      <path
-        d="M24 3l4.6 12.8L41 20l-12.4 4.2L24 37l-4.6-12.8L7 20l12.4-4.2L24 3z"
-        fill={`url(#${id})`}
-        stroke={color}
-        strokeWidth="1"
-        strokeLinejoin="round"
-      />
-      {/* Couronne de points = niveau du palier. */}
-      {!locked &&
-        Array.from({ length: tier.index + 1 }).map((_, i) => {
-          const angle = (i / (tier.index + 1)) * Math.PI * 2 - Math.PI / 2;
-          const cx = 24 + Math.cos(angle) * 19;
-          const cy = 24 + Math.sin(angle) * 19;
-          return <circle key={i} cx={cx} cy={cy} r="1.6" fill={color} />;
-        })}
+      <Emblem tierKey={tier.key} />
     </svg>
   );
 }
