@@ -67,3 +67,46 @@ def test_overview(auth_client_factory):
     mod = UserFactory(role=User.Role.MODERATOR)
     data = auth_client_factory(mod).get(reverse("safety-overview")).json()
     assert "open_risk_events" in data and "pending_flags" in data
+
+
+def test_view_inflation_flagged():
+    creator = UserFactory()
+    channel = Channel.objects.get(user=creator)
+    # 0 follower, 0 IP distincte → tout viewer élevé est suspect.
+    anticheat.evaluate_view_inflation(channel, 200)
+    assert RiskEvent.objects.filter(user=creator, kind=RiskEvent.Kind.VIEW_INFLATION).exists()
+
+
+def test_view_inflation_ignored_under_min():
+    creator = UserFactory()
+    channel = Channel.objects.get(user=creator)
+    anticheat.evaluate_view_inflation(channel, anticheat.VIEW_MIN_SUSPICIOUS - 1)
+    assert not RiskEvent.objects.filter(user=creator, kind=RiskEvent.Kind.VIEW_INFLATION).exists()
+
+
+def test_subscription_churn_flagged():
+    creator = UserFactory()
+    channel = Channel.objects.get(user=creator)
+    from subscriptions import services as subs
+
+    subs.set_tier(channel, price_aura=10, perks=[])
+    fan = UserFactory()
+    pay.create_purchase(fan, 1000)
+    # Plusieurs cycles abonnement → paiements SUB_PAID répétés.
+    for _ in range(anticheat.SUB_CHURN_MAX):
+        subs.subscribe(fan, channel.slug)
+        subs.cancel(fan, channel.slug)
+    assert RiskEvent.objects.filter(user=fan, kind=RiskEvent.Kind.SUB_ABUSE).exists()
+
+
+def test_subscription_creator_burst_flagged():
+    creator = UserFactory()
+    channel = Channel.objects.get(user=creator)
+    from subscriptions import services as subs
+
+    subs.set_tier(channel, price_aura=1, perks=[])
+    for _ in range(anticheat.SUB_CREATOR_MAX):
+        fan = UserFactory()
+        pay.create_purchase(fan, 100)
+        subs.subscribe(fan, channel.slug)
+    assert RiskEvent.objects.filter(user=creator, kind=RiskEvent.Kind.SUB_ABUSE).exists()

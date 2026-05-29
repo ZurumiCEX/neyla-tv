@@ -67,6 +67,13 @@ def subscribe(user, channel_slug: str) -> Subscription:
     from gamification.services import check_and_award
 
     check_and_award(user, "subscription")
+
+    import contextlib
+
+    with contextlib.suppress(Exception):
+        from safety.anticheat import evaluate_subscription
+
+        evaluate_subscription(user, channel)
     return sub
 
 
