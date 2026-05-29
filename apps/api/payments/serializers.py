@@ -71,6 +71,9 @@ class PurchaseHistorySerializer(serializers.ModelSerializer):
 
 class PurchaseSerializer(serializers.Serializer):
     credits = serializers.IntegerField(min_value=1, max_value=1_000_000)
+    method = serializers.ChoiceField(
+        choices=["card", "orange_money", "wave"], required=False, default="card"
+    )
 
 
 class TipSerializer(serializers.Serializer):
@@ -81,3 +84,11 @@ class TipSerializer(serializers.Serializer):
 
 class PayoutSerializer(serializers.Serializer):
     aura_amount = serializers.IntegerField(min_value=1, max_value=1_000_000)
+
+
+class WithdrawalStartSerializer(serializers.Serializer):
+    aura_amount = serializers.IntegerField(min_value=1, max_value=1_000_000)
+
+
+class WithdrawalConfirmSerializer(serializers.Serializer):
+    code = serializers.CharField(max_length=6)

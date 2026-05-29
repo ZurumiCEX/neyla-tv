@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import decimal
 
 from django.conf import settings
@@ -91,7 +92,11 @@ def confirm_purchase(purchase: Purchase) -> Purchase:
 
 
 def create_purchase(
-    user, credits: int, currency: str = "XOF", idempotency_key: str | None = None
+    user,
+    credits: int,
+    currency: str = "XOF",
+    idempotency_key: str | None = None,
+    method: str = "",
 ) -> tuple[Purchase, dict]:
     credits = int(credits)
     if credits <= 0:
@@ -103,15 +108,18 @@ def create_purchase(
                 "checkout_url": None,
                 "auto_confirm": existing.status == Purchase.Status.PAID,
             }
+    from .providers import method_to_provider
+
+    provider_name = method_to_provider(method) if method else get_provider_name()
     purchase = Purchase.objects.create(
         user=user,
         credits=credits,
         fiat_amount=_fiat_for(credits),
         currency=currency,
-        provider=get_provider_name(),
+        provider=provider_name,
         idempotency_key=idempotency_key or None,
     )
-    result = get_provider().create_checkout(purchase)
+    result = get_provider(provider_name).create_checkout(purchase)
     purchase.provider_ref = result.get("provider_ref", "")
     purchase.save(update_fields=["provider_ref"])
     if result.get("auto_confirm"):
@@ -192,7 +200,9 @@ def _after_tip(tip: Tip, from_user, channel) -> None:
 
 
 @transaction.atomic
-def request_payout(user, aura_amount: int, idempotency_key: str | None = None) -> Payout:
+def request_payout(
+    user, aura_amount: int, idempotency_key: str | None = None, fee_pct: float = 0.0
+) -> Payout:
     aura_amount = int(aura_amount)
     if aura_amount <= 0:
         raise PaymentError("Montant invalide.")
@@ -204,16 +214,154 @@ def request_payout(user, aura_amount: int, idempotency_key: str | None = None) -
     if wallet.aura_balance < aura_amount:
         raise InsufficientBalanceError("Solde Aura insuffisant.")
     _apply(wallet, -aura_amount, LedgerEntry.Kind.PAYOUT, "payout")
+    # Le montant fiat versé est net de la commission de retrait (part créateur).
+    fee_pct = max(0.0, min(float(fee_pct), 1.0))
+    net_fiat = _fiat_for(aura_amount) * decimal.Decimal(str(1.0 - fee_pct))
     payout = Payout.objects.create(
         user=user,
         aura_amount=aura_amount,
-        fiat_amount=_fiat_for(aura_amount),
+        fiat_amount=net_fiat.quantize(decimal.Decimal("0.01")),
         idempotency_key=idempotency_key or None,
     )
     from audit.services import record
 
-    record(user, "payout.request", target=payout, meta={"aura": aura_amount})
+    record(user, "payout.request", target=payout, meta={"aura": aura_amount, "fee_pct": fee_pct})
     return payout
+
+
+# --- Retrait : éligibilité, solde retirable, devis, OTP -----------------------
+
+WITHDRAWAL_OTP_TTL_MIN = 10
+
+
+def is_eligible_streamer(user) -> bool:
+    """Seuls les streamers approuvés (chaîne provisionnée) peuvent retirer."""
+    channel = getattr(user, "channel", None)
+    return bool(channel and channel.is_provisioned)
+
+
+def withdrawable_balance(user) -> int:
+    """Aura retirable = reçue des utilisateurs (tips + abonnements), hors achats,
+    diminuée des retraits déjà demandés, plafonnée par le solde courant."""
+    from django.db.models import Sum
+
+    earned = (
+        LedgerEntry.objects.filter(
+            wallet__user=user,
+            kind__in=[LedgerEntry.Kind.TIP_RECEIVED, LedgerEntry.Kind.SUB_EARNED],
+        ).aggregate(s=Sum("amount"))["s"]
+        or 0
+    )
+    withdrawn = (
+        Payout.objects.filter(user=user)
+        .exclude(status=Payout.Status.FAILED)
+        .aggregate(s=Sum("aura_amount"))["s"]
+        or 0
+    )
+    available = int(earned) - int(withdrawn)
+    balance = get_wallet(user).aura_balance
+    return max(0, min(available, balance))
+
+
+def withdrawal_fee_pct() -> float:
+    return float(getattr(settings, "WITHDRAWAL_FEE_PCT", 0.30))
+
+
+def withdrawal_quote(aura_amount: int) -> dict:
+    aura_amount = max(0, int(aura_amount))
+    fee_pct = withdrawal_fee_pct()
+    fee_aura = int(aura_amount * fee_pct)
+    net_aura = aura_amount - fee_aura
+    return {
+        "aura": aura_amount,
+        "fee_pct": round(fee_pct * 100),
+        "fee_aura": fee_aura,
+        "net_aura": net_aura,
+        "net_fiat": str(_fiat_for(net_aura)),
+        "currency": "XOF",
+    }
+
+
+def start_withdrawal(user, aura_amount: int):
+    """Valide la demande et émet un code OTP (envoyé hors-bande)."""
+    import secrets
+
+    from .models import PayoutOtp
+
+    if not is_eligible_streamer(user):
+        raise PaymentError("Seuls les streamers approuvés peuvent demander un retrait.")
+    aura_amount = int(aura_amount)
+    if aura_amount <= 0:
+        raise PaymentError("Montant invalide.")
+    if aura_amount > withdrawable_balance(user):
+        raise InsufficientBalanceError("Montant supérieur à ton solde retirable.")
+    from django.utils import timezone
+
+    # Invalide les OTP en attente précédents.
+    PayoutOtp.objects.filter(user=user, consumed=False).update(consumed=True)
+    code = f"{secrets.randbelow(1_000_000):06d}"
+    otp = PayoutOtp.objects.create(
+        user=user,
+        aura_amount=aura_amount,
+        code_hash=_hash_otp(code),
+        expires_at=timezone.now() + timezone.timedelta(minutes=WITHDRAWAL_OTP_TTL_MIN),
+    )
+    _send_withdrawal_otp(user, code)
+    return otp
+
+
+def confirm_withdrawal(user, code: str) -> Payout:
+    """Vérifie l'OTP puis crée le retrait (commission plateforme appliquée)."""
+    from django.utils import timezone
+
+    from .models import PayoutOtp
+
+    otp = (
+        PayoutOtp.objects.filter(user=user, consumed=False, expires_at__gte=timezone.now())
+        .order_by("-created_at")
+        .first()
+    )
+    if otp is None or not _verify_otp(otp.code_hash, code):
+        raise PaymentError("Code de vérification invalide ou expiré.")
+    otp.consumed = True
+    otp.save(update_fields=["consumed"])
+    return request_payout(user, otp.aura_amount, fee_pct=withdrawal_fee_pct())
+
+
+def _hash_otp(code: str) -> str:
+    import hashlib
+
+    return hashlib.sha256(code.encode()).hexdigest()
+
+
+def _verify_otp(code_hash: str, code: str) -> bool:
+    import hmac as _hmac
+
+    return _hmac.compare_digest(code_hash, _hash_otp((code or "").strip()))
+
+
+def _send_withdrawal_otp(user, code: str) -> None:
+    """Envoie le code par email + notification in-app (best-effort)."""
+    ttl = WITHDRAWAL_OTP_TTL_MIN
+    with contextlib.suppress(Exception):
+        from django.conf import settings as _s
+        from django.core.mail import send_mail
+
+        send_mail(
+            subject="Code de confirmation de retrait — Neyla TV",
+            message=f"Ton code de confirmation de retrait est : {code}\nValable {ttl} minutes.",
+            from_email=_s.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            fail_silently=True,
+        )
+    with contextlib.suppress(Exception):
+        from notifications.services import send_support_message
+
+        send_support_message(
+            user,
+            "Confirmation de retrait",
+            f"Ton code de confirmation est : {code} (valable {ttl} min).",
+        )
 
 
 @transaction.atomic

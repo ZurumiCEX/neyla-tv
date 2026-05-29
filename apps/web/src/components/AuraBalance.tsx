@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { useT } from "@/lib/i18n";
+import { AuraBadge, auraTier } from "@/components/AuraBadge";
 
 export function AuraBalance() {
   const { user, loading, authFetch } = useAuth();
@@ -17,14 +18,16 @@ export function AuraBalance() {
       .catch(() => setBalance(null));
   }, [loading, user, authFetch]);
 
+  const tier = balance !== null ? auraTier(balance) : null;
+
   return (
     <Link
       href="/wallet"
       aria-label={t("nav.aura")}
-      title={t("nav.aura")}
+      title={tier ? t(`aura.tier.${tier.key}`) : t("nav.aura")}
       className="flex h-9 items-center gap-1.5 rounded-full bg-neutral-900 px-2.5 text-amber-300 hover:bg-neutral-800"
     >
-      <AuraIcon />
+      {tier ? <AuraBadge tier={tier} size={18} /> : <AuraIcon />}
       <span className="text-xs font-semibold tabular-nums">
         {balance === null ? t("nav.aura") : balance.toLocaleString("fr-FR")}
       </span>
