@@ -83,7 +83,20 @@ def my_channel(request: Request) -> Response:
     serializer = MyChannelSerializer(channel, data=request.data, partial=True)
     serializer.is_valid(raise_exception=True)
     serializer.save()
+    _scan_channel_text(channel)
     return Response(serializer.data)
+
+
+def _scan_channel_text(channel) -> None:
+    """Analyse anti-violation du titre + tags (best-effort)."""
+    try:
+        from safety.services import scan_text
+
+        scan_text(channel.title, "title", channel=channel)
+        for tag in channel.tags or []:
+            scan_text(tag, "tag", channel=channel)
+    except Exception:  # noqa: BLE001
+        logger.debug("channel text scan failed", exc_info=True)
 
 
 @api_view(["GET"])

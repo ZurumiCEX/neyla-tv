@@ -14,6 +14,7 @@ const TABS: { href: string; labelKey: string; roles: string[] }[] = [
   { href: "/admin/fees", labelKey: "admin.tab.fees", roles: ["admin"] },
   { href: "/admin/users", labelKey: "admin.tab.users", roles: ["admin"] },
   { href: "/admin/reports", labelKey: "admin.tab.reports", roles: ["admin", "moderator"] },
+  { href: "/admin/safety", labelKey: "admin.tab.safety", roles: ["admin", "moderator"] },
   { href: "/admin/messages", labelKey: "admin.tab.messages", roles: ["admin", "support"] },
   { href: "/admin/analytics", labelKey: "admin.tab.analytics", roles: ["admin"] },
 ];

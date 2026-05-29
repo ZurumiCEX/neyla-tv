@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import contextlib
+
 from rest_framework import status
 from rest_framework.decorators import api_view, parser_classes, permission_classes
 from rest_framework.exceptions import NotFound, ValidationError
@@ -27,6 +29,14 @@ def _upload(request: Request, folder: str) -> str:
         raise ValidationError({"file": str(exc)}) from exc
 
 
+def _scan_image(url: str, source: str, *, user=None, channel=None) -> None:
+    """Analyse anti-violation best-effort (n'interrompt jamais l'upload)."""
+    with contextlib.suppress(Exception):
+        from safety.services import scan_image
+
+        scan_image(url, source, user=user, channel=channel)
+
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 @parser_classes([MultiPartParser, FormParser])
@@ -34,6 +44,7 @@ def upload_avatar(request: Request) -> Response:
     url = _upload(request, "avatars")
     request.user.avatar_url = url
     request.user.save(update_fields=["avatar_url"])
+    _scan_image(url, "avatar", user=request.user)
     return Response({"url": url}, status=status.HTTP_201_CREATED)
 
 
@@ -47,6 +58,7 @@ def upload_banner(request: Request) -> Response:
     )
     channel.banner_url = url
     channel.save(update_fields=["banner_url", "updated_at"])
+    _scan_image(url, "banner", user=request.user, channel=channel)
     return Response({"url": url}, status=status.HTTP_201_CREATED)
 
 

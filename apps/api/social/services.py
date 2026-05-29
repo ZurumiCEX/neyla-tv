@@ -35,6 +35,13 @@ def follow_user(follower: User, target_username: str) -> Follow:
         from gamification.services import check_and_award
 
         check_and_award(target, "follow_received")
+
+        import contextlib
+
+        with contextlib.suppress(Exception):
+            from safety.anticheat import evaluate_follow
+
+            evaluate_follow(follower, target)
     return follow
 
 
