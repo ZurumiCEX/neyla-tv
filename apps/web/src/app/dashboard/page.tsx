@@ -424,14 +424,14 @@ export default function DashboardPage() {
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     maxLength={140}
-                    className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-emerald-500"
+                    className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-secondary-light"
                   />
                 </Field>
                 <Field label={t("dash.category")}>
                   <select
                     value={categorySlug}
                     onChange={(e) => setCategorySlug(e.target.value)}
-                    className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-emerald-500"
+                    className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-secondary-light"
                   >
                     <option value="">{t("dash.categoryNone")}</option>
                     {categories.map((c) => (
@@ -472,7 +472,7 @@ export default function DashboardPage() {
                         onBlur={addTag}
                         maxLength={24}
                         placeholder={t("dash.tagsPlaceholder")}
-                        className="min-w-[8rem] flex-1 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-100 outline-none focus:border-emerald-500"
+                        className="min-w-[8rem] flex-1 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-100 outline-none focus:border-secondary-light"
                       />
                     )}
                   </div>
@@ -588,8 +588,8 @@ export default function DashboardPage() {
           {/* MONÉTISATION */}
           {tab === "monetization" && (
             <div className="space-y-6">
-              <section className="space-y-3 rounded-2xl border border-fuchsia-500/30 bg-fuchsia-500/5 p-5">
-                <h2 className="font-semibold text-fuchsia-300">{t("dash.subTitle")}</h2>
+              <section className="space-y-3 rounded-2xl border border-secondary/40 bg-secondary/10 p-5">
+                <h2 className="font-semibold text-secondary-light">{t("dash.subTitle")}</h2>
                 <p className="text-xs text-neutral-400">{t("dash.subDesc")}</p>
                 <Field label={t("dash.subPrice")}>
                   <input
@@ -597,7 +597,7 @@ export default function DashboardPage() {
                     min={1}
                     value={tierPrice}
                     onChange={(e) => setTierPrice(e.target.value)}
-                    className="w-40 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-fuchsia-500"
+                    className="w-40 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-secondary-light"
                   />
                 </Field>
                 <Field label={t("dash.subPerks")}>
@@ -606,7 +606,7 @@ export default function DashboardPage() {
                     onChange={(e) => setTierPerks(e.target.value)}
                     rows={3}
                     placeholder={"Badge abonné\nStickers exclusifs"}
-                    className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-fuchsia-500"
+                    className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-secondary-light"
                   />
                 </Field>
                 <label className="flex items-center gap-2 text-sm text-neutral-300">
@@ -614,7 +614,7 @@ export default function DashboardPage() {
                     type="checkbox"
                     checked={tierActive}
                     onChange={(e) => setTierActive(e.target.checked)}
-                    className="h-4 w-4 accent-fuchsia-500"
+                    className="h-4 w-4 accent-[#5D1C6A]"
                   />
                   {t("dash.subOpen")}
                 </label>
@@ -623,11 +623,11 @@ export default function DashboardPage() {
                     type="button"
                     onClick={saveTier}
                     disabled={tierSaving}
-                    className="rounded-lg bg-fuchsia-500 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-fuchsia-400 disabled:opacity-50"
+                    className="rounded-lg bg-secondary px-4 py-2 text-sm font-semibold text-white hover:bg-secondary-light disabled:opacity-50"
                   >
                     {tierSaving ? t("common.saving") : t("dash.subSave")}
                   </button>
-                  {tierSaved && <span className="text-sm text-fuchsia-300">{t("common.saved")}</span>}
+                  {tierSaved && <span className="text-sm text-secondary-light">{t("common.saved")}</span>}
                 </div>
               </section>
 
@@ -759,7 +759,7 @@ export default function DashboardPage() {
                     <button
                       type="button"
                       onClick={() => testAlert("subscribe")}
-                      className="rounded-lg border border-neutral-700 px-3 py-1 text-xs hover:border-fuchsia-500"
+                      className="rounded-lg border border-neutral-700 px-3 py-1 text-xs hover:border-secondary-light"
                     >
                       {t("dash.alertSub")}
                     </button>

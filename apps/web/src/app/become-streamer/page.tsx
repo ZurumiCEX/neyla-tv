@@ -103,7 +103,7 @@ export default function BecomeStreamerPage() {
             maxLength={1000}
             rows={4}
             placeholder={t("bs.placeholder")}
-            className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-emerald-500"
+            className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-secondary-light"
           />
           <button
             type="button"

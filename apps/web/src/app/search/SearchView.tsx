@@ -51,7 +51,7 @@ export function SearchView() {
         value={q}
         onChange={(e) => setQ(e.target.value)}
         placeholder={t("search.placeholder")}
-        className="mt-4 w-full rounded-lg border border-neutral-700 bg-neutral-900 px-4 py-2 text-neutral-100 outline-none focus:border-emerald-500"
+        className="mt-4 w-full rounded-lg border border-neutral-700 bg-neutral-900 px-4 py-2 text-neutral-100 outline-none focus:border-secondary-light"
       />
 
       {busy && <p className="mt-4 text-xs text-neutral-500">{t("search.searching")}</p>}

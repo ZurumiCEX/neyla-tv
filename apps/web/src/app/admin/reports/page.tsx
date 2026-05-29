@@ -84,7 +84,7 @@ export default function AdminReportsPage() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-emerald-500"
+            className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-secondary-light"
           >
             {STATUSES.map((s) => (
               <option key={s.value} value={s.value}>

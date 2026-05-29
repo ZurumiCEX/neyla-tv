@@ -69,7 +69,7 @@ export default function AdminTransactionsPage() {
         <select
           value={type}
           onChange={(e) => setType(e.target.value)}
-          className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-emerald-500"
+          className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-secondary-light"
         >
           {TYPES.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -81,7 +81,7 @@ export default function AdminTransactionsPage() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder={t("admin.tx.searchUser")}
-          className="flex-1 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-emerald-500"
+          className="flex-1 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-secondary-light"
         />
         <span className="ml-auto rounded-full bg-neutral-800 px-3 py-1 text-sm text-neutral-300">
           {t("admin.tx.results", { count })}
