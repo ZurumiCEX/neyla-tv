@@ -91,6 +91,35 @@ def grant_aura(user, amount: int, kind: str, reference: str = "", metadata: dict
 
 
 @transaction.atomic
+def adjust_balance(actor, user, amount: int, reason: str = "") -> Wallet:
+    """Ajustement manuel du solde Aura par un administrateur (tracé au ledger + audit).
+
+    ``amount`` peut être positif (crédit) ou négatif (débit). Lève
+    ``InsufficientBalanceError`` si le débit rendrait le solde négatif.
+    """
+    from audit.services import record
+
+    amount = int(amount)
+    if amount == 0:
+        raise PaymentError("Le montant de l'ajustement ne peut pas être nul.")
+    wallet = Wallet.objects.select_for_update().get_or_create(user=user)[0]
+    _apply(
+        wallet,
+        amount,
+        LedgerEntry.Kind.ADJUSTMENT,
+        reference=reason[:255],
+        metadata={"reason": reason, "by": getattr(actor, "username", "")},
+    )
+    record(
+        actor,
+        "wallet.adjust",
+        target=user,
+        meta={"amount": amount, "reason": reason, "balance_after": wallet.aura_balance},
+    )
+    return wallet
+
+
+@transaction.atomic
 def confirm_purchase(purchase: Purchase) -> Purchase:
     """Idempotent : crédite le wallet une seule fois (anti-rejeu webhook)."""
     if purchase.status == Purchase.Status.PAID:

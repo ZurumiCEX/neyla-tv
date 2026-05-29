@@ -1,0 +1,23 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<p>Ajustement du solde Aura pour {{ wallets|length }} portefeuille(s) :</p>
+<ul>
+  {% for w in wallets %}<li>{{ w.user }} — solde actuel : {{ w.aura_balance }}</li>{% endfor %}
+</ul>
+
+<form method="post">
+  {% csrf_token %}
+  {% for pk in selected %}
+  <input type="hidden" name="{{ action_checkbox_name }}" value="{{ pk }}">
+  {% endfor %}
+  <input type="hidden" name="action" value="adjust_aura">
+
+  <div>{{ form.as_p }}</div>
+
+  <div class="submit-row">
+    <input type="submit" name="apply" value="Appliquer l'ajustement" class="default">
+    <a href="../" class="button cancel-link">Annuler</a>
+  </div>
+</form>
+{% endblock %}

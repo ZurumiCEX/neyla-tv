@@ -1,11 +1,25 @@
 from __future__ import annotations
 
+from django import forms
 from django.contrib import admin, messages
 from django.db.models import Sum
+from django.template.response import TemplateResponse
 
 from config.admin_widgets import stat_grid
 
 from .models import FeeRule, LedgerEntry, Payout, PayoutOtp, Purchase, Tip, Wallet
+
+
+class AuraAdjustmentForm(forms.Form):
+    """Formulaire intermédiaire de l'action d'ajustement de solde Aura."""
+
+    amount = forms.IntegerField(
+        label="Montant Aura (négatif pour débiter)",
+        help_text="Ex. 500 pour créditer, -200 pour débiter.",
+    )
+    reason = forms.CharField(
+        label="Motif", widget=forms.Textarea(attrs={"rows": 3}), max_length=255
+    )
 
 
 class LedgerEntryInline(admin.TabularInline):
@@ -39,7 +53,41 @@ class WalletAdmin(admin.ModelAdmin):
     ordering = ("-aura_balance",)
     list_per_page = 50
     inlines = (LedgerEntryInline,)
+    actions = ("adjust_aura",)
     readonly_fields = ("ledger_summary", "user", "aura_balance", "created_at")
+
+    @admin.action(description="Ajuster le solde Aura…")
+    def adjust_aura(self, request, queryset):
+        from . import services
+
+        if "apply" in request.POST:
+            form = AuraAdjustmentForm(request.POST)
+            if form.is_valid():
+                amount = form.cleaned_data["amount"]
+                reason = form.cleaned_data["reason"]
+                done = 0
+                for wallet in queryset:
+                    try:
+                        services.adjust_balance(request.user, wallet.user, amount, reason)
+                        done += 1
+                    except services.PaymentError as exc:
+                        self.message_user(request, f"{wallet.user}: {exc}", level=messages.WARNING)
+                self.message_user(
+                    request, f"{done} portefeuille(s) ajusté(s).", level=messages.SUCCESS
+                )
+                return None
+        else:
+            form = AuraAdjustmentForm()
+        context = {
+            **self.admin_site.each_context(request),
+            "title": "Ajuster le solde Aura",
+            "wallets": queryset,
+            "form": form,
+            "action_checkbox_name": admin.helpers.ACTION_CHECKBOX_NAME,
+            "selected": queryset.values_list("pk", flat=True),
+            "opts": self.model._meta,
+        }
+        return TemplateResponse(request, "admin/payments/adjust_aura.html", context)
 
     @admin.display(description="Synthèse des mouvements")
     def ledger_summary(self, obj: Wallet):

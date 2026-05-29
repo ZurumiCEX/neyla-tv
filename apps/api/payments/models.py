@@ -28,6 +28,7 @@ class LedgerEntry(models.Model):
         SUB_EARNED = "sub_earned", "Abonnement reçu"
         PAYOUT = "payout", "Retrait"
         REFERRAL = "referral", "Parrainage"
+        ADJUSTMENT = "adjustment", "Ajustement admin"
 
     wallet = models.ForeignKey(Wallet, on_delete=models.CASCADE, related_name="entries")
     amount = models.IntegerField()  # Aura signé
