@@ -213,9 +213,17 @@ def _daily_new_users(days: int) -> list[dict]:
 
 def admin_dashboard_metrics(days: int = 30) -> dict:
     """Agrégat complet pour le tableau de bord du Django admin (KPIs + séries)."""
+    from django.db.models import Q
+
+    from catalog.models import Game
+    from channels_app.models import Channel
+    from gamification.models import UserAchievement
     from moderation.models import Report
-    from payments.models import Payout, Purchase
+    from payments.models import Payout, Purchase, Tip
     from safety.models import ContentFlag, RiskEvent
+    from social.models import Follow
+    from streamers.models import StreamerApplication
+    from subscriptions.models import Subscription
 
     overview = platform_overview()
     growth = growth_metrics()
@@ -223,6 +231,28 @@ def admin_dashboard_metrics(days: int = 30) -> dict:
     revenue = _revenue_series(window)
     since = timezone.now() - timedelta(days=window)
     paid = Purchase.objects.filter(status=Purchase.Status.PAID, created_at__gte=since)
+
+    live = list(
+        Channel.objects.filter(is_live=True)
+        .select_related("user", "category")
+        .annotate(followers=Count("user__followers", distinct=True))
+        .order_by("-followers")[:8]
+    )
+    live_channels = [
+        {
+            "username": c.user.username,
+            "followers": c.followers,
+            "category": c.category.name if c.category_id else "—",
+        }
+        for c in live
+    ]
+    top_games = [
+        {"name": g.name, "channels": g.n_channels, "live": g.n_live}
+        for g in Game.objects.annotate(
+            n_channels=Count("channels", distinct=True),
+            n_live=Count("channels", filter=Q(channels__is_live=True), distinct=True),
+        ).order_by("-n_channels")[:6]
+    ]
     return {
         "overview": overview,
         "growth": growth,
@@ -231,7 +261,20 @@ def admin_dashboard_metrics(days: int = 30) -> dict:
         "commerce": {
             "paying_users": paid.values("user").distinct().count(),
             "purchases_count": paid.count(),
+            "tips_count": Tip.objects.filter(created_at__gte=since).count(),
         },
+        "content": {
+            "follows_total": Follow.objects.count(),
+            "subscriptions_active": Subscription.objects.filter(
+                status=Subscription.Status.ACTIVE
+            ).count(),
+            "games_count": Game.objects.count(),
+            "apps_pending": StreamerApplication.objects.filter(
+                status=StreamerApplication.Status.PENDING
+            ).count(),
+            "achievements_unlocked": UserAchievement.objects.count(),
+        },
+        "live": {"channels": live_channels, "top_games": top_games},
         "moderation": {
             "open_reports": Report.objects.filter(status=Report.Status.OPEN).count(),
             "pending_flags": ContentFlag.objects.filter(status=ContentFlag.Status.PENDING).count(),
