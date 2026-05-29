@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     "moderation",
     "notifications",
     "payments",
+    "safety",
     "social",
     "streamers",
     "subscriptions",
@@ -252,6 +253,12 @@ STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET", default="")
 # Mobile money (agrégateurs régionaux). Vides → repli FAKE (confirme en dev).
 ORANGE_MONEY_API_KEY = env("ORANGE_MONEY_API_KEY", default="")
 WAVE_API_KEY = env("WAVE_API_KEY", default="")
+
+# --- Sécurité contenu (anti-violation) ---
+# Fournisseur de vision pour l'analyse d'images (vide → heuristique texte seule).
+SAFETY_VISION_PROVIDER = env("SAFETY_VISION_PROVIDER", default="")
+# Mettre les images en file d'examen manuel quand aucun fournisseur de vision.
+SAFETY_REVIEW_UPLOADS = env.bool("SAFETY_REVIEW_UPLOADS", default=False)
 
 # --- Cloudflare Stream ---
 # Si CLOUDFLARE_API_TOKEN est vide, on bascule sur un client FAKE en dev/tests

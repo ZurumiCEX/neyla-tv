@@ -29,6 +29,7 @@ urlpatterns = [
     path("api/", include("moderation.urls")),
     path("api/", include("analytics.urls")),
     path("api/", include("payments.urls")),
+    path("api/", include("safety.urls")),
     path("api/", include("uploads.urls")),
     path("api/", include("subscriptions.urls")),
     path("api/", include("gamification.urls")),
