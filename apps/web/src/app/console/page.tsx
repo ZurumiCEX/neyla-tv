@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { useT } from "@/lib/i18n";
 
-/** /admin (nu) → redirige vers la section adaptée au rôle. */
+/** /console (nu) → redirige vers la section adaptée au rôle. */
 export default function AdminIndexPage() {
   const router = useRouter();
   const t = useT();
@@ -19,11 +19,11 @@ export default function AdminIndexPage() {
     }
     const dest =
       user.role === "moderator"
-        ? "/admin/reports"
+        ? "/console/reports"
         : user.role === "support"
-          ? "/admin/messages"
+          ? "/console/messages"
           : user.role === "admin"
-            ? "/admin/dashboard"
+            ? "/console/dashboard"
             : "/";
     router.replace(dest);
   }, [loading, user, router]);

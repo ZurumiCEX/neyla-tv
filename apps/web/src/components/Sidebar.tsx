@@ -97,10 +97,10 @@ export function Sidebar() {
 
   const adminHref =
     user?.role === "moderator"
-      ? "/admin/reports"
+      ? "/console/reports"
       : user?.role === "support"
-        ? "/admin/messages"
-        : "/admin/dashboard";
+        ? "/console/messages"
+        : "/console/dashboard";
   const admin: NavItemDef[] =
     user && ["admin", "moderator", "support"].includes(user.role)
       ? [
@@ -108,7 +108,7 @@ export function Sidebar() {
             href: adminHref,
             label: t("nav.admin"),
             icon: <Icon path={ICONS.shield} />,
-            active: is("/admin"),
+            active: is("/console"),
           },
         ]
       : [];
