@@ -1,5 +1,8 @@
 {% extends "admin/index.html" %}
 
+{# Django vide ce bloc sur l'index ; on rétablit notre menu latéral groupé. #}
+{% block nav-sidebar %}{% include "admin/nav_sidebar.html" %}{% endblock %}
+
 {% block content %}
 {% if dashboard %}
 <div class="neyla-dash">
@@ -45,7 +48,7 @@
     {% endfor %}
   </div>
 </div>
-{% endif %}
-
+{% else %}
 {{ block.super }}
+{% endif %}
 {% endblock %}

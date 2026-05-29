@@ -34,7 +34,35 @@ _ICONS = {
         '<rect x="3" y="8" width="18" height="13" rx="1"/>'
         '<path d="M3 12h18M12 8v13M12 8S9 3 7 5s5 3 5 3 3-5 5-3-5 3-5 3"/>'
     ),
+    "grid": (
+        '<rect x="3" y="3" width="7" height="7" rx="1"/>'
+        '<rect x="14" y="3" width="7" height="7" rx="1"/>'
+        '<rect x="3" y="14" width="7" height="7" rx="1"/>'
+        '<rect x="14" y="14" width="7" height="7" rx="1"/>'
+    ),
+    "cog": (
+        '<circle cx="12" cy="12" r="3"/>'
+        '<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83'
+        "l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0"
+        "v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83"
+        "l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09"
+        "a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83"
+        "l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09"
+        "a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83"
+        "l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09"
+        'a1.65 1.65 0 0 0-1.51 1Z"/>'
+    ),
 }
+
+# Regroupement des modules d'administration en catégories métier (ordre + icône).
+# Les apps non listées tombent dans « Autres ».
+_NAV_CATEGORIES: list[tuple[str, str, set[str]]] = [
+    ("Comptes & audience", "users", {"accounts", "social", "invitations"}),
+    ("Contenu & live", "play", {"channels_app", "catalog", "streamers"}),
+    ("Monétisation", "cash", {"payments", "subscriptions", "gamification"}),
+    ("Modération & sécurité", "shield", {"moderation", "safety", "chat"}),
+    ("Système & journaux", "cog", {"analytics", "notifications", "audit", "uploads", "health"}),
+]
 
 
 def _icon(name: str) -> str:
@@ -58,6 +86,64 @@ class NeylaAdminSite(AdminSite):
     site_title = "Neyla TV Admin"
     index_title = "Tableau de bord plateforme"
     index_template = "admin/neyla_index.html"
+
+    def each_context(self, request):
+        ctx = super().each_context(request)
+        try:
+            ctx["nav_groups"] = self._build_nav(request)
+        except Exception:  # noqa: BLE001 — la navigation ne doit jamais casser l'admin
+            logger.exception("admin nav build failed")
+            ctx["nav_groups"] = []
+        return ctx
+
+    def _build_nav(self, request) -> list[dict]:
+        """Construit le menu latéral groupé par catégorie métier.
+
+        S'appuie sur ``get_app_list`` (modèles réellement enregistrés + permissions
+        de l'utilisateur), donc les liens sont toujours valides et filtrés par droit.
+        """
+        by_label: dict[str, list] = {}
+        for app in self.get_app_list(request):
+            by_label.setdefault(app["app_label"], []).extend(app.get("models", []))
+
+        path = request.path
+
+        def _item(model: dict) -> dict | None:
+            url = model.get("admin_url")
+            if not url:
+                return None
+            return {"label": model["name"], "url": url, "active": path.startswith(url)}
+
+        groups: list[dict] = []
+        used: set[str] = set()
+        for name, icon, labels in _NAV_CATEGORIES:
+            items = []
+            for label in labels:
+                used.add(label)
+                items += [it for m in by_label.get(label, []) if (it := _item(m))]
+            if items:
+                groups.append(
+                    {
+                        "name": name,
+                        "icon": _icon(icon),
+                        "items": sorted(items, key=lambda i: i["label"]),
+                    }
+                )
+
+        leftovers = []
+        for label, models in by_label.items():
+            if label in used:
+                continue
+            leftovers += [it for m in models if (it := _item(m))]
+        if leftovers:
+            groups.append(
+                {
+                    "name": "Autres",
+                    "icon": _icon("cog"),
+                    "items": sorted(leftovers, key=lambda i: i["label"]),
+                }
+            )
+        return groups
 
     def index(self, request, extra_context=None):
         extra_context = extra_context or {}
