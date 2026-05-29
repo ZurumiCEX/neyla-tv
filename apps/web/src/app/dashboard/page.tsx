@@ -615,7 +615,7 @@ export default function DashboardPage() {
                     type="checkbox"
                     checked={tierActive}
                     onChange={(e) => setTierActive(e.target.checked)}
-                    className="h-4 w-4 accent-[#5D1C6A]"
+                    className="h-4 w-4 accent-[#FFC81E]"
                   />
                   {t("dash.subOpen")}
                 </label>

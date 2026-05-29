@@ -76,16 +76,16 @@ document.addEventListener('DOMContentLoaded', function () {
 :root,
 html[data-theme="light"],
 html[data-theme="dark"] {
-  --primary: #9b4dab; --primary-fg: #ffffff; --secondary: #5D1C6A; --accent: #9b4dab;
+  --primary: #FFC81E; --primary-fg: #1a1400; --secondary: #FFC81E; --accent: #FFC81E;
   --body-bg: #0b0b0f; --body-fg: #e7e9ee; --body-quiet-color: #9aa3b2; --body-loud-color: #fff;
   --header-color: #cbd5e1; --header-branding-color: #fff; --header-bg: #111218; --header-link-color: #e7e9ee;
   --breadcrumbs-fg: #9aa3b2; --breadcrumbs-link-fg: #cbd5e1; --breadcrumbs-bg: #14151c;
-  --link-fg: #c08fcc; --link-hover-color: #e0c4ea; --link-selected-fg: #e0c4ea;
+  --link-fg: #ffd95e; --link-hover-color: #ffe48a; --link-selected-fg: #ffe48a;
   --hairline-color: #23252e; --border-color: #23252e;
-  --button-bg: #5D1C6A; --button-fg: #ffffff; --button-hover-bg: #7a2589;
-  --default-button-bg: #5D1C6A; --default-button-hover-bg: #7a2589;
+  --button-bg: #FFC81E; --button-fg: #1a1400; --button-hover-bg: #e6b000;
+  --default-button-bg: #FFC81E; --default-button-hover-bg: #e6b000;
   --close-button-bg: #2a2c36; --close-button-hover-bg: #3a3d4a;
-  --object-tools-fg: #ffffff; --object-tools-bg: #5D1C6A; --object-tools-hover-bg: #7a2589;
+  --object-tools-fg: #1a1400; --object-tools-bg: #FFC81E; --object-tools-hover-bg: #e6b000;
   --darkened-bg: #14151c; --selected-bg: #181a22; --selected-row: #1c2733;
   --message-success-bg: #10311f; --message-error-bg: #3a1414; --message-warning-bg: #3a2c14;
   --font-family-primary: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, Roboto, Arial, sans-serif;
@@ -102,8 +102,8 @@ html, body { background: var(--body-bg); color: var(--body-fg); }
 #branding #site-name a { display: flex; align-items: center; gap: 12px; color: #fff; }
 .neyla-logo {
   width: 34px; height: 34px; border-radius: 9px;
-  background: linear-gradient(135deg, #5D1C6A, #9b4dab);
-  color: #fff; font-weight: 800; font-size: 18px;
+  background: linear-gradient(135deg, #FFC81E, #e0a000);
+  color: #1a1400; font-weight: 800; font-size: 18px;
   display: inline-flex; align-items: center; justify-content: center;
 }
 .neyla-wordmark { font-size: 19px; letter-spacing: .2px; white-space: nowrap; }
@@ -165,7 +165,7 @@ a:link, a:visited { color: var(--link-fg); }
   border-radius: 10px; font-weight: 600; font-size: 14px; color: var(--body-fg) !important;
 }
 .neyla-nav-dash:hover { background: var(--darkened-bg); }
-.neyla-nav-dash.active { background: rgba(155,77,171,.18); color: var(--primary) !important; }
+.neyla-nav-dash.active { background: rgba(255,200,30,.16); color: var(--primary) !important; }
 .neyla-nav-dash svg { color: var(--primary); flex: 0 0 auto; }
 
 .neyla-nav-group { margin-bottom: 4px; --cat: #64748b; }

@@ -1,19 +1,20 @@
 import type { Config } from "tailwindcss";
 
-// Charte mono-couleur : tout le vert primaire (emerald) est remappé sur la
-// couleur de marque #5D1C6A et ses teintes. Les classes existantes
-// (emerald-300/400/500, hover, etc.) deviennent donc automatiquement violettes.
+// Charte mono-couleur : la couleur de marque #FFC81E (jaune doré) et ses teintes.
+// La palette `emerald` est remappée dessus, donc les classes existantes
+// (emerald-300/400/500, hover, gradients) deviennent dorées automatiquement.
+// NB : les fonds de marque sont associés à un texte foncé (text-neutral-950).
 const brand = {
-  50: "#f7eef9",
-  100: "#eddcf0",
-  200: "#d8b8de",
-  300: "#c08fcc", // texte/liens clairs sur fond sombre
-  400: "#9b4dab", // accents, hover clair
-  500: "#5D1C6A", // couleur de marque
-  600: "#4d1659",
-  700: "#3d1147",
-  800: "#2d0d35",
-  900: "#1f0925",
+  50: "#fffaeb",
+  100: "#fff1c6",
+  200: "#ffe49a",
+  300: "#ffd95e", // texte/liens clairs sur fond sombre
+  400: "#ffce3a",
+  500: "#FFC81E", // couleur de marque
+  600: "#e6b000", // hover (plus foncé)
+  700: "#b88a00",
+  800: "#8a6700",
+  900: "#5c4400",
 };
 
 const config: Config = {
@@ -21,12 +22,12 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Marque unique #5D1C6A (et ses teintes) sur toute la plateforme.
+        // Marque unique #FFC81E (et ses teintes) sur toute la plateforme.
         emerald: brand,
         brand,
         secondary: {
-          DEFAULT: "#5D1C6A",
-          light: "#9b4dab",
+          DEFAULT: "#FFC81E",
+          light: "#ffd95e",
         },
       },
     },
