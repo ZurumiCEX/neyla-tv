@@ -5,6 +5,21 @@ from django.contrib import admin, messages
 from .models import FeeRule, LedgerEntry, Payout, PayoutOtp, Purchase, Tip, Wallet
 
 
+class LedgerEntryInline(admin.TabularInline):
+    """Mouvements Aura du portefeuille, en lecture seule."""
+
+    model = LedgerEntry
+    extra = 0
+    can_delete = False
+    ordering = ("-created_at",)
+    fields = ("created_at", "kind", "amount", "balance_after", "reference")
+    readonly_fields = fields
+    verbose_name_plural = "Mouvements"
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
 @admin.register(FeeRule)
 class FeeRuleAdmin(admin.ModelAdmin):
     list_display = ("product", "mode", "value", "is_active", "updated_at")
@@ -20,6 +35,7 @@ class WalletAdmin(admin.ModelAdmin):
     list_select_related = ("user",)
     ordering = ("-aura_balance",)
     list_per_page = 50
+    inlines = (LedgerEntryInline,)
     readonly_fields = ("user", "aura_balance", "created_at")
 
 
