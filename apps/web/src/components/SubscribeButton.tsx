@@ -64,8 +64,9 @@ export function SubscribeButton({ channelSlug }: { channelSlug: string }) {
     return (
       <Link
         href="/login"
-        className="rounded-md bg-secondary px-3 py-1 text-sm font-semibold text-white hover:bg-secondary-light"
+        className="flex items-center gap-1.5 rounded-md bg-secondary px-4 py-1.5 text-sm font-semibold text-white hover:bg-secondary-light"
       >
+        <SparkleIcon />
         {t("sub.subscribe", { price })}
       </Link>
     );
@@ -76,8 +77,9 @@ export function SubscribeButton({ channelSlug }: { channelSlug: string }) {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="rounded-md bg-secondary px-3 py-1 text-sm font-semibold text-white hover:bg-secondary-light"
+        className="flex items-center gap-1.5 rounded-md bg-secondary px-4 py-1.5 text-sm font-semibold text-white hover:bg-secondary-light"
       >
+        <SparkleIcon />
         {t("sub.subscribe", { price })}
       </button>
       {open && (
@@ -108,5 +110,14 @@ export function SubscribeButton({ channelSlug }: { channelSlug: string }) {
         </div>
       )}
     </div>
+  );
+}
+
+function SparkleIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M12 2l1.8 5.2L19 9l-5.2 1.8L12 16l-1.8-5.2L5 9l5.2-1.8L12 2z" />
+      <path d="M19 14l.9 2.6L22 17.5l-2.1.9L19 21l-.9-2.6L16 17.5l2.1-.9L19 14z" />
+    </svg>
   );
 }

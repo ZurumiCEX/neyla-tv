@@ -26,5 +26,6 @@ def invites(request: Request) -> Response:
         {
             "results": InviteSerializer(qs, many=True).data,
             "successful_invites": services.successful_count(request.user),
+            "referral": services.referral_stats(request.user),
         }
     )

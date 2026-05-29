@@ -37,6 +37,7 @@ export default function SettingsPage() {
   const [country, setCountry] = useState("");
   const [bannerUrl, setBannerUrl] = useState("");
   const [socials, setSocials] = useState<Record<string, string>>({});
+  const [tab, setTab] = useState<"profile" | "notifications" | "auth" | "devices">("profile");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -114,6 +115,31 @@ export default function SettingsPage() {
         </p>
       )}
 
+      <div className="mb-6 flex flex-wrap gap-1 border-b border-neutral-800">
+        {(
+          [
+            ["profile", t("settings.tab.profile")],
+            ["notifications", t("settings.tab.notifications")],
+            ["auth", t("settings.tab.auth")],
+            ["devices", t("settings.tab.devices")],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setTab(id)}
+            className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition ${
+              tab === id
+                ? "border-secondary text-secondary-light"
+                : "border-transparent text-neutral-400 hover:text-neutral-200"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "profile" && (
       <section className="space-y-4 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-6">
         <Field label={t("settings.displayName")}>
           <Input value={displayName} onChange={setDisplayName} maxLength={60} />
@@ -181,11 +207,16 @@ export default function SettingsPage() {
           {saving ? t("common.saving") : t("common.save")}
         </button>
       </section>
+      )}
 
-      <NotificationPreferences />
-      <PushManager />
-      <TwoFactorManager />
-      <SessionsManager />
+      {tab === "notifications" && (
+        <div className="space-y-6">
+          <NotificationPreferences />
+          <PushManager />
+        </div>
+      )}
+      {tab === "auth" && <TwoFactorManager />}
+      {tab === "devices" && <SessionsManager />}
     </main>
   );
 }

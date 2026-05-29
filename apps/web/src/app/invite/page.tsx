@@ -13,8 +13,16 @@ type Invite = {
   is_usable: boolean;
   created_at: string;
 };
-
-type InvitesResp = { results: Invite[]; successful_invites: number };
+type Tier = { threshold: number; bonus: number; key: string };
+type Referral = {
+  successful_invites: number;
+  aura_earned: number;
+  base_reward: number;
+  current_tier: string | null;
+  next_tier: Tier | null;
+  tiers: Tier[];
+};
+type InvitesResp = { results: Invite[]; successful_invites: number; referral: Referral };
 
 export default function InvitePage() {
   const router = useRouter();
@@ -56,16 +64,75 @@ export default function InvitePage() {
     }
   }
 
-  if (loading || !user) return <main className="p-8 text-neutral-500">{t("common.loading")}</main>;
+  if (loading || !user || !data)
+    return <main className="p-8 text-neutral-500">{t("common.loading")}</main>;
+
+  const ref = data.referral;
 
   return (
     <main className="mx-auto max-w-2xl p-8">
-      <h1 className="mb-2 text-2xl font-bold">{t("invite.title")}</h1>
-      <p className="mb-6 text-sm text-neutral-400">
-        {t("invite.subtitle", { count: data?.successful_invites ?? 0 })}
-      </p>
+      <h1 className="mb-1 text-2xl font-bold">{t("ref.title")}</h1>
+      <p className="mb-6 text-sm text-neutral-400">{t("ref.subtitle")}</p>
 
-      <div className="mb-6 flex items-end gap-3 rounded-xl border border-neutral-800 bg-neutral-900/60 p-4">
+      <div className="mb-4 grid grid-cols-2 gap-3">
+        <div className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-4">
+          <p className="text-xs uppercase tracking-wider text-neutral-500">{t("ref.invited")}</p>
+          <p className="mt-1 text-2xl font-bold">{ref.successful_invites}</p>
+        </div>
+        <div className="rounded-2xl border border-secondary/40 bg-secondary/10 p-4">
+          <p className="text-xs uppercase tracking-wider text-neutral-500">{t("ref.earned")}</p>
+          <p className="mt-1 text-2xl font-bold text-secondary-light">
+            {ref.aura_earned.toLocaleString("fr-FR")} <span className="text-sm">Aura</span>
+          </p>
+        </div>
+      </div>
+      <p className="mb-6 text-xs text-neutral-500">{t("ref.perInvite", { n: ref.base_reward })}</p>
+
+      <section className="mb-8 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="font-semibold">{t("ref.tiers")}</h2>
+          {ref.current_tier && (
+            <span className="rounded-full bg-secondary/20 px-2.5 py-1 text-xs font-semibold text-secondary-light">
+              {t(`ref.tier.${ref.current_tier}`)}
+            </span>
+          )}
+        </div>
+        {ref.next_tier && (
+          <p className="mb-3 text-xs text-neutral-400">
+            {t("ref.nextTier", {
+              n: ref.next_tier.threshold - ref.successful_invites,
+              tier: t(`ref.tier.${ref.next_tier.key}`),
+              bonus: ref.next_tier.bonus,
+            })}
+          </p>
+        )}
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+          {ref.tiers.map((tr) => {
+            const reached = ref.successful_invites >= tr.threshold;
+            return (
+              <div
+                key={tr.key}
+                className={`rounded-xl border p-3 text-center ${
+                  reached
+                    ? "border-secondary/50 bg-secondary/10"
+                    : "border-neutral-800 bg-neutral-900/40 opacity-70"
+                }`}
+              >
+                <p
+                  className={`text-sm font-semibold ${reached ? "text-secondary-light" : "text-neutral-400"}`}
+                >
+                  {t(`ref.tier.${tr.key}`)}
+                </p>
+                <p className="text-xs text-neutral-500">{tr.threshold}+</p>
+                {tr.bonus > 0 && <p className="mt-1 text-xs text-neutral-400">+{tr.bonus}</p>}
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <h2 className="mb-3 font-semibold">{t("ref.yourCodes")}</h2>
+      <div className="mb-4 flex items-end gap-3 rounded-xl border border-neutral-800 bg-neutral-900/60 p-4">
         <label className="flex flex-col gap-1 text-xs text-neutral-500">
           {t("invite.maxUses")}
           <input
@@ -73,7 +140,7 @@ export default function InvitePage() {
             min={1}
             value={maxUses}
             onChange={(e) => setMaxUses(e.target.value)}
-            className="w-28 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100"
+            className="w-28 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-secondary-light"
           />
         </label>
         <button
@@ -88,7 +155,7 @@ export default function InvitePage() {
       {error && <p className="mb-3 text-sm text-red-300">{error}</p>}
 
       <ul className="space-y-3">
-        {data?.results.map((inv) => {
+        {data.results.map((inv) => {
           const link = `${origin}/register?invite=${inv.code}`;
           return (
             <li
@@ -107,7 +174,7 @@ export default function InvitePage() {
           );
         })}
       </ul>
-      {data && data.results.length === 0 && (
+      {data.results.length === 0 && (
         <p className="text-sm text-neutral-500">{t("invite.empty")}</p>
       )}
     </main>
