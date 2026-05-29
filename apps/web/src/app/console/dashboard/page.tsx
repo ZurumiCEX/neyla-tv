@@ -36,7 +36,7 @@ type Dashboard = {
 
 type MetricKey = "purchases_xof" | "tips_aura" | "subs_aura" | "platform_commission_aura";
 
-const DONUT_COLORS = ["#10b981", "#3b82f6", "#d946ef", "#f59e0b", "#06b6d4"];
+const DONUT_COLORS = ["#5D1C6A", "#3b82f6", "#d946ef", "#f59e0b", "#06b6d4"];
 
 function fmt(n: number): string {
   return n.toLocaleString("fr-FR");
@@ -71,7 +71,7 @@ export default function AdminDashboardPage() {
   const metrics = useMemo(
     () =>
       ({
-        purchases_xof: { label: t("admin.metric.revenue"), color: "#10b981", unit: "FCFA" },
+        purchases_xof: { label: t("admin.metric.revenue"), color: "#5D1C6A", unit: "FCFA" },
         tips_aura: { label: t("admin.metric.tips"), color: "#3b82f6", unit: "Aura" },
         subs_aura: { label: t("admin.metric.subs"), color: "#d946ef", unit: "Aura" },
         platform_commission_aura: {
@@ -227,7 +227,7 @@ export default function AdminDashboardPage() {
               label={t("admin.ratio.live")}
               value={ratio(overview.live_now, overview.streamers_total)}
               hint={`${fmt(overview.live_now)} / ${fmt(overview.streamers_total)}`}
-              color="#10b981"
+              color="#5D1C6A"
             />
             <ProgressBar
               label={t("admin.ratio.stickiness")}

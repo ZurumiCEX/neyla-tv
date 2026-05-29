@@ -16,7 +16,7 @@ function wsBase(): string {
 }
 
 const ACCENTS: Record<Alert["kind"], string> = {
-  follow: "#10b981",
+  follow: "#5D1C6A",
   tip: "#3b82f6",
   subscribe: "#d946ef",
   test: "#f59e0b",

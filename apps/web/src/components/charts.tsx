@@ -19,7 +19,7 @@ function buildPaths(values: number[], w: number, h: number, pad = 2) {
 
 export function Sparkline({
   values,
-  color = "#10b981",
+  color = "#5D1C6A",
   className = "",
 }: {
   values: number[];
@@ -60,7 +60,7 @@ export function Sparkline({
 export function AreaChart({
   values,
   labels,
-  color = "#10b981",
+  color = "#5D1C6A",
   formatY = (v: number) => String(v),
   height = 280,
 }: {
@@ -196,7 +196,7 @@ export function ProgressBar({
   label,
   value,
   hint,
-  color = "#10b981",
+  color = "#5D1C6A",
 }: {
   label: string;
   value: number;

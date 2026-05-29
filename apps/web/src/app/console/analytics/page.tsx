@@ -19,7 +19,7 @@ type Overview = {
   top_streamers: { username: string; followers: number; is_live: boolean }[];
 };
 
-const DONUT_COLORS = ["#10b981", "#3b82f6", "#d946ef", "#f59e0b", "#06b6d4"];
+const DONUT_COLORS = ["#5D1C6A", "#3b82f6", "#d946ef", "#f59e0b", "#06b6d4"];
 
 function fmt(n: number): string {
   return n.toLocaleString("fr-FR");
@@ -58,7 +58,7 @@ export default function AdminAnalyticsPage() {
   if (!data) return <p className="text-neutral-500">{t("common.loading")}</p>;
 
   const cards: [string, string | number, string][] = [
-    [t("admin.card.users"), fmt(data.users_total), "#10b981"],
+    [t("admin.card.users"), fmt(data.users_total), "#5D1C6A"],
     [t("admin.card.dau"), fmt(data.dau), "#3b82f6"],
     [t("admin.card.mau"), fmt(data.mau), "#06b6d4"],
     [t("admin.card.streamers"), fmt(data.streamers_total), "#d946ef"],
@@ -102,7 +102,7 @@ export default function AdminAnalyticsPage() {
             label={t("admin.ratio.live")}
             value={ratio(data.live_now, data.streamers_total)}
             hint={`${fmt(data.live_now)} / ${fmt(data.streamers_total)}`}
-            color="#10b981"
+            color="#5D1C6A"
           />
           <ProgressBar
             label={t("admin.ratio.stickiness")}

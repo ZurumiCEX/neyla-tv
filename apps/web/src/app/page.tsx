@@ -47,7 +47,7 @@ export default async function HomePage() {
     subtitle: t("home.liveShort", { count: g.live_count ?? 0 }),
     image: g.box_art_url ?? "",
     viewers: g.viewers,
-    accent: "#10b981",
+    accent: "#5D1C6A",
   }));
   const slides: CarouselSlide[] = [];
   for (let i = 0; i < Math.max(liveSlides.length, catSlides.length); i++) {
