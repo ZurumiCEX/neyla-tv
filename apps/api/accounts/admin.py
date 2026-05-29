@@ -4,11 +4,27 @@ from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from .models import GuideProgress, TwoFactor, User, UserSession
 
 
+class UserSessionInline(admin.TabularInline):
+    """Sessions/appareils de l'utilisateur, en lecture seule."""
+
+    model = UserSession
+    extra = 0
+    can_delete = False
+    ordering = ("-last_seen_at",)
+    fields = ("device", "ip", "revoked", "created_at", "last_seen_at")
+    readonly_fields = fields
+    verbose_name_plural = "Sessions / appareils"
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
 @admin.register(User)
 class UserAdmin(DjangoUserAdmin):
     ordering = ("-date_joined",)
     date_hierarchy = "date_joined"
     list_per_page = 50
+    inlines = (UserSessionInline,)
     list_editable = ("role", "is_active")
     list_display = (
         "email",

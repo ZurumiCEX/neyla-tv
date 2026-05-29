@@ -3,6 +3,22 @@ from django.contrib import admin
 from .models import Channel, StreamSession
 
 
+class StreamSessionInline(admin.TabularInline):
+    """Historique des sessions de diffusion, en lecture seule, sur la chaîne."""
+
+    model = StreamSession
+    extra = 0
+    can_delete = False
+    ordering = ("-started_at",)
+    fields = ("started_at", "ended_at", "peak_viewers", "title_snapshot")
+    readonly_fields = fields
+    show_change_link = True
+    verbose_name_plural = "Sessions récentes"
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
 @admin.register(StreamSession)
 class StreamSessionAdmin(admin.ModelAdmin):
     list_display = ("channel", "started_at", "ended_at", "peak_viewers")
@@ -41,6 +57,7 @@ class ChannelAdmin(admin.ModelAdmin):
     list_select_related = ("user", "category")
     list_per_page = 50
     ordering = ("-created_at",)
+    inlines = (StreamSessionInline,)
     readonly_fields = (
         "live_input_uid",
         "rtmps_url",
