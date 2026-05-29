@@ -37,7 +37,7 @@ export function ProfileMenu() {
     ...(user.is_streamer ? [] : [{ href: "/become-streamer", label: t("nav.becomeStreamer") }]),
     { href: "/invite", label: t("nav.invite") },
     { href: "/settings", label: t("nav.settings") },
-    ...(["admin", "moderator", "support"].includes(user.role)
+    ...(["admin", "moderator", "support"].includes(user.role) || user.is_staff
       ? [{ href: adminHref, label: t("nav.admin") }]
       : []),
   ];
