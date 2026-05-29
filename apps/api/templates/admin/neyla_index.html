@@ -1,0 +1,40 @@
+{% extends "admin/index.html" %}
+
+{% block content %}
+{% if dashboard %}
+<style>
+  .neyla-kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin:0 0 22px}
+  .neyla-kpi{border:1px solid var(--hairline-color,#e0e0e0);border-radius:10px;padding:12px 14px;background:var(--darkened-bg,#f8f8f8)}
+  .neyla-kpi .v{font-size:22px;font-weight:700;line-height:1.1}
+  .neyla-kpi .l{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--body-quiet-color,#666);margin-top:4px}
+  .neyla-kpi .g{font-size:10px;color:var(--link-fg,#447e9b);margin-bottom:6px;text-transform:uppercase}
+  .neyla-charts{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin:0 0 26px}
+  .neyla-chart{border:1px solid var(--hairline-color,#e0e0e0);border-radius:10px;padding:12px 14px;background:var(--darkened-bg,#f8f8f8)}
+  .neyla-chart h3{font-size:12px;margin:0 0 8px;color:var(--body-quiet-color,#666);font-weight:600}
+  .neyla-h{font-size:16px;font-weight:700;margin:0 0 12px}
+</style>
+
+<p class="neyla-h">Suivi de l'activité — 30 derniers jours</p>
+
+<div class="neyla-kpis">
+  {% for k in dashboard.kpis %}
+  <div class="neyla-kpi">
+    <div class="g">{{ k.group }}</div>
+    <div class="v">{{ k.value }}</div>
+    <div class="l">{{ k.label }}</div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="neyla-charts">
+  {% for c in dashboard.charts %}
+  <div class="neyla-chart">
+    <h3>{{ c.title }}</h3>
+    {{ c.svg }}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{{ block.super }}
+{% endblock %}
