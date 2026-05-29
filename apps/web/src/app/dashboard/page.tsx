@@ -699,7 +699,7 @@ export default function DashboardPage() {
                         <button
                           type="button"
                           onClick={() => setRevealKey((v) => !v)}
-                          className="rounded-md border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:border-neutral-500"
+                          className="rounded-md border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:border-secondary hover:text-secondary-light"
                         >
                           {revealKey ? t("dash.hide") : t("dash.show")}
                         </button>

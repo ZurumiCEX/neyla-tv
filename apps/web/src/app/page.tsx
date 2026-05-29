@@ -76,7 +76,7 @@ export default async function HomePage() {
             </Link>
             <Link
               href="/become-streamer"
-              className="rounded-lg border border-neutral-700 px-5 py-2 text-sm font-semibold text-neutral-200 hover:border-neutral-500"
+              className="rounded-lg border border-secondary bg-secondary/10 px-5 py-2 text-sm font-semibold text-secondary-light hover:bg-secondary/20"
             >
               {t("home.heroBecome")}
             </Link>

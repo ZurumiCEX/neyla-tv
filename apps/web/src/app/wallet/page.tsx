@@ -380,7 +380,7 @@ function MethodButton({
       className={`flex flex-col items-center gap-2 rounded-xl border p-3 text-xs font-medium transition ${
         active
           ? "border-emerald-500 bg-emerald-500/10 text-emerald-300"
-          : "border-neutral-700 text-neutral-300 hover:border-neutral-500"
+          : "border-neutral-700 text-neutral-300 hover:border-secondary hover:text-secondary-light"
       }`}
     >
       {children}
