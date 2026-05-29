@@ -131,6 +131,8 @@ class MyChannelSerializer(serializers.ModelSerializer):
             "banner_url",
             "social_links",
             "tags",
+            "overlay_token",
+            "collaborations_open",
             "rtmps_url",
             "rtmps_key",
             "hls_playback_url",
@@ -142,6 +144,7 @@ class MyChannelSerializer(serializers.ModelSerializer):
         )
         read_only_fields = (
             "slug",
+            "overlay_token",
             "rtmps_url",
             "rtmps_key",
             "hls_playback_url",

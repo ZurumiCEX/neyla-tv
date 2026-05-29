@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useT } from "@/lib/i18n";
 import { ChatBansManager } from "@/components/ChatBansManager";
 import { ChatPanel } from "@/components/ChatPanel";
+import { CollaborationManager } from "@/components/CollaborationManager";
 import { CopyButton } from "@/components/CopyButton";
 import { HlsPlayer } from "@/components/HlsPlayer";
 import { LiveBadge } from "@/components/LiveBadge";
@@ -28,6 +29,8 @@ type MyChannel = {
   last_live_started_at: string | null;
   category: Category | null;
   tags: string[];
+  overlay_token: string;
+  collaborations_open: boolean;
   follower_count?: number;
   viewers?: number;
 };
@@ -62,7 +65,13 @@ type SubTier = {
   is_active?: boolean;
 };
 
-type Tab = "overview" | "audience" | "community" | "monetization" | "broadcast";
+type Tab =
+  | "overview"
+  | "audience"
+  | "community"
+  | "monetization"
+  | "collaboration"
+  | "broadcast";
 
 function formatDuration(seconds: number | null, t: TFn): string {
   if (seconds === null) return t("dash.durationOngoing");
@@ -209,6 +218,47 @@ export default function DashboardPage() {
     }
   }
 
+  const [origin, setOrigin] = useState("");
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
+
+  async function regenOverlay() {
+    try {
+      const data = await authFetch<{ overlay_token: string }>("/api/channels/me/overlay/token", {
+        method: "POST",
+      });
+      setChannel((c) => (c ? { ...c, overlay_token: data.overlay_token } : c));
+    } catch {
+      // ignore
+    }
+  }
+
+  async function toggleCollabOpen() {
+    if (!channel) return;
+    const next = !channel.collaborations_open;
+    setChannel((c) => (c ? { ...c, collaborations_open: next } : c));
+    try {
+      await authFetch("/api/channels/me", {
+        method: "PATCH",
+        body: JSON.stringify({ collaborations_open: next }),
+      });
+    } catch {
+      setChannel((c) => (c ? { ...c, collaborations_open: !next } : c));
+    }
+  }
+
+  async function testAlert(kind: "follow" | "tip" | "subscribe") {
+    try {
+      await authFetch("/api/channels/me/overlay/test", {
+        method: "POST",
+        body: JSON.stringify({ kind }),
+      });
+    } catch {
+      // ignore
+    }
+  }
+
   async function rotate() {
     setRotating(true);
     try {
@@ -252,6 +302,7 @@ export default function DashboardPage() {
     { id: "audience", label: t("dash.tab.audience") },
     { id: "community", label: t("dash.tab.community") },
     { id: "monetization", label: t("dash.tab.monetization") },
+    { id: "collaboration", label: t("dash.tab.collaboration") },
     { id: "broadcast", label: t("dash.tab.broadcast") },
   ];
 
@@ -593,6 +644,34 @@ export default function DashboardPage() {
             </div>
           )}
 
+          {/* COLLABORATION */}
+          {tab === "collaboration" && (
+            <div className="space-y-6">
+              <section className="flex items-center justify-between rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
+                <div>
+                  <h2 className="font-semibold">{t("collab.openTitle")}</h2>
+                  <p className="text-sm text-neutral-400">{t("collab.openDesc")}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={toggleCollabOpen}
+                  role="switch"
+                  aria-checked={channel.collaborations_open}
+                  className={`relative h-6 w-11 shrink-0 rounded-full transition ${
+                    channel.collaborations_open ? "bg-emerald-500" : "bg-neutral-700"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${
+                      channel.collaborations_open ? "left-[22px]" : "left-0.5"
+                    }`}
+                  />
+                </button>
+              </section>
+              <CollaborationManager />
+            </div>
+          )}
+
           {/* DIFFUSION */}
           {tab === "broadcast" &&
             (channel.is_provisioned ? (
@@ -651,6 +730,54 @@ export default function DashboardPage() {
                     {rotating ? t("dash.rotating") : t("dash.rotateKey")}
                   </button>
                   <p className="mt-1 text-xs text-neutral-500">{t("dash.rotateWarn")}</p>
+                </div>
+
+                <div className="space-y-3 border-t border-neutral-800 pt-5">
+                  <div>
+                    <p className="font-semibold text-neutral-100">{t("dash.overlayTitle")}</p>
+                    <p className="text-xs text-neutral-400">{t("dash.overlayDesc")}</p>
+                  </div>
+                  <Field label={t("dash.overlayUrl")}>
+                    <div className="flex items-center gap-2">
+                      <code className="break-all text-emerald-300">
+                        {origin ? `${origin}/overlay/${channel.overlay_token}` : "…"}
+                      </code>
+                      {origin && channel.overlay_token && (
+                        <CopyButton value={`${origin}/overlay/${channel.overlay_token}`} />
+                      )}
+                    </div>
+                  </Field>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs text-neutral-500">{t("dash.overlayTest")} :</span>
+                    <button
+                      type="button"
+                      onClick={() => testAlert("follow")}
+                      className="rounded-lg border border-neutral-700 px-3 py-1 text-xs hover:border-emerald-500"
+                    >
+                      {t("dash.alertFollow")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => testAlert("subscribe")}
+                      className="rounded-lg border border-neutral-700 px-3 py-1 text-xs hover:border-fuchsia-500"
+                    >
+                      {t("dash.alertSub")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => testAlert("tip")}
+                      className="rounded-lg border border-neutral-700 px-3 py-1 text-xs hover:border-blue-500"
+                    >
+                      {t("dash.alertTip")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={regenOverlay}
+                      className="ml-auto rounded-lg border border-amber-500/40 px-3 py-1 text-xs text-amber-300 hover:bg-amber-500/10"
+                    >
+                      {t("dash.overlayRegen")}
+                    </button>
+                  </div>
                 </div>
               </section>
             ) : (
