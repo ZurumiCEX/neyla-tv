@@ -1,5 +1,8 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
+from django.db.models import Count, Sum
+
+from config.admin_widgets import stat_grid
 
 from .models import GuideProgress, TwoFactor, User, UserSession
 
@@ -37,7 +40,9 @@ class UserAdmin(DjangoUserAdmin):
     )
     list_filter = ("role", "is_staff", "is_active")
     search_fields = ("email", "username", "display_name")
+    readonly_fields = ("activity_summary",)
     fieldsets = (
+        ("Synthèse", {"fields": ("activity_summary",)}),
         (None, {"fields": ("email", "username", "password")}),
         ("Profil", {"fields": ("display_name", "avatar_url", "bio")}),
         ("Rôle", {"fields": ("role",)}),
@@ -54,6 +59,25 @@ class UserAdmin(DjangoUserAdmin):
             {"classes": ("wide",), "fields": ("email", "username", "password1", "password2")},
         ),
     )
+
+    @admin.display(description="Activité")
+    def activity_summary(self, obj: User):
+        if obj is None or obj.pk is None:
+            return "—"
+        balance = getattr(getattr(obj, "wallet", None), "aura_balance", 0)
+        purchases = obj.purchases.filter(status="paid").aggregate(
+            n=Count("id"), fiat=Sum("fiat_amount")
+        )
+        tips_sent = obj.tips_sent.aggregate(n=Count("id"), aura=Sum("aura_amount"))
+        return stat_grid(
+            [
+                ("Solde Aura", balance),
+                ("Achats payés", purchases["n"] or 0),
+                ("Total acheté (FCFA)", int(purchases["fiat"] or 0)),
+                ("Tips envoyés", tips_sent["n"] or 0),
+                ("Aura offerts", tips_sent["aura"] or 0),
+            ]
+        )
 
 
 @admin.register(UserSession)

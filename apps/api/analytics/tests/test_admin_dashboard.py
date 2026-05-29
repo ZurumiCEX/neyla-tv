@@ -43,22 +43,29 @@ def test_admin_index_renders_dashboard_for_staff(staff_client):
     assert "<svg" in html
 
 
-def test_channel_change_page_shows_session_inline(staff_client):
+def test_channel_change_page_shows_session_inline_and_summary(staff_client):
     channel = Channel.objects.get(user=UserFactory())
     resp = staff_client.get(reverse("admin:channels_app_channel_change", args=[channel.pk]))
     assert resp.status_code == 200
-    assert "Sessions récentes" in resp.content.decode()
+    html = resp.content.decode()
+    assert "Sessions récentes" in html
+    assert "Heures diffusées" in html
+    assert "Sessions / jour (30j)" in html
 
 
-def test_wallet_change_page_shows_ledger_inline(staff_client):
+def test_wallet_change_page_shows_ledger_inline_and_summary(staff_client):
     wallet, _ = Wallet.objects.get_or_create(user=UserFactory())
     resp = staff_client.get(reverse("admin:payments_wallet_change", args=[wallet.pk]))
     assert resp.status_code == 200
-    assert "Mouvements" in resp.content.decode()
+    html = resp.content.decode()
+    assert "Mouvements" in html
+    assert "Crédits cumulés" in html
 
 
-def test_user_change_page_shows_session_inline(staff_client):
+def test_user_change_page_shows_session_inline_and_summary(staff_client):
     user = UserFactory()
     resp = staff_client.get(reverse("admin:accounts_user_change", args=[user.pk]))
     assert resp.status_code == 200
-    assert "Sessions / appareils" in resp.content.decode()
+    html = resp.content.decode()
+    assert "Sessions / appareils" in html
+    assert "Solde Aura" in html
