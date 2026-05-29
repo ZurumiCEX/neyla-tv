@@ -58,7 +58,7 @@ export function ImageUpload({
           type="button"
           disabled={busy}
           onClick={() => inputRef.current?.click()}
-          className="rounded-lg border border-neutral-700 px-3 py-1.5 text-sm text-neutral-200 hover:border-neutral-500 disabled:opacity-50"
+          className="rounded-lg border border-neutral-700 px-3 py-1.5 text-sm text-neutral-200 hover:border-secondary hover:text-secondary-light disabled:opacity-50"
         >
           {busy ? "Envoi…" : "Choisir une image"}
         </button>

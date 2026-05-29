@@ -24,7 +24,7 @@ export function EmojiPicker({
         type="button"
         disabled={disabled}
         onClick={() => setOpen((o) => !o)}
-        className="rounded-lg border border-neutral-700 px-2 py-1.5 text-sm hover:border-neutral-500 disabled:opacity-50"
+        className="rounded-lg border border-neutral-700 px-2 py-1.5 text-sm hover:border-secondary hover:text-secondary-light disabled:opacity-50"
         aria-label="Emojis"
       >
         😊
