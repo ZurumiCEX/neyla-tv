@@ -196,3 +196,42 @@ def monitoring() -> dict:
             for c in live_channels
         ],
     }
+
+
+def _daily_new_users(days: int) -> list[dict]:
+    """Série quotidienne d'inscriptions (bucket Python, agnostique du SGBD)."""
+    now = timezone.now()
+    since = now - timedelta(days=days - 1)
+    start_day = timezone.localtime(since).date()
+    buckets = {(start_day + timedelta(days=i)).isoformat(): 0 for i in range(days)}
+    for u in User.objects.filter(date_joined__gte=since).only("date_joined"):
+        key = timezone.localtime(u.date_joined).date().isoformat()
+        if key in buckets:
+            buckets[key] += 1
+    return [{"date": d, "count": c} for d, c in buckets.items()]
+
+
+def admin_dashboard_metrics(days: int = 30) -> dict:
+    """Agrégat complet pour le tableau de bord du Django admin (KPIs + séries)."""
+    from moderation.models import Report
+    from payments.models import Payout
+    from safety.models import ContentFlag, RiskEvent
+
+    overview = platform_overview()
+    growth = growth_metrics()
+    revenue = _revenue_series(max(1, min(days, 90)))
+    return {
+        "overview": overview,
+        "growth": growth,
+        "revenue": revenue,
+        "new_users_series": _daily_new_users(max(1, min(days, 90))),
+        "moderation": {
+            "open_reports": Report.objects.filter(status=Report.Status.OPEN).count(),
+            "pending_flags": ContentFlag.objects.filter(status=ContentFlag.Status.PENDING).count(),
+            "auto_blocked": ContentFlag.objects.filter(
+                status=ContentFlag.Status.AUTO_BLOCKED
+            ).count(),
+            "open_risk": RiskEvent.objects.filter(resolved=False).count(),
+            "pending_payouts": Payout.objects.filter(status=Payout.Status.REQUESTED).count(),
+        },
+    }
