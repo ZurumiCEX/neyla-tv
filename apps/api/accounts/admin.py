@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 
-from .models import User
+from .models import GuideProgress, TwoFactor, User, UserSession
 
 
 @admin.register(User)
@@ -35,3 +35,26 @@ class UserAdmin(DjangoUserAdmin):
             {"classes": ("wide",), "fields": ("email", "username", "password1", "password2")},
         ),
     )
+
+
+@admin.register(UserSession)
+class UserSessionAdmin(admin.ModelAdmin):
+    list_display = ("user", "device", "ip", "revoked", "created_at", "last_seen_at")
+    list_filter = ("revoked",)
+    search_fields = ("user__username", "ip")
+    readonly_fields = ("user", "jti", "device", "ip", "created_at", "last_seen_at")
+
+
+@admin.register(TwoFactor)
+class TwoFactorAdmin(admin.ModelAdmin):
+    list_display = ("user", "enabled", "confirmed_at", "updated_at")
+    list_filter = ("enabled",)
+    search_fields = ("user__username",)
+    readonly_fields = ("user", "secret", "recovery_codes", "created_at", "updated_at")
+
+
+@admin.register(GuideProgress)
+class GuideProgressAdmin(admin.ModelAdmin):
+    list_display = ("user", "key", "completed_at")
+    search_fields = ("user__username", "key")
+    readonly_fields = ("user", "key", "completed_at")

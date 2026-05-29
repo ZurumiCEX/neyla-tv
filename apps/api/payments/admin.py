@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from django.contrib import admin
 
-from .models import FeeRule, LedgerEntry, Payout, Purchase, Tip, Wallet
+from .models import FeeRule, LedgerEntry, Payout, PayoutOtp, Purchase, Tip, Wallet
 
 
 @admin.register(FeeRule)
@@ -58,3 +58,11 @@ class PayoutAdmin(admin.ModelAdmin):
     list_display = ("user", "aura_amount", "fiat_amount", "status", "created_at")
     list_filter = ("status",)
     search_fields = ("user__username",)
+
+
+@admin.register(PayoutOtp)
+class PayoutOtpAdmin(admin.ModelAdmin):
+    list_display = ("user", "aura_amount", "consumed", "created_at", "expires_at")
+    list_filter = ("consumed",)
+    search_fields = ("user__username",)
+    readonly_fields = ("user", "aura_amount", "code_hash", "created_at", "expires_at")
