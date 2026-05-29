@@ -64,7 +64,7 @@ export default function InboxPage() {
             <li
               key={n.id}
               className={`rounded-xl border p-4 ${
-                n.read_at ? "border-neutral-800 bg-neutral-900/40" : "border-fuchsia-500/40 bg-fuchsia-500/5"
+                n.read_at ? "border-neutral-800 bg-neutral-900/40" : "border-secondary/40 bg-secondary/10"
               }`}
             >
               <div className="flex items-start justify-between gap-3">
@@ -78,7 +78,7 @@ export default function InboxPage() {
                   <button
                     type="button"
                     onClick={() => markRead(n.id)}
-                    className="shrink-0 text-xs text-fuchsia-300 hover:underline"
+                    className="shrink-0 text-xs text-secondary-light hover:underline"
                   >
                     {t("inbox.markRead")}
                   </button>

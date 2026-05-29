@@ -43,7 +43,7 @@ export default function AdminMessagesPage() {
           onChange={(e) => setUsername(e.target.value)}
           placeholder={t("admin.msg.username")}
           required
-          className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-emerald-500"
+          className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-secondary-light"
         />
         <input
           value={title}
@@ -51,7 +51,7 @@ export default function AdminMessagesPage() {
           placeholder={t("admin.msg.msgTitle")}
           required
           maxLength={120}
-          className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-emerald-500"
+          className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-secondary-light"
         />
         <textarea
           value={body}
@@ -60,7 +60,7 @@ export default function AdminMessagesPage() {
           required
           rows={5}
           maxLength={2000}
-          className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-emerald-500"
+          className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-secondary-light"
         />
         <button
           type="submit"

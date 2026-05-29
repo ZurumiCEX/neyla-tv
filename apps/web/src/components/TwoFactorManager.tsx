@@ -128,7 +128,7 @@ export function TwoFactorManager() {
             value={code}
             onChange={(e) => setCode(e.target.value)}
             placeholder="123456"
-            className="w-40 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-center tracking-widest text-neutral-100 outline-none focus:border-emerald-500"
+            className="w-40 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-center tracking-widest text-neutral-100 outline-none focus:border-secondary-light"
           />
           <button
             type="button"

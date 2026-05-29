@@ -148,7 +148,7 @@ export function ChatPanel({
               <RoleBadge role={m.user.role} />
               {m.user.is_subscriber && (
                 <span
-                  className="mr-1 rounded bg-fuchsia-500/20 px-1 text-xs font-semibold text-fuchsia-300"
+                  className="mr-1 rounded bg-secondary/20 px-1 text-xs font-semibold text-secondary-light"
                   title="Abonné"
                 >
                   ★
@@ -217,7 +217,7 @@ export function ChatPanel({
           placeholder={placeholder}
           disabled={!canConnect || !user}
           maxLength={500}
-          className="flex-1 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-100 outline-none focus:border-emerald-500 disabled:opacity-50"
+          className="flex-1 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-100 outline-none focus:border-secondary-light disabled:opacity-50"
         />
         <EmojiPicker onSelect={addEmoji} disabled={!canConnect || !user} />
         <button

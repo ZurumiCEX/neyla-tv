@@ -54,7 +54,7 @@ export function SubscribeButton({ channelSlug }: { channelSlug: string }) {
 
   if (subscribed) {
     return (
-      <span className="rounded-md bg-fuchsia-500/20 px-3 py-1 text-sm font-semibold text-fuchsia-300">
+      <span className="rounded-md bg-secondary/20 px-3 py-1 text-sm font-semibold text-secondary-light">
         {t("sub.subscribed")}
       </span>
     );
@@ -64,7 +64,7 @@ export function SubscribeButton({ channelSlug }: { channelSlug: string }) {
     return (
       <Link
         href="/login"
-        className="rounded-md bg-fuchsia-500 px-3 py-1 text-sm font-semibold text-neutral-950 hover:bg-fuchsia-400"
+        className="rounded-md bg-secondary px-3 py-1 text-sm font-semibold text-white hover:bg-secondary-light"
       >
         {t("sub.subscribe", { price })}
       </Link>
@@ -76,7 +76,7 @@ export function SubscribeButton({ channelSlug }: { channelSlug: string }) {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="rounded-md bg-fuchsia-500 px-3 py-1 text-sm font-semibold text-neutral-950 hover:bg-fuchsia-400"
+        className="rounded-md bg-secondary px-3 py-1 text-sm font-semibold text-white hover:bg-secondary-light"
       >
         {t("sub.subscribe", { price })}
       </button>
@@ -101,7 +101,7 @@ export function SubscribeButton({ channelSlug }: { channelSlug: string }) {
           <button
             type="button"
             onClick={subscribe}
-            className="w-full rounded-lg bg-fuchsia-500 px-3 py-1.5 text-sm font-semibold text-neutral-950 hover:bg-fuchsia-400"
+            className="w-full rounded-lg bg-secondary px-3 py-1.5 text-sm font-semibold text-white hover:bg-secondary-light"
           >
             {t("sub.confirm")}
           </button>

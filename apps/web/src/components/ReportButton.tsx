@@ -60,7 +60,7 @@ export function ReportButton({
           <select
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm text-neutral-100 outline-none focus:border-emerald-500"
+            className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm text-neutral-100 outline-none focus:border-secondary-light"
           >
             {REASONS.map(([v, l]) => (
               <option key={v} value={v}>
@@ -74,7 +74,7 @@ export function ReportButton({
             placeholder="Détails (optionnel)"
             rows={2}
             maxLength={1000}
-            className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm text-neutral-100 outline-none focus:border-emerald-500"
+            className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm text-neutral-100 outline-none focus:border-secondary-light"
           />
           {error && <p className="text-xs text-red-300">{error}</p>}
           <button

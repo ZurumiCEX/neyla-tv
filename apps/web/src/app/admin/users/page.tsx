@@ -61,12 +61,12 @@ export default function AdminUsersPage() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder={t("admin.users.search")}
-          className="flex-1 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-emerald-500"
+          className="flex-1 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-secondary-light"
         />
         <select
           value={roleFilter}
           onChange={(e) => setRoleFilter(e.target.value)}
-          className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-emerald-500"
+          className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-secondary-light"
         >
           <option value="">{t("admin.users.allRoles")}</option>
           {ROLES.map((r) => (
@@ -98,7 +98,7 @@ export default function AdminUsersPage() {
                   <select
                     value={u.role}
                     onChange={(e) => changeRole(u.id, e.target.value)}
-                    className="rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-100 outline-none focus:border-emerald-500"
+                    className="rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-100 outline-none focus:border-secondary-light"
                   >
                     {ROLES.map((r) => (
                       <option key={r} value={r}>

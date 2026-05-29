@@ -160,7 +160,7 @@ export default function SuivisPage() {
               <div key={s.channel.slug}>
                 <LiveCard channel={s.channel} />
                 {s.tier_name && (
-                  <p className="mt-1 text-xs text-fuchsia-300">{s.tier_name}</p>
+                  <p className="mt-1 text-xs text-secondary-light">{s.tier_name}</p>
                 )}
               </div>
             ))}

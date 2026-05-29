@@ -198,8 +198,8 @@ export default function WalletPage() {
             <div className="mb-6">
               <div className="h-2 w-full overflow-hidden rounded-full bg-neutral-800">
                 <div
-                  className="h-full rounded-full transition-all"
-                  style={{ width: `${progress}%`, backgroundColor: next.color }}
+                  className="h-full rounded-full bg-secondary transition-all"
+                  style={{ width: `${progress}%` }}
                 />
               </div>
             </div>
@@ -529,7 +529,7 @@ function WithdrawTab({ onDone }: { onDone: () => void }) {
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder={t("wallet.payoutPlaceholder")}
-                className="flex-1 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-emerald-500"
+                className="flex-1 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-secondary-light"
               />
               <button
                 type="button"
@@ -567,7 +567,7 @@ function WithdrawTab({ onDone }: { onDone: () => void }) {
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 placeholder="123456"
-                className="flex-1 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-center text-lg tracking-widest text-neutral-100 outline-none focus:border-emerald-500"
+                className="flex-1 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-center text-lg tracking-widest text-neutral-100 outline-none focus:border-secondary-light"
               />
               <button
                 type="button"

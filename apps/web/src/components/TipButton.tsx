@@ -57,14 +57,14 @@ export function TipButton({ channelSlug }: { channelSlug: string }) {
                 min={1}
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm text-neutral-100 outline-none focus:border-emerald-500"
+                className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm text-neutral-100 outline-none focus:border-secondary-light"
               />
               <input
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder="Message (optionnel)"
                 maxLength={200}
-                className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm text-neutral-100 outline-none focus:border-emerald-500"
+                className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm text-neutral-100 outline-none focus:border-secondary-light"
               />
               {error && <p className="text-xs text-red-300">{error}</p>}
               <button

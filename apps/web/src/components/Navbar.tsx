@@ -54,7 +54,7 @@ export function Navbar() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={t("nav.search")}
-                className="w-full rounded-full border border-neutral-800 bg-neutral-900 px-4 py-1.5 pr-10 text-sm text-neutral-100 outline-none focus:border-emerald-500"
+                className="w-full rounded-full border border-neutral-800 bg-neutral-900 px-4 py-1.5 pr-10 text-sm text-neutral-100 outline-none focus:border-secondary-light"
               />
               <button
                 type="submit"
@@ -108,7 +108,7 @@ export function Navbar() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t("nav.search")}
-              className="w-full rounded-full border border-neutral-800 bg-neutral-900 px-4 py-1.5 text-sm text-neutral-100 outline-none focus:border-emerald-500"
+              className="w-full rounded-full border border-neutral-800 bg-neutral-900 px-4 py-1.5 text-sm text-neutral-100 outline-none focus:border-secondary-light"
             />
           </form>
           <Link
