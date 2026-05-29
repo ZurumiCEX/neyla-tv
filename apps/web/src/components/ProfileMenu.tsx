@@ -31,13 +31,10 @@ export function ProfileMenu() {
         : "/admin/dashboard";
 
   const items: { href: string; label: string }[] = [
-    { href: `/c/${user.username}`, label: t("nav.myChannel") },
+    { href: "/ma-chaine", label: t("nav.myChannel") },
     { href: "/dashboard", label: t("nav.dashboard") },
     { href: "/wallet", label: t("nav.wallet") },
-    { href: "/suivis", label: t("nav.follows") },
     ...(user.is_streamer ? [] : [{ href: "/become-streamer", label: t("nav.becomeStreamer") }]),
-    { href: "/achievements", label: t("nav.achievements") },
-    { href: "/inbox", label: t("nav.inbox") },
     { href: "/invite", label: t("nav.invite") },
     { href: "/settings", label: t("nav.settings") },
     ...(["admin", "moderator", "support"].includes(user.role)

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useT } from "@/lib/i18n";
+import { AURA_TIERS, AuraBadge } from "@/components/AuraBadge";
 import { ChatBansManager } from "@/components/ChatBansManager";
 import { ChatPanel } from "@/components/ChatPanel";
 import { CollaborationManager } from "@/components/CollaborationManager";
@@ -628,6 +629,32 @@ export default function DashboardPage() {
                     {tierSaving ? t("common.saving") : t("dash.subSave")}
                   </button>
                   {tierSaved && <span className="text-sm text-secondary-light">{t("common.saved")}</span>}
+                </div>
+              </section>
+
+              <section className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
+                <h2 className="font-semibold">{t("dash.tierGuideTitle")}</h2>
+                <p className="mb-4 mt-1 text-sm text-neutral-400">{t("dash.tierGuideDesc")}</p>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {AURA_TIERS.map((tr) => {
+                    const reached = Number(tierPrice) >= tr.min;
+                    return (
+                      <div key={tr.key} className="flex items-center gap-2">
+                        <AuraBadge tier={tr} size={28} locked={!reached} />
+                        <div className="min-w-0">
+                          <p
+                            className="truncate text-sm font-medium"
+                            style={{ color: reached ? tr.color : "#71717a" }}
+                          >
+                            {t(`aura.tier.${tr.key}`)}
+                          </p>
+                          <p className="text-xs text-neutral-500">
+                            {tr.min.toLocaleString("fr-FR")}+ Aura
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </section>
 

@@ -49,13 +49,32 @@ export function FollowButton({ username }: { username: string }) {
       type="button"
       onClick={toggle}
       disabled={busy || following === null}
-      className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
+      className={`flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-sm font-semibold transition ${
         following
           ? "border border-neutral-700 text-neutral-200 hover:border-red-500 hover:text-red-300"
           : "bg-emerald-500 text-neutral-950 hover:bg-emerald-400"
       } disabled:opacity-50`}
     >
+      <HeartIcon filled={!!following} />
       {following === null ? "…" : following ? "Suivi" : "Suivre"}
     </button>
+  );
+}
+
+function HeartIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill={filled ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M20.8 4.6a5.5 5.5 0 00-7.8 0L12 5.6l-1-1a5.5 5.5 0 00-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 000-7.8z" />
+    </svg>
   );
 }

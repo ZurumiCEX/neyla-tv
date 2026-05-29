@@ -45,6 +45,10 @@ def redeem(code: str, new_user) -> Invite:
     invite.save(update_fields=["used_count"])
     new_user.invited_by = invite.inviter
     new_user.save(update_fields=["invited_by"])
+    import contextlib
+
+    with contextlib.suppress(Exception):
+        reward_referral(invite.inviter, new_user)
     return invite
 
 
@@ -62,3 +66,71 @@ def successful_count(user) -> int:
     from accounts.models import User
 
     return User.objects.filter(invited_by=user).count()
+
+
+# --- Parrainage : récompenses en Aura par palier ----------------------------
+
+# Aura crédités à chaque filleul inscrit.
+REFERRAL_BASE_REWARD = 50
+# Bonus de palier accordés une seule fois quand le nombre de filleuls atteint le seuil.
+REFERRAL_TIERS = [
+    {"threshold": 1, "bonus": 0, "key": "bronze"},
+    {"threshold": 5, "bonus": 200, "key": "silver"},
+    {"threshold": 10, "bonus": 500, "key": "gold"},
+    {"threshold": 25, "bonus": 1500, "key": "platinum"},
+    {"threshold": 50, "bonus": 5000, "key": "diamond"},
+]
+
+
+def _grant(user, amount: int, reference: str) -> None:
+    if amount <= 0:
+        return
+    from payments.models import LedgerEntry
+    from payments.services import grant_aura
+
+    grant_aura(user, amount, LedgerEntry.Kind.REFERRAL, reference)
+
+
+def reward_referral(inviter, new_user) -> None:
+    """Récompense l'inviteur : Aura de base + bonus si un palier est atteint."""
+    count = successful_count(inviter)
+    _grant(inviter, REFERRAL_BASE_REWARD, f"referral:{new_user.username}")
+    for tier in REFERRAL_TIERS:
+        if count == tier["threshold"] and tier["bonus"] > 0:
+            _grant(inviter, tier["bonus"], f"referral-tier:{tier['key']}")
+
+
+def referral_tier(count: int) -> dict | None:
+    current = None
+    for tier in REFERRAL_TIERS:
+        if count >= tier["threshold"]:
+            current = tier
+    return current
+
+
+def next_referral_tier(count: int) -> dict | None:
+    return next((t for t in REFERRAL_TIERS if count < t["threshold"]), None)
+
+
+def referral_stats(user) -> dict:
+    from django.db.models import Sum
+
+    from payments.models import LedgerEntry
+
+    count = successful_count(user)
+    earned = (
+        LedgerEntry.objects.filter(wallet__user=user, kind=LedgerEntry.Kind.REFERRAL).aggregate(
+            s=Sum("amount")
+        )["s"]
+        or 0
+    )
+    current = referral_tier(count)
+    nxt = next_referral_tier(count)
+    return {
+        "successful_invites": count,
+        "aura_earned": int(earned),
+        "base_reward": REFERRAL_BASE_REWARD,
+        "current_tier": current["key"] if current else None,
+        "next_tier": nxt,
+        "tiers": REFERRAL_TIERS,
+    }

@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
 import { Sidebar } from "@/components/Sidebar";
 
@@ -13,7 +14,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <Navbar />
       <div className="flex">
         <Sidebar />
-        <div className="min-w-0 flex-1">{children}</div>
+        <div className="flex min-h-screen min-w-0 flex-1 flex-col">
+          <div className="flex-1">{children}</div>
+          <Footer />
+        </div>
       </div>
     </>
   );

@@ -80,6 +80,17 @@ def _apply(
 
 
 @transaction.atomic
+def grant_aura(user, amount: int, kind: str, reference: str = "", metadata: dict | None = None):
+    """Crédite gratuitement de l'Aura à un utilisateur (parrainage, bonus…)."""
+    amount = int(amount)
+    if amount <= 0:
+        return None
+    wallet = Wallet.objects.select_for_update().get_or_create(user=user)[0]
+    _apply(wallet, amount, kind, reference, metadata=metadata)
+    return wallet
+
+
+@transaction.atomic
 def confirm_purchase(purchase: Purchase) -> Purchase:
     """Idempotent : crédite le wallet une seule fois (anti-rejeu webhook)."""
     if purchase.status == Purchase.Status.PAID:
