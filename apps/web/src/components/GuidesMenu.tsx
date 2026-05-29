@@ -87,7 +87,7 @@ export function GuidesMenu() {
           <Link
             href="/guides"
             onClick={() => setOpen(false)}
-            className="block border-t border-neutral-800 px-4 py-2.5 text-center text-sm font-semibold text-emerald-300 hover:bg-neutral-800"
+            className="block border-t border-neutral-800 px-4 py-2.5 text-center text-sm font-semibold text-secondary-light hover:bg-secondary/10"
           >
             {t("guides.seeAll")}
           </Link>

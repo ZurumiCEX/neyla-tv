@@ -385,7 +385,7 @@ export default function DashboardPage() {
                 onClick={() => setTab(tb.id)}
                 className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition ${
                   tab === tb.id
-                    ? "border-emerald-500 text-emerald-300"
+                    ? "border-secondary text-secondary-light"
                     : "border-transparent text-neutral-400 hover:text-neutral-200"
                 }`}
               >

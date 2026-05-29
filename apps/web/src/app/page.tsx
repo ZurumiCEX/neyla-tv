@@ -60,7 +60,7 @@ export default async function HomePage() {
       {slides.length > 0 ? (
         <HomeCarousel slides={slides} />
       ) : (
-        <section className="relative mb-10 overflow-hidden rounded-2xl border border-neutral-800 bg-gradient-to-br from-emerald-500/15 via-neutral-900 to-fuchsia-500/15 px-6 py-10 sm:px-10 sm:py-14">
+        <section className="relative mb-10 overflow-hidden rounded-2xl border border-neutral-800 bg-gradient-to-br from-emerald-500/20 via-neutral-900 to-secondary/40 px-6 py-10 sm:px-10 sm:py-14">
           <h1 className="max-w-2xl text-3xl font-extrabold tracking-tight sm:text-4xl">
             {t("home.heroTitle")}
           </h1>
