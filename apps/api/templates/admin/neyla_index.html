@@ -48,7 +48,8 @@
     {% endfor %}
   </div>
 
-  {# ---- Répartition + top streamers ---- #}
+  {# ---- Analyse : répartition + top streamers + top jeux ---- #}
+  <div class="neyla-h">Analyse</div>
   <div class="neyla-split">
     <div class="neyla-chart neyla-donut">
       <h3>{{ dashboard.donut.title }}</h3>
@@ -62,11 +63,34 @@
       </div>
     </div>
     <div class="neyla-chart">
-      <h3>{{ dashboard.bars.title }}</h3>
-      {% if dashboard.bars.empty %}
+      <h3>{{ dashboard.streamers_bars.title }}</h3>
+      {% if dashboard.streamers_bars.empty %}
       <p class="neyla-empty">Aucune donnée pour le moment.</p>
-      {% else %}{{ dashboard.bars.svg }}{% endif %}
+      {% else %}{{ dashboard.streamers_bars.svg }}{% endif %}
     </div>
+    <div class="neyla-chart">
+      <h3>{{ dashboard.games_bars.title }}</h3>
+      {% if dashboard.games_bars.empty %}
+      <p class="neyla-empty">Aucun jeu enregistré.</p>
+      {% else %}{{ dashboard.games_bars.svg }}{% endif %}
+    </div>
+  </div>
+
+  {# ---- Live maintenant ---- #}
+  <div class="neyla-h"><span class="live-dot"></span> Live maintenant</div>
+  <div class="neyla-chart neyla-livenow">
+    {% if dashboard.live_now.empty %}
+    <p class="neyla-empty">Aucune diffusion en cours.</p>
+    {% else %}
+    <table class="neyla-livetable">
+      <thead><tr><th>Chaîne</th><th>Catégorie</th><th class="num">Abonnés</th></tr></thead>
+      <tbody>
+        {% for c in dashboard.live_now.channels %}
+        <tr><td><span class="live-dot"></span>{{ c.username }}</td><td>{{ c.category }}</td><td class="num">{{ c.followers }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
   </div>
 
   {# ---- Indicateurs détaillés par domaine ---- #}

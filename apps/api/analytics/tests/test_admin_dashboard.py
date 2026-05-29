@@ -45,9 +45,10 @@ def test_admin_index_renders_dashboard_for_staff(staff_client):
     assert "Tendances" in html
     assert "Économie Aura" in html
     assert "Top streamers" in html
+    assert "Live maintenant" in html
     assert "<svg" in html
-    # La colonne « Actions récentes » est masquée sur le dashboard
-    assert "Recent actions" not in html and "Actions récentes" not in html
+    # Le bloc « Actions récentes » est masqué sur le dashboard
+    assert "recent-actions-module" not in html
 
 
 def test_admin_sidebar_shows_categorized_nav(staff_client):
@@ -57,7 +58,8 @@ def test_admin_sidebar_shows_categorized_nav(staff_client):
     assert "neyla-nav" in html
     assert "neyla-nav-group" in html
     assert "Monétisation" in html
-    assert "Comptes &amp; audience" in html
+    assert "Audience &amp; comptes" in html
+    assert "Création &amp; live" in html
     assert reverse("admin:payments_wallet_changelist") in html
     # La barre de filtre native du menu a été retirée
     assert 'id="nav-filter"' not in html

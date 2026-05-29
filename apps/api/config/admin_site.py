@@ -27,19 +27,42 @@ def _icon(name: str, size: int = 20) -> str:
     )
 
 
-# Catégories métier du menu latéral : (nom, icône, couleur, app_labels).
-_NAV_CATEGORIES: list[tuple[str, str, str, set[str]]] = [
-    ("Comptes & audience", "users", "#10b981", {"accounts", "social", "invitations"}),
-    ("Contenu & live", "play", "#3b82f6", {"channels_app", "catalog", "streamers"}),
-    ("Monétisation", "cash", "#f59e0b", {"payments", "subscriptions", "gamification"}),
-    ("Modération & sécurité", "shield", "#f43f5e", {"moderation", "safety", "chat"}),
-    (
-        "Système & journaux",
-        "cog",
-        "#8b5cf6",
-        {"analytics", "notifications", "audit", "uploads", "health"},
-    ),
+# Catégories métier du menu latéral : (nom, icône, couleur). Ordre = ordre d'affichage.
+_NAV_CATEGORIES: list[tuple[str, str, str]] = [
+    ("Audience & comptes", "users", "#10b981"),
+    ("Création & live", "broadcast", "#3b82f6"),
+    ("Monétisation", "cash", "#f59e0b"),
+    ("Engagement & gamification", "trophy", "#d946ef"),
+    ("Modération & sécurité", "shield", "#f43f5e"),
+    ("Système & journaux", "cog", "#8b5cf6"),
 ]
+
+# Catégorie par défaut selon l'app Django.
+_APP_CATEGORY: dict[str, str] = {
+    "accounts": "Audience & comptes",
+    "social": "Audience & comptes",
+    "invitations": "Audience & comptes",
+    "channels_app": "Création & live",
+    "catalog": "Création & live",
+    "streamers": "Création & live",
+    "payments": "Monétisation",
+    "subscriptions": "Monétisation",
+    "gamification": "Engagement & gamification",
+    "notifications": "Engagement & gamification",
+    "moderation": "Modération & sécurité",
+    "safety": "Modération & sécurité",
+    "chat": "Modération & sécurité",
+    "audit": "Système & journaux",
+    "uploads": "Système & journaux",
+    "health": "Système & journaux",
+    "analytics": "Système & journaux",
+}
+
+# Surcharges fines par modèle (object_name en minuscules) — priment sur l'app.
+# Ex. : la collaboration (app « social ») relève du live, pas de l'audience.
+_MODEL_CATEGORY: dict[str, str] = {
+    "collaboration": "Création & live",
+}
 
 # Choix d'icône par modèle (premier mot-clé trouvé dans le nom, sinon « dot »).
 _ITEM_ICON_RULES: list[tuple[str, str]] = [
@@ -124,59 +147,46 @@ class NeylaAdminSite(AdminSite):
         """Menu groupé par catégorie métier, depuis ``get_app_list``.
 
         Les liens sont filtrés par permissions (donc toujours valides) ; chaque
-        entrée reçoit une icône déduite de son nom et une couleur de catégorie.
+        entrée reçoit une icône déduite de son nom. Le placement suit l'app, avec
+        surcharges fines par modèle (``_MODEL_CATEGORY``).
         """
-        by_label: dict[str, list] = {}
-        for app in self.get_app_list(request):
-            by_label.setdefault(app["app_label"], []).extend(app.get("models", []))
-
         path = request.path
+        buckets: dict[str, list] = {name: [] for name, _, _ in _NAV_CATEGORIES}
+        buckets["Autres"] = []
 
-        def _item(model: dict) -> dict | None:
-            url = model.get("admin_url")
-            if not url:
-                return None
-            return {
-                "label": model["name"],
-                "url": url,
-                "active": path.startswith(url),
-                "icon": _model_icon(model["name"]),
-            }
-
-        groups: list[dict] = []
-        used: set[str] = set()
-        for name, icon, color, labels in _NAV_CATEGORIES:
-            items = []
-            for label in labels:
-                used.add(label)
-                items += [it for m in by_label.get(label, []) if (it := _item(m))]
-            if items:
-                groups.append(
+        for app in self.get_app_list(request):
+            for model in app.get("models", []):
+                url = model.get("admin_url")
+                if not url:
+                    continue
+                obj = (model.get("object_name") or "").lower()
+                category = _MODEL_CATEGORY.get(obj) or _APP_CATEGORY.get(app["app_label"], "Autres")
+                buckets.setdefault(category, []).append(
                     {
-                        "name": name,
-                        "icon": _icon(icon),
-                        "color": color,
-                        "items": sorted(items, key=lambda i: i["label"]),
-                        "open": any(i["active"] for i in items),
+                        "label": model["name"],
+                        "url": url,
+                        "active": path.startswith(url),
+                        "icon": _model_icon(model["name"]),
                     }
                 )
 
-        leftovers = []
-        for label, models in by_label.items():
-            if label in used:
+        meta = {name: (icon, color) for name, icon, color in _NAV_CATEGORIES}
+        meta["Autres"] = ("cog", "#64748b")
+        groups = []
+        for name in [*[c[0] for c in _NAV_CATEGORIES], "Autres"]:
+            items = buckets.get(name) or []
+            if not items:
                 continue
-            leftovers += [it for m in models if (it := _item(m))]
-        if leftovers:
+            icon, color = meta[name]
             groups.append(
                 {
-                    "name": "Autres",
-                    "icon": _icon("cog"),
-                    "color": "#64748b",
-                    "items": sorted(leftovers, key=lambda i: i["label"]),
-                    "open": any(i["active"] for i in leftovers),
+                    "name": name,
+                    "icon": _icon(icon),
+                    "color": color,
+                    "items": sorted(items, key=lambda i: i["label"]),
+                    "open": any(i["active"] for i in items),
                 }
             )
-        # Si aucune catégorie n'est active, ouvrir la première par défaut.
         if groups and not any(g["open"] for g in groups):
             groups[0]["open"] = True
         return groups
@@ -196,12 +206,17 @@ class NeylaAdminSite(AdminSite):
 
         m = admin_dashboard_metrics(30)
         ov, gr, rev, mod = m["overview"], m["growth"], m["revenue"], m["moderation"]
+        com = m.get("commerce", {})
+        cnt = m.get("content", {})
+        liv = m.get("live", {})
         totals = rev["totals"]
         series = rev["series"]
         new_users = [p["count"] for p in m["new_users_series"]]
         purchases = [p["purchases_xof"] for p in series]
         commission = [p["platform_commission_aura"] for p in series]
         tips = [p["tips_aura"] for p in series]
+        creator_share = max(0, totals["tips_aura"] - totals["platform_commission_aura"])
+        purchasers = com.get("paying_users", 0)
 
         hero = [
             self._hero(
@@ -238,7 +253,6 @@ class NeylaAdminSite(AdminSite):
             ),
         ]
 
-        purchasers = m.get("commerce", {}).get("paying_users", 0)
         ratios = [
             {
                 "label": "ARPU 30j",
@@ -258,7 +272,22 @@ class NeylaAdminSite(AdminSite):
             {
                 "label": "Taux en direct",
                 "value": _pct(ov["live_now"], ov["streamers_total"]),
-                "hint": "Streamers actuellement live",
+                "hint": "Streamers live maintenant",
+            },
+            {
+                "label": "Heures / stream",
+                "value": _ratio(ov["broadcast_hours"], ov["streams_total"], " h"),
+                "hint": "Durée moyenne de session",
+            },
+            {
+                "label": "Abonnés / chaîne",
+                "value": _ratio(cnt.get("follows_total", 0), ov["streamers_total"]),
+                "hint": "Followers moyens",
+            },
+            {
+                "label": "Tip moyen",
+                "value": _ratio(totals["tips_aura"], com.get("tips_count", 0), " Aura"),
+                "hint": "Aura par tip",
             },
             {
                 "label": "Commission / tips",
@@ -266,9 +295,24 @@ class NeylaAdminSite(AdminSite):
                 "hint": "Part plateforme",
             },
             {
-                "label": "Heures / stream",
-                "value": _ratio(ov["broadcast_hours"], ov["streams_total"], " h"),
-                "hint": "Durée moyenne",
+                "label": "Part créateurs",
+                "value": _pct(creator_share, totals["tips_aura"]),
+                "hint": "Tips reversés aux créateurs",
+            },
+            {
+                "label": "Taux d'abonnement",
+                "value": _pct(cnt.get("subscriptions_active", 0), cnt.get("follows_total", 0)),
+                "hint": "Abonnés payants / followers",
+            },
+            {
+                "label": "Streamers / users",
+                "value": _pct(ov["streamers_total"], ov["users_total"]),
+                "hint": "Part de créateurs",
+            },
+            {
+                "label": "Récompenses / user",
+                "value": _ratio(cnt.get("achievements_unlocked", 0), ov["users_total"]),
+                "hint": "Succès débloqués",
             },
         ]
 
@@ -279,9 +323,8 @@ class NeylaAdminSite(AdminSite):
             self._chart("Tips / jour (Aura)", tips, "#d946ef"),
         ]
 
-        # Répartition de l'économie Aura (anneau) + top streamers (barres).
         breakdown = [
-            ("Tips", totals["tips_aura"], "#d946ef"),
+            ("Tips créateurs", creator_share, "#d946ef"),
             ("Abonnements", totals["subs_aura"], "#10b981"),
             ("Commission", totals["platform_commission_aura"], "#f59e0b"),
         ]
@@ -294,11 +337,18 @@ class NeylaAdminSite(AdminSite):
             ],
         }
         top = ov.get("top_streamers", [])[:6]
-        bars = {
+        streamers_bars = {
             "title": "Top streamers (abonnés)",
             "svg": svg_hbars([(s["username"], s["followers"]) for s in top], "#3b82f6"),
             "empty": not top,
         }
+        games = liv.get("top_games", [])
+        games_bars = {
+            "title": "Top jeux (chaînes)",
+            "svg": svg_hbars([(g["name"], g["channels"]) for g in games], "#8b5cf6"),
+            "empty": not games,
+        }
+        live_now = {"channels": liv.get("channels", []), "empty": not liv.get("channels")}
 
         sections = [
             {
@@ -308,26 +358,32 @@ class NeylaAdminSite(AdminSite):
                     {"label": "Actifs 24h (DAU)", "value": _fmt(ov["dau"])},
                     {"label": "Actifs 30j (MAU)", "value": _fmt(ov["mau"])},
                     {"label": "Inscrits 7j", "value": _fmt(gr["new_users_7d"])},
-                    {"label": "Pic simultané", "value": _fmt(ov["peak_concurrent"])},
+                    {"label": "Followers cumulés", "value": _fmt(cnt.get("follows_total", 0))},
                 ],
             },
             {
-                "name": "Contenu",
-                "icon": _icon("play"),
+                "name": "Création & live",
+                "icon": _icon("broadcast"),
                 "items": [
                     {"label": "Streamers", "value": _fmt(ov["streamers_total"])},
                     {"label": "En direct", "value": _fmt(ov["live_now"])},
                     {"label": "Streams 7j", "value": _fmt(ov["streams_7d"])},
                     {"label": "Heures diffusées", "value": _fmt(ov["broadcast_hours"])},
+                    {"label": "Pic simultané", "value": _fmt(ov["peak_concurrent"])},
+                    {"label": "Jeux / catégories", "value": _fmt(cnt.get("games_count", 0))},
+                    {"label": "Candidatures en attente", "value": _fmt(cnt.get("apps_pending", 0))},
                 ],
             },
             {
-                "name": "Revenus",
+                "name": "Monétisation",
                 "icon": _icon("cash"),
                 "items": [
-                    {"label": "Abos 30j (Aura)", "value": _fmt(totals["subs_aura"])},
-                    {"label": "Tips 30j (Aura)", "value": _fmt(totals["tips_aura"])},
+                    {"label": "Revenus 30j (FCFA)", "value": _fmt(totals["purchases_xof"])},
                     {"label": "Acheteurs 30j", "value": _fmt(purchasers)},
+                    {"label": "Tips 30j (Aura)", "value": _fmt(totals["tips_aura"])},
+                    {"label": "Part créateurs (Aura)", "value": _fmt(creator_share)},
+                    {"label": "Abos actifs", "value": _fmt(cnt.get("subscriptions_active", 0))},
+                    {"label": "Abos 30j (Aura)", "value": _fmt(totals["subs_aura"])},
                 ],
             },
             {
@@ -336,6 +392,7 @@ class NeylaAdminSite(AdminSite):
                 "items": [
                     {"label": "Signalements ouverts", "value": _fmt(mod["open_reports"])},
                     {"label": "Contenus à examiner", "value": _fmt(mod["pending_flags"])},
+                    {"label": "Bloqués auto.", "value": _fmt(mod["auto_blocked"])},
                     {"label": "Risques ouverts", "value": _fmt(mod["open_risk"])},
                     {"label": "Retraits en attente", "value": _fmt(mod["pending_payouts"])},
                 ],
@@ -346,7 +403,9 @@ class NeylaAdminSite(AdminSite):
             "ratios": ratios,
             "charts": charts,
             "donut": donut,
-            "bars": bars,
+            "streamers_bars": streamers_bars,
+            "games_bars": games_bars,
+            "live_now": live_now,
             "sections": sections,
         }
 

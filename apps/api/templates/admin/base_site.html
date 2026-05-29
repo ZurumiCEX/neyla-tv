@@ -142,10 +142,13 @@ div.breadcrumbs { background: var(--breadcrumbs-bg); border-bottom: 1px solid va
 #content > h1 { color: #fff; font-weight: 700; }
 a:link, a:visited { color: var(--link-fg); }
 
-/* Tableau de bord pleine largeur (pas de colonne latérale d'actions) */
-.dashboard #content-related { display: none; }
-.dashboard #content-main { float: none; width: auto; margin: 0; }
-.dashboard.colMS #content { display: block; }
+/* Tableau de bord PLEINE LARGEUR : Django force .dashboard #content{width:600px}
+   et .colMS{margin-right:300px} (réserve pour « Actions récentes »). On annule. */
+.dashboard #content-related { display: none !important; }
+.dashboard #content { width: auto !important; margin-right: 0 !important; }
+.dashboard #content-main { float: none; width: 100%; }
+.main > #nav-sidebar + .content { max-width: calc(100% - 23px); }
+.main.shifted > #nav-sidebar + .content { max-width: calc(100% - 287px); }
 
 /* ============================================================
    Menu latéral groupé (catégories repliables + icônes + couleurs)
@@ -242,7 +245,14 @@ input:focus, textarea:focus, select:focus { border-color: var(--primary); outlin
 .neyla-chart h3 { font-size: 12.5px; margin: 0 0 12px; color: var(--body-quiet-color); font-weight: 600; }
 .neyla-empty { color: var(--body-quiet-color); font-size: 13px; padding: 18px 0; }
 
-.neyla-split { display: grid; gap: 16px; margin-bottom: 26px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.neyla-split { display: grid; gap: 16px; margin-bottom: 26px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.live-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #ef4444; margin-right: 7px; box-shadow: 0 0 0 3px rgba(239,68,68,.22); vertical-align: middle; }
+.neyla-livenow { margin-bottom: 26px; }
+.neyla-livetable { width: 100%; border-collapse: collapse; }
+.neyla-livetable th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--body-quiet-color); padding: 6px 8px; border-bottom: 1px solid var(--hairline-color); }
+.neyla-livetable td { padding: 9px 8px; border-bottom: 1px solid var(--hairline-color); font-size: 13.5px; color: #e7e9ee; }
+.neyla-livetable tr:last-child td { border-bottom: none; }
+.neyla-livetable .num { text-align: right; font-weight: 700; }
 .donut-wrap { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
 .donut-legend { list-style: none; margin: 0; padding: 0; flex: 1; min-width: 140px; }
 .donut-legend li { display: flex; align-items: center; gap: 9px; padding: 7px 0; font-size: 13px; color: #cbd5e1; border-bottom: 1px solid var(--hairline-color); }
