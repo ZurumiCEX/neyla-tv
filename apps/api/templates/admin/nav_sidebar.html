@@ -8,25 +8,24 @@
       <span>Tableau de bord</span>
     </a>
 
-    <input type="search" id="nav-filter"
-           placeholder="{% translate 'Start typing to filter…' %}"
-           aria-label="{% translate 'Filter navigation items' %}">
-
     {% for g in nav_groups %}
-    <div class="neyla-nav-group">
-      <div class="neyla-nav-cat">{{ g.icon }}<span>{{ g.name }}</span></div>
+    <details class="neyla-nav-group" style="--cat:{{ g.color }}"{% if g.open %} open{% endif %}>
+      <summary class="neyla-nav-cat">
+        <span class="cat-ic">{{ g.icon }}</span>
+        <span class="cat-name">{{ g.name }}</span>
+        <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="m6 9 6 6 6-6"/></svg>
+      </summary>
       <ul>
         {% for it in g.items %}
-        <li{% if it.active %} class="active"{% endif %}><a href="{{ it.url }}">{{ it.label }}</a></li>
+        <li{% if it.active %} class="active"{% endif %}>
+          <a href="{{ it.url }}"><span class="it-ic">{{ it.icon }}</span><span class="it-lbl">{{ it.label }}</span></a>
+        </li>
         {% endfor %}
       </ul>
-    </div>
+    </details>
     {% endfor %}
   {% else %}
     {# Repli : navigation native de Django si le regroupement échoue. #}
-    <input type="search" id="nav-filter"
-           placeholder="{% translate 'Start typing to filter…' %}"
-           aria-label="{% translate 'Filter navigation items' %}">
     {% include 'admin/app_list.html' with app_list=available_apps show_changelinks=False %}
   {% endif %}
 </nav>

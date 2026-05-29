@@ -7,6 +7,9 @@ d'où les ``# noqa: S308`` sur les ``mark_safe``.
 
 from __future__ import annotations
 
+import math
+
+from django.utils.html import escape
 from django.utils.safestring import mark_safe
 
 
@@ -48,6 +51,61 @@ def stat_grid(items: list[tuple[str, object]]) -> str:
     )
     return mark_safe(  # noqa: S308 — libellés littéraux + valeurs numériques internes
         f'<div style="display:flex;gap:22px;flex-wrap:wrap;align-items:flex-end">{cells}</div>'
+    )
+
+
+def svg_donut(parts: list[tuple[str, float, str]], size: int = 132, thickness: int = 18) -> str:
+    """Anneau de répartition. ``parts`` = [(label, valeur, couleur)]."""
+    total = sum(max(0, v) for _, v, _ in parts)
+    r = (size - thickness) / 2
+    c = size / 2
+    circ = 2 * math.pi * r
+    segs = []
+    if total > 0:
+        offset = 0.0
+        for _label, val, color in parts:
+            dash = max(0, val) / total * circ
+            segs.append(
+                f'<circle cx="{c}" cy="{c}" r="{r:.1f}" fill="none" stroke="{color}" '
+                f'stroke-width="{thickness}" stroke-dasharray="{dash:.2f} {circ - dash:.2f}" '
+                f'stroke-dashoffset="{-offset:.2f}" transform="rotate(-90 {c} {c})"/>'
+            )
+            offset += dash
+    else:
+        segs.append(
+            f'<circle cx="{c}" cy="{c}" r="{r:.1f}" fill="none" stroke="#23252e" '
+            f'stroke-width="{thickness}"/>'
+        )
+    return mark_safe(  # noqa: S308 — géométrie interne, valeurs numériques + couleurs littérales
+        f'<svg viewBox="0 0 {size} {size}" width="{size}" height="{size}">{"".join(segs)}</svg>'
+    )
+
+
+def svg_hbars(items: list[tuple[str, float]], color: str, w: int = 300, bar_h: int = 22) -> str:
+    """Barres horizontales étiquetées. Les libellés (ex. pseudos) sont échappés."""
+    gap = 11
+    maxv = max((v for _, v in items), default=0) or 1
+    h = max(1, len(items)) * (bar_h + gap)
+    out = []
+    for i, (label, val) in enumerate(items):
+        y = i * (bar_h + gap)
+        bw = (max(0, val) / maxv) * (w * 0.6)
+        out.append(f'<rect x="0" y="{y}" width="{w}" height="{bar_h}" rx="6" fill="#1b1d26"/>')
+        out.append(
+            f'<rect x="0" y="{y}" width="{bw:.1f}" height="{bar_h}" rx="6" '
+            f'fill="{color}" opacity="0.85"/>'
+        )
+        ty = y + bar_h * 0.68
+        out.append(
+            f'<text x="10" y="{ty:.0f}" fill="#e7e9ee" font-size="12">{escape(label)}</text>'
+        )
+        out.append(
+            f'<text x="{w}" y="{ty:.0f}" fill="#9aa3b2" font-size="12" '
+            f'text-anchor="end">{escape(str(val))}</text>'
+        )
+    return mark_safe(  # noqa: S308 — libellés échappés, reste numérique/littéral
+        f'<svg viewBox="0 0 {w} {h}" width="100%" height="{h}" '
+        f'preserveAspectRatio="xMinYMin meet">{"".join(out)}</svg>'
     )
 
 

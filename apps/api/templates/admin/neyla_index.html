@@ -3,6 +3,9 @@
 {# Django vide ce bloc sur l'index ; on rétablit notre menu latéral groupé. #}
 {% block nav-sidebar %}{% include "admin/nav_sidebar.html" %}{% endblock %}
 
+{# Masque la colonne « Actions récentes » sur le tableau de bord. #}
+{% block sidebar %}{% endblock %}
+
 {% block content %}
 {% if dashboard %}
 <div class="neyla-dash">
@@ -23,6 +26,17 @@
     {% endfor %}
   </div>
 
+  {# ---- Ratios clés ---- #}
+  <div class="neyla-ratios">
+    {% for r in dashboard.ratios %}
+    <div class="neyla-ratio">
+      <div class="rv">{{ r.value }}</div>
+      <div class="rl">{{ r.label }}</div>
+      <div class="rh">{{ r.hint }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
   {# ---- Tendances (graphiques) ---- #}
   <div class="neyla-h">Tendances (30 jours)</div>
   <div class="neyla-charts">
@@ -32,6 +46,27 @@
       {{ c.svg }}
     </div>
     {% endfor %}
+  </div>
+
+  {# ---- Répartition + top streamers ---- #}
+  <div class="neyla-split">
+    <div class="neyla-chart neyla-donut">
+      <h3>{{ dashboard.donut.title }}</h3>
+      <div class="donut-wrap">
+        {{ dashboard.donut.svg }}
+        <ul class="donut-legend">
+          {% for l in dashboard.donut.legend %}
+          <li><span class="dot" style="background:{{ l.color }}"></span>{{ l.label }}<b>{{ l.value }}</b></li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+    <div class="neyla-chart">
+      <h3>{{ dashboard.bars.title }}</h3>
+      {% if dashboard.bars.empty %}
+      <p class="neyla-empty">Aucune donnée pour le moment.</p>
+      {% else %}{{ dashboard.bars.svg }}{% endif %}
+    </div>
   </div>
 
   {# ---- Indicateurs détaillés par domaine ---- #}

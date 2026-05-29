@@ -214,17 +214,24 @@ def _daily_new_users(days: int) -> list[dict]:
 def admin_dashboard_metrics(days: int = 30) -> dict:
     """Agrégat complet pour le tableau de bord du Django admin (KPIs + séries)."""
     from moderation.models import Report
-    from payments.models import Payout
+    from payments.models import Payout, Purchase
     from safety.models import ContentFlag, RiskEvent
 
     overview = platform_overview()
     growth = growth_metrics()
-    revenue = _revenue_series(max(1, min(days, 90)))
+    window = max(1, min(days, 90))
+    revenue = _revenue_series(window)
+    since = timezone.now() - timedelta(days=window)
+    paid = Purchase.objects.filter(status=Purchase.Status.PAID, created_at__gte=since)
     return {
         "overview": overview,
         "growth": growth,
         "revenue": revenue,
-        "new_users_series": _daily_new_users(max(1, min(days, 90))),
+        "new_users_series": _daily_new_users(window),
+        "commerce": {
+            "paying_users": paid.values("user").distinct().count(),
+            "purchases_count": paid.count(),
+        },
         "moderation": {
             "open_reports": Report.objects.filter(status=Report.Status.OPEN).count(),
             "pending_flags": ContentFlag.objects.filter(status=ContentFlag.Status.PENDING).count(),

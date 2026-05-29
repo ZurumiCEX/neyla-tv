@@ -37,21 +37,37 @@ def test_admin_index_renders_dashboard_for_staff(staff_client):
     resp = staff_client.get(reverse("admin:index"))
     assert resp.status_code == 200
     html = resp.content.decode()
-    # Cartes phares + graphiques SVG rendus dans la page d'accueil
+    # Cartes phares + ratios + graphiques + répartition rendus dans la page d'accueil
     assert "Suivi de l'activité" in html
     assert "neyla-hero" in html
+    assert "neyla-ratios" in html
+    assert "ARPU 30j" in html
     assert "Tendances" in html
+    assert "Économie Aura" in html
+    assert "Top streamers" in html
     assert "<svg" in html
+    # La colonne « Actions récentes » est masquée sur le dashboard
+    assert "Recent actions" not in html and "Actions récentes" not in html
 
 
 def test_admin_sidebar_shows_categorized_nav(staff_client):
     resp = staff_client.get(reverse("admin:index"))
     html = resp.content.decode()
-    # Menu latéral groupé par catégorie métier + lien vers un module réel
+    # Menu latéral groupé par catégorie métier (repliable) + lien vers un module réel
     assert "neyla-nav" in html
+    assert "neyla-nav-group" in html
     assert "Monétisation" in html
     assert "Comptes &amp; audience" in html
     assert reverse("admin:payments_wallet_changelist") in html
+    # La barre de filtre native du menu a été retirée
+    assert 'id="nav-filter"' not in html
+
+
+def test_admin_header_has_search_refresh_logout(staff_client):
+    html = staff_client.get(reverse("admin:index")).content.decode()
+    assert 'id="neyla-nav-search"' in html
+    assert 'id="neyla-refresh"' in html
+    assert reverse("admin:logout") in html
 
 
 def test_channel_change_page_shows_session_inline_and_summary(staff_client):
