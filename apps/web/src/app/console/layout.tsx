@@ -8,15 +8,15 @@ import { useT } from "@/lib/i18n";
 
 // Chaque onglet déclare les rôles autorisés (l'admin a accès à tout).
 const TABS: { href: string; labelKey: string; roles: string[] }[] = [
-  { href: "/admin/dashboard", labelKey: "admin.tab.dashboard", roles: ["admin"] },
-  { href: "/admin/monitoring", labelKey: "admin.tab.monitoring", roles: ["admin"] },
-  { href: "/admin/transactions", labelKey: "admin.tab.transactions", roles: ["admin"] },
-  { href: "/admin/fees", labelKey: "admin.tab.fees", roles: ["admin"] },
-  { href: "/admin/users", labelKey: "admin.tab.users", roles: ["admin"] },
-  { href: "/admin/reports", labelKey: "admin.tab.reports", roles: ["admin", "moderator"] },
-  { href: "/admin/safety", labelKey: "admin.tab.safety", roles: ["admin", "moderator"] },
-  { href: "/admin/messages", labelKey: "admin.tab.messages", roles: ["admin", "support"] },
-  { href: "/admin/analytics", labelKey: "admin.tab.analytics", roles: ["admin"] },
+  { href: "/console/dashboard", labelKey: "admin.tab.dashboard", roles: ["admin"] },
+  { href: "/console/monitoring", labelKey: "admin.tab.monitoring", roles: ["admin"] },
+  { href: "/console/transactions", labelKey: "admin.tab.transactions", roles: ["admin"] },
+  { href: "/console/fees", labelKey: "admin.tab.fees", roles: ["admin"] },
+  { href: "/console/users", labelKey: "admin.tab.users", roles: ["admin"] },
+  { href: "/console/reports", labelKey: "admin.tab.reports", roles: ["admin", "moderator"] },
+  { href: "/console/safety", labelKey: "admin.tab.safety", roles: ["admin", "moderator"] },
+  { href: "/console/messages", labelKey: "admin.tab.messages", roles: ["admin", "support"] },
+  { href: "/console/analytics", labelKey: "admin.tab.analytics", roles: ["admin"] },
 ];
 
 const STAFF_ROLES = ["admin", "moderator", "support"];

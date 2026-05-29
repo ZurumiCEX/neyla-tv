@@ -25,10 +25,10 @@ export function ProfileMenu() {
   const initial = (user.display_name || user.username || "?").charAt(0).toUpperCase();
   const adminHref =
     user.role === "moderator"
-      ? "/admin/reports"
+      ? "/console/reports"
       : user.role === "support"
-        ? "/admin/messages"
-        : "/admin/dashboard";
+        ? "/console/messages"
+        : "/console/dashboard";
 
   const items: { href: string; label: string }[] = [
     { href: "/ma-chaine", label: t("nav.myChannel") },

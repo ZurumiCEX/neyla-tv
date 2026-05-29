@@ -6,9 +6,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework.permissions import AllowAny
 
 urlpatterns = [
-    # Django admin déplacé sous /django-admin pour libérer /admin au dashboard
-    # admin du front Next (collision de routes à l'ingress sinon).
-    path("django-admin/", admin.site.urls),
+    path("admin/", admin.site.urls),
     path(
         "api/schema",
         SpectacularAPIView.as_view(permission_classes=[AllowAny]),
