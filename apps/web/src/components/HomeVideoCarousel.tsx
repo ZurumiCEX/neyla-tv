@@ -36,6 +36,7 @@ export function HomeVideoCarousel({ videos }: { videos: HeroVideo[] }) {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const [muted, setMuted] = useState(true);
+  const [playing, setPlaying] = useState(true);
 
   const stageRef = useRef<HTMLDivElement | null>(null);
   const holderRef = useRef<HTMLDivElement | null>(null);
@@ -93,6 +94,8 @@ export function HomeVideoCarousel({ videos }: { videos: HeroVideo[] }) {
           },
           onStateChange: (e: any) => {
             if (e.data === YT.PlayerState.ENDED) go(indexRef.current + 1);
+            else if (e.data === YT.PlayerState.PLAYING) setPlaying(true);
+            else if (e.data === YT.PlayerState.PAUSED) setPlaying(false);
           },
         },
       });
@@ -136,12 +139,30 @@ export function HomeVideoCarousel({ videos }: { videos: HeroVideo[] }) {
     return () => ro.disconnect();
   }, []);
 
-  // --- Rotation automatique toutes les 5 min (en pause au survol) ---
+  // --- Rotation automatique toutes les 5 min ---
+  // En pause au survol ou si la vidéo est mise en pause manuellement.
   useEffect(() => {
-    if (paused || count <= 1) return;
+    if (paused || !playing || count <= 1) return;
     const id = setTimeout(() => setIndex((i) => (i + 1) % count), ROTATE_MS);
     return () => clearTimeout(id);
-  }, [paused, count, index]);
+  }, [paused, playing, count, index]);
+
+  function togglePlay() {
+    const p = playerRef.current;
+    if (!p || typeof p.getPlayerState !== "function") return;
+    try {
+      const YT = (window as any).YT;
+      if (p.getPlayerState() === YT.PlayerState.PLAYING) {
+        p.pauseVideo();
+        setPlaying(false);
+      } else {
+        p.playVideo();
+        setPlaying(true);
+      }
+    } catch {
+      /* ignore */
+    }
+  }
 
   function toggleSound() {
     const p = playerRef.current;
@@ -169,7 +190,8 @@ export function HomeVideoCarousel({ videos }: { videos: HeroVideo[] }) {
       onMouseLeave={() => setPaused(false)}
       aria-roledescription="carousel"
     >
-      <div ref={stageRef} className="relative h-64 w-full sm:h-80 md:h-96">
+      {/* Hauteur +20 % (256/320/384 → 307/384/461 px) */}
+      <div ref={stageRef} className="relative h-[307px] w-full sm:h-[384px] md:h-[461px]">
         {/* Vidéo en fond, recadrée pour remplir sans bandes noires */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           <div
@@ -180,9 +202,17 @@ export function HomeVideoCarousel({ videos }: { videos: HeroVideo[] }) {
           </div>
         </div>
 
+        {/* Couche de clic : met la vidéo en pause / lecture au clic */}
+        <button
+          type="button"
+          onClick={togglePlay}
+          aria-label={playing ? t("home.video.pause") : t("home.video.play")}
+          className="absolute inset-0 z-10 cursor-pointer"
+        />
+
         {/* Dégradé + texte d'accroche */}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
-        <div className="absolute bottom-0 left-0 max-w-2xl p-6 sm:p-8">
+        <div className="pointer-events-none absolute inset-0 z-20 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+        <div className="absolute bottom-0 left-0 z-20 max-w-2xl p-6 sm:p-8">
           <h2 className="text-2xl font-extrabold tracking-tight text-white sm:text-4xl">
             {t("home.heroTitle")}
           </h2>
@@ -210,9 +240,19 @@ export function HomeVideoCarousel({ videos }: { videos: HeroVideo[] }) {
           type="button"
           onClick={toggleSound}
           aria-label={muted ? t("home.video.unmute") : t("home.video.mute")}
-          className="absolute right-3 top-3 rounded-full bg-black/55 p-2 text-white hover:bg-black/75"
+          className="absolute right-3 top-3 z-20 rounded-full bg-black/55 p-2 text-white hover:bg-black/75"
         >
           <SoundIcon muted={muted} />
+        </button>
+
+        {/* Bouton lecture / pause, sous le bouton son */}
+        <button
+          type="button"
+          onClick={togglePlay}
+          aria-label={playing ? t("home.video.pause") : t("home.video.play")}
+          className="absolute right-3 top-14 z-20 rounded-full bg-black/55 p-2 text-white hover:bg-black/75"
+        >
+          <PlayPauseIcon playing={playing} />
         </button>
       </div>
 
@@ -222,7 +262,7 @@ export function HomeVideoCarousel({ videos }: { videos: HeroVideo[] }) {
             type="button"
             onClick={() => go(index - 1)}
             aria-label={t("home.slide.prev")}
-            className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white hover:bg-black/70"
+            className="absolute left-2 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white hover:bg-black/70"
           >
             <ChevronIcon dir="left" />
           </button>
@@ -230,11 +270,11 @@ export function HomeVideoCarousel({ videos }: { videos: HeroVideo[] }) {
             type="button"
             onClick={() => go(index + 1)}
             aria-label={t("home.slide.next")}
-            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white hover:bg-black/70"
+            className="absolute right-2 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white hover:bg-black/70"
           >
             <ChevronIcon dir="right" />
           </button>
-          <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5">
+          <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 gap-1.5">
             {videos.map((_, i) => (
               <button
                 key={i}
@@ -272,6 +312,21 @@ function SoundIcon({ muted }: { muted: boolean }) {
           strokeWidth="2"
           strokeLinecap="round"
         />
+      )}
+    </svg>
+  );
+}
+
+function PlayPauseIcon({ playing }: { playing: boolean }) {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      {playing ? (
+        <>
+          <rect x="6" y="5" width="4" height="14" rx="1" />
+          <rect x="14" y="5" width="4" height="14" rx="1" />
+        </>
+      ) : (
+        <path d="M8 5v14l11-7z" />
       )}
     </svg>
   );

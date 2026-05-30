@@ -9,7 +9,6 @@ type CategoryListResp = { results: GameSummary[] };
 
 // Vidéos du diaporama d'accueil (lecture auto, son bas, rotation 5 min).
 const HERO_VIDEOS: HeroVideo[] = [
-  { id: "A98WptB589o" },
   { id: "ySxy5BRVl48", start: 98 },
   { id: "gwIpCbZH494" },
 ];
