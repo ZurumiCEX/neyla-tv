@@ -7,9 +7,10 @@ import { useT } from "@/lib/i18n";
 import { RoleBadge } from "@/components/RoleBadge";
 
 export function ProfileMenu() {
-  const { user, logout } = useAuth();
+  const { user, logout, authFetch } = useAuth();
   const t = useT();
   const [open, setOpen] = useState(false);
+  const [achCount, setAchCount] = useState(0);
   const ref = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -19,6 +20,13 @@ export function ProfileMenu() {
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    authFetch<{ unlocked: number }>("/api/achievements")
+      .then((d) => setAchCount(d.unlocked))
+      .catch(() => setAchCount(0));
+  }, [user, authFetch]);
 
   if (!user) return null;
 
@@ -59,6 +67,14 @@ export function ProfileMenu() {
           initial
         )}
       </button>
+      {achCount > 0 && (
+        <span
+          title={`${achCount} succès`}
+          className="pointer-events-none absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-neutral-950 bg-emerald-500 px-1 text-[9px] font-bold leading-none text-neutral-950"
+        >
+          {achCount > 99 ? "99+" : achCount}
+        </span>
+      )}
 
       {open && (
         <div className="absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-xl border border-neutral-800 bg-neutral-900 shadow-xl">

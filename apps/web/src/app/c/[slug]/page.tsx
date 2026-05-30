@@ -5,6 +5,8 @@ import { ChatPanel } from "@/components/ChatPanel";
 import { FollowButton } from "@/components/FollowButton";
 import { HlsPlayer } from "@/components/HlsPlayer";
 import { LiveBadge } from "@/components/LiveBadge";
+import type { AchievementItem } from "@/components/AchievementIcon";
+import { AvatarBadge, ProfileAchievements } from "@/components/ProfileAchievements";
 import { ReportButton } from "@/components/ReportButton";
 import { ShareButton } from "@/components/ShareButton";
 import { SocialLinks } from "@/components/SocialLinks";
@@ -51,11 +53,7 @@ export async function generateMetadata({
   };
 }
 
-export default async function ChannelPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
+export default async function ChannelPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const [t, channel] = await Promise.all([getServerT(), getChannel(slug)]);
   if (!channel) notFound();
@@ -63,82 +61,86 @@ export default async function ChannelPage({
   const displayName = channel.streamer.display_name || `@${channel.slug}`;
   const initial = displayName.replace(/^@/, "").charAt(0).toUpperCase();
 
+  // Succès débloqués du streamer (public) : badges profil + pastille avatar.
+  const achievements = await apiFetchServer<{ results: AchievementItem[]; unlocked: number }>(
+    `/api/achievements/${channel.streamer.username}`,
+  ).catch(() => ({ results: [], unlocked: 0 }));
+
   return (
     <main className="mx-auto max-w-7xl px-4 py-6">
       {channel.banner_url && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={channel.banner_url}
-          alt=""
-          className="mb-4 h-40 w-full rounded-xl object-cover"
-        />
+        <img src={channel.banner_url} alt="" className="mb-4 h-40 w-full rounded-xl object-cover" />
       )}
       <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
         <div>
           <HlsPlayer src={channel.hls_playback_url} poster={channel.thumbnail_url} />
           <div className="mt-4 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-4 sm:p-5">
             <header className="flex flex-wrap items-start justify-between gap-4">
-            <div className="flex items-start gap-3">
-              {channel.streamer.avatar_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={channel.streamer.avatar_url}
-                  alt=""
-                  className="h-12 w-12 rounded-full object-cover"
-                />
-              ) : (
-                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-neutral-800 text-lg font-semibold text-neutral-300">
-                  {initial}
-                </span>
-              )}
-              <div>
-                <h1 className="text-xl font-bold">{channel.title || t("card.untitled")}</h1>
-                <p className="mt-1 text-sm text-neutral-400">
-                  {t("channel.by")} <span className="text-neutral-200">{displayName}</span>{" "}
-                  <span className="text-neutral-500">@{channel.slug}</span>
-                </p>
-                <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                  {channel.category && (
-                    <Link
-                      href={`/categories/${channel.category.slug}`}
-                      className="inline-block rounded-full border border-neutral-700 px-3 py-0.5 text-xs text-neutral-300 hover:border-emerald-500"
-                    >
-                      {channel.category.name}
-                    </Link>
+              <div className="flex items-start gap-3">
+                <AvatarBadge count={achievements.unlocked}>
+                  {channel.streamer.avatar_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={channel.streamer.avatar_url}
+                      alt=""
+                      className="h-12 w-12 rounded-full object-cover"
+                    />
+                  ) : (
+                    <span className="flex h-12 w-12 items-center justify-center rounded-full bg-neutral-800 text-lg font-semibold text-neutral-300">
+                      {initial}
+                    </span>
                   )}
-                  {channel.tags?.map((tag) => (
-                    <Link
-                      key={tag}
-                      href={`/search?q=${encodeURIComponent(tag)}`}
-                      className="inline-block rounded-full bg-neutral-800 px-2.5 py-0.5 text-xs text-neutral-400 hover:text-emerald-300"
-                    >
-                      #{tag}
-                    </Link>
-                  ))}
+                </AvatarBadge>
+                <div>
+                  <h1 className="text-xl font-bold">{channel.title || t("card.untitled")}</h1>
+                  <p className="mt-1 text-sm text-neutral-400">
+                    {t("channel.by")} <span className="text-neutral-200">{displayName}</span>{" "}
+                    <span className="text-neutral-500">@{channel.slug}</span>
+                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    {channel.category && (
+                      <Link
+                        href={`/categories/${channel.category.slug}`}
+                        className="inline-block rounded-full border border-neutral-700 px-3 py-0.5 text-xs text-neutral-300 hover:border-emerald-500"
+                      >
+                        {channel.category.name}
+                      </Link>
+                    )}
+                    {channel.tags?.map((tag) => (
+                      <Link
+                        key={tag}
+                        href={`/search?q=${encodeURIComponent(tag)}`}
+                        className="inline-block rounded-full bg-neutral-800 px-2.5 py-0.5 text-xs text-neutral-400 hover:text-emerald-300"
+                      >
+                        #{tag}
+                      </Link>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <LiveBadge slug={channel.slug} initial={{ is_live: channel.is_live }} />
-              <FollowButton username={channel.slug} />
-              <SubscribeButton channelSlug={channel.slug} />
-              <TipButton channelSlug={channel.slug} />
-              <ShareButton
-                path={`/c/${channel.slug}`}
-                title={`${channel.title} — @${channel.streamer.username}`}
-              />
-              <ReportButton
-                channelSlug={channel.slug}
-                targetUsername={channel.streamer.username}
-              />
-            </div>
-          </header>
+              <div className="flex flex-wrap items-center gap-2">
+                <LiveBadge slug={channel.slug} initial={{ is_live: channel.is_live }} />
+                <FollowButton username={channel.slug} />
+                <SubscribeButton channelSlug={channel.slug} />
+                <TipButton channelSlug={channel.slug} />
+                <ShareButton
+                  path={`/c/${channel.slug}`}
+                  title={`${channel.title} — @${channel.streamer.username}`}
+                />
+                <ReportButton
+                  channelSlug={channel.slug}
+                  targetUsername={channel.streamer.username}
+                />
+              </div>
+            </header>
 
             {channel.streamer.bio && (
               <p className="mt-4 whitespace-pre-line text-sm text-neutral-300">
                 {channel.streamer.bio}
               </p>
             )}
+            <ProfileAchievements items={achievements.results} />
             <SocialLinks links={channel.social_links} />
           </div>
         </div>

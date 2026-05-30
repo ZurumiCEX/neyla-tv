@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { AchievementIcon } from "@/components/AchievementIcon";
 import { useAuth } from "@/lib/auth-context";
 import { useT } from "@/lib/i18n";
 
@@ -8,7 +9,9 @@ type Achievement = {
   key: string;
   name: string;
   description: string;
+  criteria?: string;
   icon: string;
+  icon_url?: string;
   unlocked: boolean;
   awarded_at: string | null;
 };
@@ -44,10 +47,17 @@ export function AchievementsView() {
                 : "border-neutral-800 bg-neutral-900/40 opacity-60"
             }`}
           >
-            <span className="text-3xl">{a.unlocked ? a.icon : "🔒"}</span>
-            <div>
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center">
+              {a.unlocked ? (
+                <AchievementIcon achievement={a} size={32} />
+              ) : (
+                <span className="text-3xl">🔒</span>
+              )}
+            </span>
+            <div className="min-w-0">
               <p className="font-semibold">{a.name}</p>
-              <p className="text-xs text-neutral-400">{a.description}</p>
+              {a.description && <p className="text-xs text-neutral-400">{a.description}</p>}
+              {a.criteria && <p className="mt-0.5 text-xs text-neutral-500">🎯 {a.criteria}</p>}
             </div>
           </div>
         ))}

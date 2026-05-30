@@ -306,7 +306,8 @@ WebSocket
 ├── subscriptions/<slug>/status      GET
 ├── subscriptions/<slug>             DELETE
 ├── analytics/me/revenue             GET   (revenus créateur jour/semaine/mois)
-├── achievements                     GET   (catalogue + débloqués)
+├── achievements                     GET   (mon catalogue + débloqués, champs name/criteria/icon/icon_url)
+├── achievements/<username>          GET   (public — succès débloqués d'un profil + total)
 ├── invites                          GET, POST
 ├── notifications/
 │   ├── (list) · read · preferences  GET/PUT
