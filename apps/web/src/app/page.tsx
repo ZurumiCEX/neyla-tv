@@ -1,12 +1,18 @@
-import Link from "next/link";
 import { GameCard, type GameSummary } from "@/components/GameCard";
-import { HomeCarousel, type CarouselSlide } from "@/components/HomeCarousel";
+import { HomeVideoCarousel, type HeroVideo } from "@/components/HomeVideoCarousel";
 import { LiveCard, type LiveChannel } from "@/components/LiveCard";
 import { apiFetchServer } from "@/lib/api";
 import { getServerT } from "@/lib/i18n-server";
 
 type LiveListResp = { results: LiveChannel[]; total: number };
 type CategoryListResp = { results: GameSummary[] };
+
+// Vidéos du diaporama d'accueil (lecture auto, son bas, rotation 5 min).
+const HERO_VIDEOS: HeroVideo[] = [
+  { id: "A98WptB589o" },
+  { id: "ySxy5BRVl48", start: 98 },
+  { id: "gwIpCbZH494" },
+];
 
 async function safeFetch<T>(path: string, fallback: T): Promise<T> {
   try {
@@ -30,59 +36,9 @@ export default async function HomePage() {
     ]),
   ]);
 
-  // Slideshow « mix auto » : on alterne lives en vedette et jeux populaires.
-  const liveSlides: CarouselSlide[] = lives.results.slice(0, 6).map((c) => ({
-    kind: "live",
-    href: `/c/${c.slug}`,
-    title: c.title || t("card.untitled"),
-    subtitle: c.streamer.display_name || `@${c.slug}`,
-    image: c.thumbnail_url,
-    viewers: c.viewers,
-    accent: "#ef4444",
-  }));
-  const catSlides: CarouselSlide[] = cats.results.slice(0, 6).map((g) => ({
-    kind: "category",
-    href: `/categories/${g.slug}`,
-    title: g.name,
-    subtitle: t("home.liveShort", { count: g.live_count ?? 0 }),
-    image: g.box_art_url ?? "",
-    viewers: g.viewers,
-    accent: "#FFC81E",
-  }));
-  const slides: CarouselSlide[] = [];
-  for (let i = 0; i < Math.max(liveSlides.length, catSlides.length); i++) {
-    if (liveSlides[i]) slides.push(liveSlides[i]);
-    if (catSlides[i]) slides.push(catSlides[i]);
-  }
-
   return (
     <main className="mx-auto max-w-7xl px-4 py-6">
-      {slides.length > 0 ? (
-        <HomeCarousel slides={slides} />
-      ) : (
-        <section className="relative mb-10 overflow-hidden rounded-2xl border border-neutral-800 bg-gradient-to-br from-emerald-500/20 via-neutral-900 to-secondary/40 px-6 py-10 sm:px-10 sm:py-14">
-          <h1 className="max-w-2xl text-3xl font-extrabold tracking-tight sm:text-4xl">
-            {t("home.heroTitle")}
-          </h1>
-          <p className="mt-3 max-w-xl text-sm text-neutral-300 sm:text-base">
-            {t("home.heroSubtitle")}
-          </p>
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Link
-              href="/parcourir"
-              className="rounded-lg bg-emerald-500 px-5 py-2 text-sm font-semibold text-neutral-950 hover:bg-emerald-400"
-            >
-              {t("home.heroBrowse")}
-            </Link>
-            <Link
-              href="/become-streamer"
-              className="rounded-lg border border-secondary bg-secondary/10 px-5 py-2 text-sm font-semibold text-secondary-light hover:bg-secondary/20"
-            >
-              {t("home.heroBecome")}
-            </Link>
-          </div>
-        </section>
-      )}
+      <HomeVideoCarousel videos={HERO_VIDEOS} />
 
       <section>
         <div className="flex items-baseline justify-between">
