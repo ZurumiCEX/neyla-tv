@@ -1,8 +1,16 @@
 "use client";
 
 import { use, useEffect, useRef, useState } from "react";
+import { DonationTierBadge } from "@/components/DonationTierBadge";
+import { donationTier } from "@/lib/donation-tiers";
+import { fmt } from "@/lib/format";
 
-type Alert = { kind: "follow" | "tip" | "subscribe" | "test"; actor: string; amount?: number; ts: number };
+type Alert = {
+  kind: "follow" | "tip" | "subscribe" | "test";
+  actor: string;
+  amount?: number;
+  ts: number;
+};
 
 const PUBLIC_API = process.env.NEXT_PUBLIC_API_URL ?? "";
 
@@ -25,7 +33,7 @@ const ACCENTS: Record<Alert["kind"], string> = {
 function headline(a: Alert): string {
   switch (a.kind) {
     case "tip":
-      return `${a.actor} a envoyé ${a.amount ?? 0} Aura !`;
+      return `${a.actor} a envoyé ${fmt(a.amount ?? 0)} Aura !`;
     case "subscribe":
       return `${a.actor} vient de s'abonner !`;
     case "test":
@@ -80,24 +88,27 @@ export default function OverlayPage({ params }: { params: Promise<{ token: strin
     return () => ws.close();
   }, [token]);
 
+  const tipTier = current?.kind === "tip" ? donationTier(current.amount ?? 0) : null;
+  const accent = tipTier ? tipTier.color : current ? ACCENTS[current.kind] : "#FFC81E";
+
   return (
     <main className="fixed inset-0 flex items-start justify-center bg-transparent p-8">
       {current && (
         <div
           key={current.ts}
-          className="animate-[overlayIn_0.4s_ease-out] rounded-2xl border px-8 py-5 text-center shadow-2xl backdrop-blur"
+          className="animate-[overlayIn_0.4s_ease-out] flex flex-col items-center rounded-2xl border px-8 py-5 text-center shadow-2xl backdrop-blur"
           style={{
-            borderColor: ACCENTS[current.kind],
+            borderColor: accent,
             background: "rgba(10,10,10,0.85)",
-            boxShadow: `0 0 40px ${ACCENTS[current.kind]}66`,
+            boxShadow: `0 0 40px ${accent}66`,
           }}
         >
-          <p
-            className="text-xs font-bold uppercase tracking-widest"
-            style={{ color: ACCENTS[current.kind] }}
-          >
+          {tipTier && <DonationTierBadge tier={tipTier} size={72} />}
+          <p className="mt-2 text-xs font-bold uppercase tracking-widest" style={{ color: accent }}>
             {current.kind === "tip"
-              ? "Tip"
+              ? tipTier
+                ? tipTier.name
+                : "Tip"
               : current.kind === "subscribe"
                 ? "Nouvel abonné"
                 : current.kind === "test"

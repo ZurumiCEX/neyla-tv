@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AURA_TIERS, AuraBadge, auraTier, nextAuraTier } from "@/components/AuraBadge";
 import { idempotencyKey } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useT } from "@/lib/i18n";
+import { fmt, fmtFcfa } from "@/lib/format";
+import { CardsLogo, OrangeMoneyLogo, WaveLogo } from "@/components/PaymentLogos";
 
 type Ledger = {
   amount: number;
@@ -46,7 +47,7 @@ type Quote = {
 };
 type Paginated<T> = { results: T[] };
 
-const PACKS = [100, 500, 1000, 5000];
+const PACKS = [100, 500, 1000, 2500, 5000, 10000];
 type Tab = "buy" | "withdraw" | "payments" | "auras";
 type Method = "card" | "orange_money" | "wave";
 
@@ -59,6 +60,7 @@ export default function WalletPage() {
   const [history, setHistory] = useState<Ledger[] | null>(null);
   const [purchases, setPurchases] = useState<Purchase[] | null>(null);
   const [method, setMethod] = useState<Method>("card");
+  const [masked, setMasked] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -121,12 +123,6 @@ export default function WalletPage() {
   if (loading || !wallet)
     return <main className="p-8 text-neutral-500">{t("common.loading")}</main>;
 
-  const tier = auraTier(wallet.aura_balance);
-  const next = nextAuraTier(wallet.aura_balance);
-  const progress = next
-    ? Math.min(100, Math.round((wallet.aura_balance / next.min) * 100))
-    : 100;
-
   const tabs: { id: Tab; label: string }[] = [
     { id: "buy", label: t("wallet.tab.buy") },
     { id: "withdraw", label: t("wallet.tab.withdraw") },
@@ -136,37 +132,31 @@ export default function WalletPage() {
 
   return (
     <main className="mx-auto max-w-3xl p-8">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="mb-2 text-2xl font-bold">{t("wallet.title")}</h1>
-          <p className="text-4xl font-bold text-emerald-400">
-            {wallet.aura_balance} <span className="text-lg text-neutral-400">Aura</span>
-          </p>
-          <p className="mt-1 text-sm text-neutral-400">
-            ≈ {wallet.balance.xof} FCFA{" "}
+      <div className="mb-6">
+        <div className="mb-2 flex items-center gap-2">
+          <h1 className="text-2xl font-bold">{t("wallet.title")}</h1>
+          <button
+            type="button"
+            onClick={() => setMasked((m) => !m)}
+            aria-label={masked ? t("wallet.show") : t("wallet.hide")}
+            title={masked ? t("wallet.show") : t("wallet.hide")}
+            className="rounded-full p-1.5 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-100"
+          >
+            <EyeIcon off={masked} />
+          </button>
+        </div>
+        <p className="text-4xl font-bold text-emerald-400">
+          {masked ? "••••••" : fmt(wallet.aura_balance)}{" "}
+          <span className="text-lg text-neutral-400">Aura</span>
+        </p>
+        <p className="mt-1 text-sm text-neutral-400">
+          ≈ {masked ? "••••" : fmtFcfa(wallet.balance.xof)}{" "}
+          {!masked && (
             <span className="text-neutral-600">
               ({wallet.balance.eur} € / {wallet.balance.usd} $)
             </span>
-          </p>
-        </div>
-        {tier && (
-          <div className="flex items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-900/60 px-3 py-2">
-            <AuraBadge tier={tier} size={36} />
-            <div>
-              <p className="text-sm font-semibold" style={{ color: tier.color }}>
-                {t(`aura.tier.${tier.key}`)}
-              </p>
-              {next && (
-                <p className="text-xs text-neutral-500">
-                  {t("wallet.nextTier", {
-                    n: (next.min - wallet.aura_balance).toLocaleString("fr-FR"),
-                    tier: t(`aura.tier.${next.key}`),
-                  })}
-                </p>
-              )}
-            </div>
-          </div>
-        )}
+          )}
+        </p>
       </div>
 
       {error && (
@@ -194,58 +184,39 @@ export default function WalletPage() {
 
       {tab === "buy" && (
         <>
-          {next && (
-            <div className="mb-6">
-              <div className="h-2 w-full overflow-hidden rounded-full bg-neutral-800">
-                <div
-                  className="h-full rounded-full bg-secondary transition-all"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-            </div>
-          )}
-
           <section className="mb-6 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-6">
             <h2 className="mb-3 font-semibold">{t("wallet.payMethod")}</h2>
             <div className="grid grid-cols-3 gap-2">
-              <MethodButton
-                active={method === "card"}
-                onClick={() => setMethod("card")}
-                label={t("wallet.method.card")}
-              >
-                <CardIcon />
+              <MethodButton active={method === "wave"} onClick={() => setMethod("wave")}>
+                <WaveLogo />
+              </MethodButton>
+              <MethodButton active={method === "card"} onClick={() => setMethod("card")}>
+                <CardsLogo />
               </MethodButton>
               <MethodButton
                 active={method === "orange_money"}
                 onClick={() => setMethod("orange_money")}
-                label="Orange Money"
               >
-                <OrangeMoneyIcon />
-              </MethodButton>
-              <MethodButton
-                active={method === "wave"}
-                onClick={() => setMethod("wave")}
-                label="Wave"
-              >
-                <WaveIcon />
+                <OrangeMoneyLogo />
               </MethodButton>
             </div>
           </section>
 
           <section className="mb-8 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-6">
             <h2 className="mb-3 font-semibold">{t("wallet.buyTitle")}</h2>
-            <div className="flex flex-wrap gap-2">
+            {/* Packs sur 2 lignes max (grille 3×2). */}
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {PACKS.map((p) => (
                 <button
                   key={p}
                   type="button"
                   disabled={busy}
                   onClick={() => buy(p)}
-                  className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
+                  className="rounded-lg bg-emerald-500 px-3 py-2 text-center text-sm font-semibold text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
                 >
-                  {p} Aura
-                  <span className="ml-1 font-normal opacity-80">
-                    · {p * Number(wallet.unit_price_xof)} FCFA
+                  <span className="block">{fmt(p)} Aura</span>
+                  <span className="block text-xs font-normal opacity-80">
+                    {fmtFcfa(p * Number(wallet.unit_price_xof))}
                   </span>
                 </button>
               ))}
@@ -253,31 +224,6 @@ export default function WalletPage() {
             <p className="mt-3 text-xs text-neutral-500">
               {t("wallet.payVia", { method: methodLabel(method, t) })}
             </p>
-          </section>
-
-          <section className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-6">
-            <h2 className="mb-4 font-semibold">{t("wallet.tierLegend")}</h2>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-              {AURA_TIERS.map((tr) => {
-                const reached = wallet.aura_balance >= tr.min;
-                return (
-                  <div key={tr.key} className="flex items-center gap-2">
-                    <AuraBadge tier={tr} size={32} locked={!reached} />
-                    <div className="min-w-0">
-                      <p
-                        className="truncate text-sm font-medium"
-                        style={{ color: reached ? tr.color : "#71717a" }}
-                      >
-                        {t(`aura.tier.${tr.key}`)}
-                      </p>
-                      <p className="text-xs text-neutral-500">
-                        {tr.min.toLocaleString("fr-FR")}+ Aura
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
           </section>
         </>
       )}
@@ -306,9 +252,9 @@ export default function WalletPage() {
                     <td className="py-2 text-neutral-400">
                       {new Date(p.created_at).toLocaleDateString("fr-FR")}
                     </td>
-                    <td className="py-2 text-emerald-300">+{p.credits} Aura</td>
+                    <td className="py-2 text-emerald-300">+{fmt(p.credits)} Aura</td>
                     <td className="py-2 text-right text-neutral-300">
-                      {p.fiat_amount} {p.currency}
+                      {fmt(p.fiat_amount)} {p.currency}
                     </td>
                     <td className="py-2 text-right">
                       <StatusPill status={p.status} />
@@ -342,9 +288,9 @@ export default function WalletPage() {
                       }`}
                     >
                       {l.amount >= 0 ? "+" : ""}
-                      {l.amount}
+                      {fmt(l.amount)}
                     </td>
-                    <td className="py-2 text-right text-neutral-500">{l.balance_after}</td>
+                    <td className="py-2 text-right text-neutral-500">{fmt(l.balance_after)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -365,26 +311,23 @@ function methodLabel(m: Method, t: (k: string) => string): string {
 function MethodButton({
   active,
   onClick,
-  label,
   children,
 }: {
   active: boolean;
   onClick: () => void;
-  label: string;
   children: React.ReactNode;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`flex flex-col items-center gap-2 rounded-xl border p-3 text-xs font-medium transition ${
+      className={`flex h-16 items-center justify-center rounded-xl border bg-white/95 p-2 transition ${
         active
-          ? "border-emerald-500 bg-emerald-500/10 text-emerald-300"
-          : "border-neutral-700 text-neutral-300 hover:border-secondary hover:text-secondary-light"
+          ? "border-emerald-500 ring-2 ring-emerald-500/40"
+          : "border-neutral-700 hover:border-secondary"
       }`}
     >
       {children}
-      {label}
     </button>
   );
 }
@@ -542,16 +485,16 @@ function WithdrawTab({ onDone }: { onDone: () => void }) {
             </div>
             {quote && quote.aura > 0 && (
               <div className="mt-3 rounded-lg border border-neutral-800 bg-neutral-900/40 p-3 text-sm">
-                <Row label={t("wallet.quoteGross")} value={`${quote.aura} Aura`} />
+                <Row label={t("wallet.quoteGross")} value={`${fmt(quote.aura)} Aura`} />
                 <Row
                   label={t("wallet.quoteFee", { pct: quote.fee_pct })}
-                  value={`- ${quote.fee_aura} Aura`}
+                  value={`- ${fmt(quote.fee_aura)} Aura`}
                   red
                 />
                 <div className="my-2 border-t border-neutral-800" />
                 <Row
                   label={t("wallet.quoteNet")}
-                  value={`${quote.net_aura} Aura ≈ ${quote.net_fiat} FCFA`}
+                  value={`${fmt(quote.net_aura)} Aura ≈ ${fmtFcfa(quote.net_fiat)}`}
                   strong
                 />
               </div>
@@ -634,35 +577,22 @@ function StatusPill({ status }: { status: string }) {
   );
 }
 
-function CardIcon() {
+function EyeIcon({ off }: { off: boolean }) {
   return (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-      <rect x="2" y="5" width="20" height="14" rx="2" />
-      <path d="M2 10h20" />
-    </svg>
-  );
-}
-
-function OrangeMoneyIcon() {
-  return (
-    <svg width="28" height="28" viewBox="0 0 24 24" aria-hidden>
-      <rect x="3" y="3" width="18" height="18" rx="3" fill="#ff7900" />
-      <rect x="9.5" y="13" width="5" height="5" fill="#fff" />
-    </svg>
-  );
-}
-
-function WaveIcon() {
-  return (
-    <svg width="28" height="28" viewBox="0 0 24 24" aria-hidden>
-      <circle cx="12" cy="12" r="10" fill="#1dc8f2" />
-      <path
-        d="M5 13c2 0 2-2 3.5-2S10 13 12 13s2-2 3.5-2S17 13 19 13"
-        fill="none"
-        stroke="#fff"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+      <circle cx="12" cy="12" r="3" />
+      {off && <path d="M3 3l18 18" />}
     </svg>
   );
 }
