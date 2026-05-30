@@ -96,12 +96,15 @@ class Command(BaseCommand):
             email=email,
             defaults={"username": handle, "display_name": display, "role": role},
         )
+        # Garantit toujours un login fonctionnel (mot de passe + compte actif),
+        # même si le compte existait déjà (ré-exécution sans --flush).
+        user.set_password(PASSWORD)
+        user.is_active = True
+        user.role = role
         if created:
-            user.set_password(PASSWORD)
             user.bio = f"Compte démo : {display}."
             user.avatar_url = f"{IMG}/{handle}-av/200/200"
-            user.role = role
-            user.save()
+        user.save()
         return user
 
     def _flush(self):
