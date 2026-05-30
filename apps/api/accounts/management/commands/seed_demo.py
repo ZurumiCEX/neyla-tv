@@ -90,19 +90,43 @@ class Command(BaseCommand):
 
     # --- helpers ---------------------------------------------------------
 
+    def _free_username(self, preferred: str) -> str:
+        """Renvoie un username libre comme username ET comme slug de chaîne.
+
+        Évite toute collision avec des comptes/chaînes réels déjà présents
+        (ex. une chaîne `admin` existante) : on ne touche jamais aux vraies
+        données, on choisit simplement un identifiant disponible.
+        """
+        from channels_app.models import Channel
+
+        base = preferred
+        candidate = base
+        i = 1
+        while (
+            User.objects.filter(username=candidate).exists()
+            or Channel.objects.filter(slug=candidate).exists()
+        ):
+            i += 1
+            candidate = f"{base}{i}"
+        return candidate
+
     def _mkuser(self, handle: str, display: str, role: str = "user"):
         email = f"{handle}{DOMAIN}"
-        user, created = User.objects.get_or_create(
-            email=email,
-            defaults={"username": handle, "display_name": display, "role": role},
-        )
-        # Garantit toujours un login fonctionnel (mot de passe + compte actif),
-        # même si le compte existait déjà (ré-exécution sans --flush).
+        user = User.objects.filter(email__iexact=email).first()
+        if user is None:
+            # username/slug libre → le signal d'auto-création de Channel ne
+            # heurtera pas une chaîne réelle existante.
+            username = self._free_username(handle)
+            user = User.objects.create(
+                email=email, username=username, display_name=display, role=role
+            )
+        # Garantit toujours un login fonctionnel, même en ré-exécution.
         user.set_password(PASSWORD)
         user.is_active = True
         user.role = role
-        if created:
+        if not user.bio:
             user.bio = f"Compte démo : {display}."
+        if not user.avatar_url:
             user.avatar_url = f"{IMG}/{handle}-av/200/200"
         user.save()
         return user
