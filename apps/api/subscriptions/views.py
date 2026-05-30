@@ -12,7 +12,12 @@ from channels_app.models import Channel
 
 from . import services
 from .models import Subscription
-from .serializers import MySubscriptionSerializer, SubTierSerializer, TierWriteSerializer
+from .serializers import (
+    GiftedSubscriptionSerializer,
+    MySubscriptionSerializer,
+    SubTierSerializer,
+    TierWriteSerializer,
+)
 
 
 @api_view(["GET"])
@@ -78,6 +83,44 @@ def subscription_status(request: Request, slug: str) -> Response:
     channel = Channel.objects.filter(slug=slug.lower()).first()
     subscribed = bool(channel and services.is_subscribed(request.user, channel))
     return Response({"subscribed": subscribed})
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def gift(request: Request) -> Response:
+    """Offre un abonnement à un autre utilisateur (payé en Aura par l'offreur)."""
+    slug = (request.data.get("channel_slug") or request.data.get("channel") or "").strip()
+    recipient = (request.data.get("recipient") or "").strip()
+    try:
+        sub = services.gift_subscription(request.user, slug, recipient)
+    except services.SubscriptionError as exc:
+        return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as exc:
+        from payments.services import PaymentError
+
+        if isinstance(exc, PaymentError):
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        raise
+    return Response(
+        {
+            "channel": sub.channel.slug,
+            "recipient": sub.subscriber.username,
+            "current_period_end": sub.current_period_end,
+        },
+        status=status.HTTP_201_CREATED,
+    )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def my_gifts(request: Request) -> Response:
+    """Abonnements que j'ai offerts."""
+    subs = (
+        Subscription.objects.filter(gifted_by=request.user)
+        .select_related("channel__user", "channel__category", "tier", "subscriber")
+        .order_by("-created_at")
+    )
+    return Response({"results": GiftedSubscriptionSerializer(subs, many=True).data})
 
 
 @api_view(["DELETE"])

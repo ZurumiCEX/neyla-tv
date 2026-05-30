@@ -24,7 +24,9 @@ Chaque app est autonome : `models`, `views`, `serializers`, `services`,
 - **Rôle** : utilisateurs, JWT (access + refresh cookie), vérification email,
   reset mot de passe, profil.
 - **Modèle** : `User` (email unique, username `^[a-z0-9_]{3,30}$`,
-  `display_name`, `avatar_url`, `bio`, `email_verified_at`). `AUTH_USER_MODEL`.
+  `display_name`, `avatar_url`, `bio`, `email_verified_at`, `terms_accepted_at`,
+  `invited_by`). `AUTH_USER_MODEL`. L'inscription **exige** `terms_accepted=true`
+  (attestation 13 ans + CGU).
 - **À noter** : `tokens.py` (génération de tokens email signés), `tasks.py`
   (envoi email via Celery), `services.py` (logique métier). Hash Argon2.
 - → [ADR 002](adr/002-jwt-strategy.md)
@@ -76,17 +78,23 @@ Chaque app est autonome : `models`, `views`, `serializers`, `services`,
 - **`uploads`** : `services.upload_image()` vers **Cloudflare R2** (boto3, mode
   FAKE hors-ligne) ; endpoints avatar / bannière / vignette de jeu.
 - **`subscriptions`** : `SubTier` (palier prix Aura + perks) et `Subscription`
-  (statut, période) ; `subscribe()` débite le wallet via `split`.
+  (statut, période, `gifted_by` pour les cadeaux) ; `subscribe()` débite le wallet
+  via `split`, `gift_subscription()` permet d'offrir un abonnement à un autre
+  utilisateur. Endpoints : `POST /subscriptions/gift`, `GET /subscriptions/gifted`.
 - **`gamification`** : `Achievement` / `UserAchievement` ;
   `check_and_award(user, event)` (best-effort) hooké dans login, candidature,
   live, follow, tip, abonnement.
 - **`invitations`** : `Invite` (code, max_uses, expiry) ; redemption à
-  l'inscription (`?invite=CODE`) → `User.invited_by`.
+  l'inscription (`?invite=CODE`) → `User.invited_by`. **La récompense de
+  parrainage (Aura) est versée à la *vérification de l'email* du filleul**
+  (anti-abus) ; `successful_count()` ne compte que les filleuls vérifiés.
 - **`notifications` (étendu)** : nouveaux types, `NotificationPreference` par
   type, messagerie support (`POST /api/admin/messages`).
 - **`moderation` (étendu)** : import de mots interdits, workflow de signalements
   (`assigned_to`/`resolution`/`resolved_at`, ban depuis le report).
-- **`analytics` (étendu)** : `admin_dashboard()` (activité + séries de revenus).
+- **`analytics` (étendu)** : `admin_dashboard()` (activité + séries de revenus
+  plateforme), `creator_revenue(user, period)` (revenus consolidés d'un
+  créateur — tips + abonnements + parrainage — par jour/semaine/mois).
 
 ### `config` — projet Django
 - `settings/base.py` (commun), `dev.py` (DEBUG, hosts permissifs),
@@ -105,13 +113,18 @@ Chaque app est autonome : `models`, `views`, `serializers`, `services`,
 | `/login`, `/register` | `*/page.tsx` | Auth |
 | `/verify-email/[token]` | `page.tsx` | Vérification email |
 | `/dashboard` | `page.tsx` | Espace streamer (clé RTMPS, chaîne) |
-| `/c/[slug]` | `page.tsx` | Page chaîne : player + chat |
+| `/revenus` | `page.tsx` | Revenus consolidés du créateur (tips + abos + parrainage), période jour/semaine/mois |
+| `/abonnements` | `page.tsx` | Mes abonnements + cadeau d'abonnement (onglets Actifs/Offert) |
+| `/c/[slug]` | `page.tsx` | Page chaîne : player + chat + **bouton partager** |
 | `/categories/[slug]` | `page.tsx` | Lives d'une catégorie |
 | `/search` | `SearchView.tsx` | Recherche |
 
 ### Composants — `src/components/`
 `HlsPlayer` (lecture HLS via hls.js), `ChatPanel` (WebSocket chat),
-`LiveBadge`, `LiveCard`, `FollowButton`, `Navbar`.
+`LiveBadge`, `LiveCard`, `FollowButton`, `Navbar`, `ProfileMenu`
+(menu utilisateur incl. **Revenus** [streamers] et **Abonnements**),
+`ShareButton` (partage live : copie de lien interne + X/Facebook/WhatsApp/
+Telegram + Web Share API natif), `Footer` (4 colonnes incl. Légal + gros logo).
 
 ### Librairie — `src/lib/`
 - `api.ts` : `apiFetch` (client, `NEXT_PUBLIC_API_URL`) et `apiFetchServer`

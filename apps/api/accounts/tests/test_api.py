@@ -19,7 +19,12 @@ pytestmark = pytest.mark.django_db
 def test_register_creates_user_and_triggers_email(api_client, mailoutbox):
     response = api_client.post(
         reverse("auth-register"),
-        {"email": "neo@example.com", "username": "neo", "password": "correct-horse-battery-staple"},
+        {
+            "email": "neo@example.com",
+            "username": "neo",
+            "password": "correct-horse-battery-staple",
+            "terms_accepted": True,
+        },
         format="json",
     )
     assert response.status_code == 201, response.content
@@ -38,6 +43,7 @@ def test_register_duplicate_email_rejected(api_client):
             "email": "dup@example.com",
             "username": "other",
             "password": "correct-horse-battery-staple",
+            "terms_accepted": True,
         },
         format="json",
     )
@@ -47,7 +53,25 @@ def test_register_duplicate_email_rejected(api_client):
 def test_register_invalid_username_rejected(api_client):
     response = api_client.post(
         reverse("auth-register"),
-        {"email": "x@example.com", "username": "AB", "password": "correct-horse-battery-staple"},
+        {
+            "email": "x@example.com",
+            "username": "AB",
+            "password": "correct-horse-battery-staple",
+            "terms_accepted": True,
+        },
+        format="json",
+    )
+    assert response.status_code == 400
+
+
+def test_register_without_terms_rejected(api_client):
+    response = api_client.post(
+        reverse("auth-register"),
+        {
+            "email": "no-cgu@example.com",
+            "username": "nocgu",
+            "password": "correct-horse-battery-staple",
+        },
         format="json",
     )
     assert response.status_code == 400

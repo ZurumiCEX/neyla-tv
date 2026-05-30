@@ -152,6 +152,54 @@ messagerie **support/système** (pas de DM 1:1).
 
 ---
 
+## Améliorations proposées (post v3)
+
+Pistes d'évolution par module/workflow, classées par valeur produit.
+
+### Revenus créateur (`/revenus`)
+- 📋 **Export CSV / PDF** des séries (audit / comptabilité).
+- 📋 **Comparaison période N vs N-1** (delta + variation %).
+- 📋 **Courbe cumulée** + objectif de retrait (jauge).
+- 📋 **Prévision** simple (moyenne mobile sur les 4 dernières périodes).
+- 📋 **Notifications** : seuil de retrait atteint, baisse anormale.
+
+### Abonnements & cadeau (`/abonnements`, `subscriptions`)
+- 📋 **Cadeaux en lot** : offrir N abonnements à la communauté d'un streamer.
+- 📋 **Abonnements multi-mois** (3 / 6 / 12) avec remise.
+- 📋 **Renouvellement automatique optionnel** (opt-in/opt-out clair).
+- 📋 **Notifications email** côté destinataire et offreur.
+- 📋 **Statistiques streamer** dédiées : taux de renouvellement, cohortes.
+
+### Parrainage (`invitations`)
+- 📋 **Page publique de suivi** (filleuls vérifiés + paliers atteints).
+- 📋 **Lien court** (`/r/<code>`) + carte OpenGraph dédiée.
+- 📋 **Anti-fraude** : empreinte appareil/IP partagée → flag, double opt-in pour
+  débloquer la récompense, plafond mensuel par parrain.
+- 📋 **Relances email** pour les filleuls non vérifiés (J+1, J+3).
+- 📋 **Tableau de bord** des parrains les plus actifs (modération côté admin).
+
+### Onboarding & inscription (`accounts`)
+- 📋 **Double opt-in email** (déjà en place) + **rappel** au login si non vérifié.
+- 📋 **Captcha / proof-of-work** anti-bots sur les inscriptions.
+- 📋 **Checklist de démarrage** (compléter profil, suivre une chaîne, etc.).
+- 📋 **Versioning des CGU** : stocker la version acceptée à `terms_accepted_at`.
+- 📋 **Onboarding streamer** guidé (clé OBS → 1er live → 1er tip).
+
+### Partage du live (`ShareButton`, `/c/[slug]`)
+- 📋 **Carte OpenGraph dédiée** (thumbnail dynamique avec titre, streamer, badge LIVE).
+- 📋 **Partager dans le chat** (ouvre le compose avec le lien).
+- 📋 **Clips** : partager un moment précis du stream (timestamp).
+- 📋 **Codes QR** générés à la volée (réutiliser `QrCode` existant).
+- 📋 **Partage in-app** : DM aux followers (quand la messagerie 1:1 existera).
+
+### Workflows modération / paiements / audit
+- 📋 **Files priorisées** (SLA) côté modération avec rotation.
+- 📋 **Audit enrichi** : diff structuré des changements sensibles (rôle, fees).
+- 📋 **Payouts** : approbation à 2 niveaux au-dessus d'un seuil.
+- 📋 **Bot anti-spam** chat (heuristiques) avec apprentissage des mots interdits.
+
+---
+
 ## Contribuer à la roadmap
 
 Les évolutions structurantes passent par un **ADR** dans

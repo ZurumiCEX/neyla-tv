@@ -22,8 +22,19 @@ class RegistrationError(Exception):
 
 
 @transaction.atomic
-def register_user(*, email: str, username: str, password: str, invite_code: str = "") -> User:
+def register_user(
+    *,
+    email: str,
+    username: str,
+    password: str,
+    invite_code: str = "",
+    terms_accepted: bool = False,
+) -> User:
     """Crée un utilisateur. Lève RegistrationError si conflit ou règle violée."""
+    if not terms_accepted:
+        raise RegistrationError(
+            "Vous devez attester avoir 13 ans ou plus et accepter les conditions d'utilisation."
+        )
     username_lc = username.lower()
     if username_lc in RESERVED_USERNAMES:
         raise RegistrationError("Ce username est réservé.")
@@ -33,6 +44,8 @@ def register_user(*, email: str, username: str, password: str, invite_code: str 
         raise RegistrationError("Ce username est déjà pris.")
     validate_password(password)
     user = User.objects.create_user(email=email, username=username_lc, password=password)
+    user.terms_accepted_at = timezone.now()
+    user.save(update_fields=["terms_accepted_at"])
     if invite_code:
         from invitations.services import try_redeem
 
@@ -52,6 +65,12 @@ def verify_email_token(token: str) -> User:
     if not user.is_email_verified:
         user.email_verified_at = timezone.now()
         user.save(update_fields=["email_verified_at"])
+        import contextlib
+
+        with contextlib.suppress(Exception):
+            from invitations.services import reward_for_verified
+
+            reward_for_verified(user)
     return user
 
 

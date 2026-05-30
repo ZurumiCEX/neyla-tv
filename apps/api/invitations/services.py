@@ -35,7 +35,11 @@ def create_invite(inviter, max_uses: int = 1, expires_at=None) -> Invite:
 
 @transaction.atomic
 def redeem(code: str, new_user) -> Invite:
-    """Lie `new_user.invited_by` à l'inviteur et incrémente le compteur. Lève si invalide."""
+    """Lie `new_user.invited_by` à l'inviteur et incrémente le compteur. Lève si invalide.
+
+    NB : la récompense Aura n'est PAS versée ici. Elle l'est uniquement quand le
+    filleul valide son email (anti-abus) via ``reward_for_verified``.
+    """
     invite = Invite.objects.select_for_update().filter(code=(code or "").strip().upper()).first()
     if invite is None or not invite.is_usable:
         raise InviteError("Code d'invitation invalide ou expiré.")
@@ -45,10 +49,6 @@ def redeem(code: str, new_user) -> Invite:
     invite.save(update_fields=["used_count"])
     new_user.invited_by = invite.inviter
     new_user.save(update_fields=["invited_by"])
-    import contextlib
-
-    with contextlib.suppress(Exception):
-        reward_referral(invite.inviter, new_user)
     return invite
 
 
@@ -63,9 +63,31 @@ def try_redeem(code: str, new_user) -> Invite | None:
 
 
 def successful_count(user) -> int:
+    """Filleuls **validés** : compte les inscrits ayant vérifié leur email."""
     from accounts.models import User
 
-    return User.objects.filter(invited_by=user).count()
+    return User.objects.filter(invited_by=user, email_verified_at__isnull=False).count()
+
+
+def reward_for_verified(user) -> None:
+    """Verse la récompense de parrainage quand le filleul valide son email.
+
+    Idempotent au niveau de l'appel : ``verify_email_token`` ne nous appelle
+    qu'à la première vérification (``if not user.is_email_verified``), donc
+    la récompense est versée exactement une fois.
+    """
+    inviter_id = getattr(user, "invited_by_id", None)
+    if not inviter_id:
+        return
+    from accounts.models import User
+
+    inviter = User.objects.filter(pk=inviter_id).first()
+    if inviter is None:
+        return
+    import contextlib
+
+    with contextlib.suppress(Exception):
+        reward_referral(inviter, user)
 
 
 # --- Parrainage : récompenses en Aura par palier ----------------------------

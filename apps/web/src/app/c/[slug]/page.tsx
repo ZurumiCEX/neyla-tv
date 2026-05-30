@@ -6,6 +6,7 @@ import { FollowButton } from "@/components/FollowButton";
 import { HlsPlayer } from "@/components/HlsPlayer";
 import { LiveBadge } from "@/components/LiveBadge";
 import { ReportButton } from "@/components/ReportButton";
+import { ShareButton } from "@/components/ShareButton";
 import { SocialLinks } from "@/components/SocialLinks";
 import { SubscribeButton } from "@/components/SubscribeButton";
 import { TipButton } from "@/components/TipButton";
@@ -122,6 +123,10 @@ export default async function ChannelPage({
               <FollowButton username={channel.slug} />
               <SubscribeButton channelSlug={channel.slug} />
               <TipButton channelSlug={channel.slug} />
+              <ShareButton
+                path={`/c/${channel.slug}`}
+                title={`${channel.title} — @${channel.streamer.username}`}
+              />
               <ReportButton
                 channelSlug={channel.slug}
                 targetUsername={channel.streamer.username}

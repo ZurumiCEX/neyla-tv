@@ -19,6 +19,14 @@ def my_analytics(request: Request) -> Response:
 
 
 @api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def my_revenue(request: Request) -> Response:
+    """Revenus consolidés (tips + abonnements + parrainage) du créateur connecté."""
+    period = (request.query_params.get("period") or "day").strip().lower()
+    return Response(services.creator_revenue(request.user, period=period))
+
+
+@api_view(["GET"])
 @permission_classes([IsAdminRole])
 def overview(request: Request) -> Response:  # noqa: ARG001
     return Response(services.platform_overview())

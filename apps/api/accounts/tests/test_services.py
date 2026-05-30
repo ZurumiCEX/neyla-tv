@@ -27,10 +27,12 @@ def test_register_user_ok():
         email="alice@example.com",
         username="alice",
         password="correct-horse-battery-staple",
+        terms_accepted=True,
     )
     assert user.pk is not None
     assert user.username == "alice"
     assert user.check_password("correct-horse-battery-staple")
+    assert user.terms_accepted_at is not None
 
 
 def test_register_user_lowercases_username():
@@ -38,6 +40,7 @@ def test_register_user_lowercases_username():
         email="bob@example.com",
         username="BoB",
         password="correct-horse-battery-staple",
+        terms_accepted=True,
     )
     assert user.username == "bob"
 
@@ -49,6 +52,7 @@ def test_register_user_duplicate_email_rejected():
             email="dup@example.com",
             username="other",
             password="correct-horse-battery-staple",
+            terms_accepted=True,
         )
 
 
@@ -58,12 +62,28 @@ def test_register_user_reserved_username_rejected():
             email="admin@example.com",
             username="admin",
             password="correct-horse-battery-staple",
+            terms_accepted=True,
         )
 
 
 def test_register_user_weak_password_rejected():
     with pytest.raises(ValidationError):
-        register_user(email="weak@example.com", username="weak", password="short")
+        register_user(
+            email="weak@example.com",
+            username="weak",
+            password="short",
+            terms_accepted=True,
+        )
+
+
+def test_register_user_rejects_without_terms():
+    with pytest.raises(RegistrationError):
+        register_user(
+            email="no-terms@example.com",
+            username="noterms",
+            password="correct-horse-battery-staple",
+            terms_accepted=False,
+        )
 
 
 def test_verify_email_marks_user_verified():

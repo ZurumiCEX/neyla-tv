@@ -34,7 +34,7 @@ HTTP sont préfixées par `/api/`. L'admin Django est servi sous `/admin/`.
 
 | Méthode | Chemin | Auth | Rate-limit | Description |
 |---------|--------|------|-----------|-------------|
-| `POST` | `/api/auth/register` | — | 5 / 5 min / IP | Crée un compte `{email, username, password}`. |
+| `POST` | `/api/auth/register` | — | 5 / 5 min / IP | Crée un compte `{email, username, password, invite?, terms_accepted}`. `terms_accepted=true` est **obligatoire** (attestation 13 ans + CGU). |
 | `POST` | `/api/auth/login` | — | 10 / 5 min / IP | `{email, password}` → `{access, user}` + cookie refresh. |
 | `POST` | `/api/auth/refresh` | cookie | — | Rafraîchit l'access token depuis le cookie (ou `{refresh}`). |
 | `POST` | `/api/auth/logout` | cookie | — | Blackliste le refresh, efface le cookie. `204`. |
@@ -179,6 +179,7 @@ Calculées **à la demande** (pas de tâche planifiée). DAU/MAU s'appuient sur
 | Méthode | Chemin | Auth | Description |
 |---------|--------|------|-------------|
 | `GET` | `/api/analytics/me` | JWT | Résumé streamer : `{sessions_total, broadcast_hours, peak_viewers, follower_count}`. |
+| `GET` | `/api/analytics/me/revenue?period=day\|week\|month` | JWT | Revenus consolidés du créateur (tips + abos + parrainage) : `{period, series:[{date,tips,subs,referral,total}], totals, summary:{day,week,month}, withdrawable}`. |
 | `GET` | `/api/analytics/overview` | **admin** | Plateforme : `{users_total, dau, mau, streamers_total, live_now, streams_total, streams_7d, broadcast_hours, peak_concurrent, top_streamers:[...]}`. `403` si non-admin. |
 
 ---
@@ -260,7 +261,7 @@ WebSocket
 
 ```
 /api/
-├── auth/register                    POST  (+ champ `invite` optionnel)
+├── auth/register                    POST  (+ champs `invite` optionnel, `terms_accepted` requis)
 ├── uploads/{avatar,banner,game/<slug>}      POST  (multipart → Cloudflare R2)
 ├── payments/
 │   ├── wallet · purchase · tip · payout
@@ -268,8 +269,12 @@ WebSocket
 ├── channels/<slug>/tier             GET   (palier public)
 ├── streamer/tier                    GET, PUT
 ├── subscriptions                    POST
+├── subscriptions/me                 GET   (mes abonnements actifs)
+├── subscriptions/gift               POST  (offrir un abo : `{channel_slug, recipient}`)
+├── subscriptions/gifted             GET   (abos que j'ai offerts)
 ├── subscriptions/<slug>/status      GET
 ├── subscriptions/<slug>             DELETE
+├── analytics/me/revenue             GET   (revenus créateur jour/semaine/mois)
 ├── achievements                     GET   (catalogue + débloqués)
 ├── invites                          GET, POST
 ├── notifications/
