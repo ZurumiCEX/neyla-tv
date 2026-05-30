@@ -94,14 +94,28 @@ L'inscription est ouverte à tous, mais **streamer est gaté** : candidature →
 validation admin (panel) → provisioning Cloudflare à l'approbation. Quota
 quotidien d'approbations configurable (`STREAMER_DAILY_APPROVAL_QUOTA`, défaut 100).
 
+**Creator Application System** : la candidature est un formulaire détaillé
+(identité, profil gaming, motivation/vision, expérience, équipement, signaux
+forts) ; un **score automatique** (0–100) aide l'admin à prioriser.
+
 | Méthode | Chemin | Auth | Rate-limit | Description |
 |---------|--------|------|-----------|-------------|
-| `POST` | `/api/streamer/apply` | JWT | 3/h/user | Dépose/réessaie une candidature `{motivation?}`. `201` → application. `409` si déjà streamer. |
-| `GET` | `/api/streamer/application` | JWT | — | Statut courant : `{status: none\|pending\|approved\|rejected, ...}`. |
+| `POST` | `/api/streamer/apply` | JWT | 3/h/user | Dépose/réessaie une candidature détaillée. `rules_accepted=true` **obligatoire**. Calcule le `score`. `201` → application. `400` si règles non acceptées. `409` si déjà streamer. |
+| `GET` | `/api/streamer/application` | JWT | — | Statut + champs : `{status: none\|pending\|under_review\|interview\|approved\|rejected, score, ...}`. |
 
-L'approbation/rejet se fait dans l'admin Django (actions « Approuver » / « Rejeter »
-sur `StreamerApplication`). L'approbation **provisionne la chaîne de façon
-synchrone** (aucune dépendance au worker Celery).
+Payload `apply` (tous optionnels sauf `rules_accepted`) : `full_name, country,
+primary_language, main_games, content_categories[], motivation, goals[],
+community_type[], has_streamed, platforms{twitch,youtube,tiktok,kick,facebook,
+discord}, community_size, frequency, avg_duration, setup[], connection_quality,
+why_select, what_bring, intro_video_url, setup_screenshot_url, rules_accepted`.
+
+**Scoring** (max 100) : expérience streaming +20, communauté existante +25,
+qualité de motivation +20, fréquence +15, setup +10, réseaux actifs +10.
+
+L'approbation/rejet/mise en examen/entretien se font dans l'admin Django
+(actions sur `StreamerApplication` : Approuver, Rejeter, « en cours d'examen »,
+« Demander un entretien » ; tri par score, filtres, notes & tags). L'approbation
+**provisionne la chaîne de façon synchrone** (aucune dépendance au worker Celery).
 
 ---
 
