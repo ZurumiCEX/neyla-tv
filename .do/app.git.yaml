@@ -72,6 +72,11 @@ envs:
   - key: REDIS_URL
     value: ${redis.DATABASE_URL}
     scope: RUN_TIME
+  # Démo : "1" => le job migrate peuple des données factices (streamers live,
+  # catégories, viewers…). Repasser à "0" après pour ne pas re-seeder.
+  - key: SEED_DEMO
+    value: "0"
+    scope: RUN_TIME
   - key: CELERY_BROKER_URL
     value: ${redis.DATABASE_URL}
     scope: RUN_TIME
@@ -174,5 +179,7 @@ jobs:
     git:
       repo_clone_url: https://github.com/ZurumiCEX/neyla-tv.git
       branch: main
-    run_command: python manage.py migrate --noinput
+    run_command: |
+      python manage.py migrate --noinput
+      if [ "$SEED_DEMO" = "1" ]; then python manage.py seed_demo --flush; fi
     instance_size_slug: apps-s-1vcpu-0.5gb

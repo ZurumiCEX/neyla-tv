@@ -74,6 +74,29 @@ python manage.py loaddata catalog/fixtures/games_seed.json
 python manage.py createsuperuser
 ```
 
+### Activer la DÉMO (contenu factice : 20 streamers en direct, catégories, viewers)
+
+Deux façons, au choix :
+
+**A. Sans console — via une variable d'env (recommandé).**
+Console → app → **Settings → App-Level Environment Variables** → mettre
+`SEED_DEMO=1` → **Save** (déclenche un redeploy). Le job `migrate` (PRE_DEPLOY)
+exécutera alors `seed_demo --flush` contre la base managée. **Repasser
+`SEED_DEMO=0`** ensuite pour ne pas re-seeder à chaque déploiement.
+
+**B. À la main dans la console** (Component `api` → **Console**) :
+
+```bash
+python manage.py seed_demo --flush          # 20 streamers, tous en direct
+# variantes : --streamers 30 --live-ratio 0.7
+```
+
+Comptes créés : `streamer1@demo.neyla.tv` … `streamer20@demo.neyla.tv`,
+`admin@demo.neyla.tv` — mot de passe `DemoPass2026!`. Idempotent et hors-ligne
+(Cloudflare/paiements en FAKE). Les compteurs de spectateurs s'appuient sur
+Redis (présent en prod) ; à défaut, la section « Live en cours » se replie sur
+le pic des sessions.
+
 ## 4. Vérifications post-deploy
 
 ```bash
