@@ -90,3 +90,23 @@ def test_discover_search_matches_tags(api_client):
     assert response.status_code == 200
     slugs = [c["slug"] for c in response.json()["channels"]]
     assert "taggedstreamer" in slugs
+
+
+def test_discover_live_viewers_fallback_to_session_peak(api_client):
+    """Sans présence Redis, les viewers se replient sur le pic de la session live."""
+    from channels_app.models import StreamSession
+
+    user = UserFactory(username="livepeak")
+    channel = Channel.objects.get(user=user)
+    channel.is_live = True
+    channel.save(update_fields=["is_live"])
+    StreamSession.objects.create(
+        channel=channel,
+        ended_at=None,
+        peak_viewers=1234,
+        title_snapshot=channel.title,
+    )
+    data = api_client.get(reverse("discover-live")).json()
+    row = next(c for c in data["results"] if c["slug"] == "livepeak")
+    # Redis indisponible en test → repli sur le pic (1234).
+    assert row["viewers"] == 1234

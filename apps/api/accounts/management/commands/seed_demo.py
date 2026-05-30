@@ -56,8 +56,14 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("--flush", action="store_true", help="Purge les données démo avant.")
-        parser.add_argument("--streamers", type=int, default=16)
+        parser.add_argument("--streamers", type=int, default=20)
         parser.add_argument("--viewers", type=int, default=40)
+        parser.add_argument(
+            "--live-ratio",
+            type=float,
+            default=1.0,
+            help="Proportion de streamers en direct (0..1). 1.0 = tous en live.",
+        )
 
     def handle(self, *args, **opts):
         random.seed(42)
@@ -67,7 +73,7 @@ class Command(BaseCommand):
         admin = staff["admin"]
         self._fees()
         games = self._games()
-        streamers = self._streamers(admin, games, opts["streamers"])
+        streamers = self._streamers(admin, games, opts["streamers"], opts["live_ratio"])
         viewers = self._viewers(streamers, opts["viewers"])
         self._subscriptions(streamers, viewers)
         self._invitations(streamers, viewers)
@@ -140,7 +146,7 @@ class Command(BaseCommand):
             out.append(g)
         return out
 
-    def _streamers(self, admin, games, count):
+    def _streamers(self, admin, games, count, live_ratio=1.0):
         from channels_app.models import Channel
         from streamers import services as streamer_services
         from streamers.services import AlreadyStreamerError
@@ -171,9 +177,12 @@ class Command(BaseCommand):
             )
             self._sessions(channel)
             streamers.append((user, channel))
-        # La plupart en direct (pour remplir l'accueil et Parcourir).
-        for _user, channel in streamers[: max(1, count * 3 // 4)]:
+        # En direct pour remplir l'accueil et « Parcourir » (tous par défaut).
+        ratio = max(0.0, min(1.0, live_ratio))
+        live_count = max(1, round(len(streamers) * ratio)) if streamers else 0
+        for _user, channel in streamers[:live_count]:
             self._go_live(channel)
+        self.stdout.write(f"[live] {live_count}/{len(streamers)} streamers en direct.")
         return streamers
 
     def _sessions(self, channel):
