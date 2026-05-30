@@ -130,8 +130,8 @@ class TwoFactor(models.Model):
 class GuideProgress(models.Model):
     """Suivi des acquis : étapes de tutoriels validées par un utilisateur.
 
-    `key` = "<guide_slug>:<step_id>". Le contenu des guides vit côté front
-    (i18n), la persistance ne stocke que les clés validées.
+    `key` = "<guide_slug>:<step_id>". Le contenu des guides est géré en base
+    (modèles `Guide`/`GuideStep`), la persistance ne stocke que les clés validées.
     """
 
     user = models.ForeignKey(
@@ -146,3 +146,68 @@ class GuideProgress(models.Model):
 
     def __str__(self) -> str:
         return f"guide:{self.user_id}:{self.key}"
+
+
+class Guide(models.Model):
+    """Guide / tutoriel géré en back-office (contenu localisé FR/EN/PT)."""
+
+    class Icon(models.TextChoices):
+        ROCKET = "rocket", "Fusée"
+        BROADCAST = "broadcast", "Diffusion"
+        COINS = "coins", "Pièces"
+        SHIELD = "shield", "Bouclier"
+
+    slug = models.SlugField(max_length=60, unique=True)
+    icon = models.CharField(max_length=20, choices=Icon.choices, default=Icon.ROCKET)
+    order = models.PositiveIntegerField(default=0, db_index=True)
+    is_published = models.BooleanField(default=True, db_index=True)
+
+    title_fr = models.CharField(max_length=120)
+    title_en = models.CharField(max_length=120, blank=True)
+    title_pt = models.CharField(max_length=120, blank=True)
+    desc_fr = models.CharField(max_length=300, blank=True)
+    desc_en = models.CharField(max_length=300, blank=True)
+    desc_pt = models.CharField(max_length=300, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["order", "id"]
+
+    def __str__(self) -> str:
+        return f"{self.slug} ({self.title_fr})"
+
+    def title(self, locale: str) -> str:
+        return getattr(self, f"title_{locale}", "") or self.title_fr
+
+    def desc(self, locale: str) -> str:
+        return getattr(self, f"desc_{locale}", "") or self.desc_fr
+
+
+class GuideStep(models.Model):
+    """Étape d'un guide. `step_id` est stable (clé de progression)."""
+
+    guide = models.ForeignKey(Guide, on_delete=models.CASCADE, related_name="steps")
+    step_id = models.SlugField(max_length=60)
+    order = models.PositiveIntegerField(default=0, db_index=True)
+
+    title_fr = models.CharField(max_length=160)
+    title_en = models.CharField(max_length=160, blank=True)
+    title_pt = models.CharField(max_length=160, blank=True)
+    body_fr = models.TextField(blank=True)
+    body_en = models.TextField(blank=True)
+    body_pt = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["order", "id"]
+        constraints = [models.UniqueConstraint(fields=["guide", "step_id"], name="uniq_guide_step")]
+
+    def __str__(self) -> str:
+        return f"{self.guide.slug}:{self.step_id}"
+
+    def title(self, locale: str) -> str:
+        return getattr(self, f"title_{locale}", "") or self.title_fr
+
+    def body(self, locale: str) -> str:
+        return getattr(self, f"body_{locale}", "") or self.body_fr

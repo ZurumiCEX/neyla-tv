@@ -119,6 +119,23 @@ L'approbation/rejet/mise en examen/entretien se font dans l'admin Django
 
 ---
 
+## Guides & tutoriels — `/api/guides`
+
+Le **contenu** des guides est géré en base (back-office Django : modèles
+`Guide` + `GuideStep`, CRUD, localisation FR/EN/PT, publication/ordre). La
+**progression** est par utilisateur, clé `"<slug>:<step_id>"`.
+
+| Méthode | Chemin | Auth | Description |
+|---------|--------|------|-------------|
+| `GET` | `/api/guides?locale=fr\|en\|pt` | — | Guides publiés + étapes, localisés : `{results:[{slug, icon, title, desc, steps:[{id,title,body}]}]}`. |
+| `GET` | `/api/guides/progress` | JWT | Clés d'étapes validées : `{completed:[...]}`. |
+| `POST` | `/api/guides/progress` | JWT | `{key, done?}` (dé)valide une étape. |
+
+Le front consomme `/api/guides` (repli sur le contenu intégré si l'API est
+vide/indisponible). Les `slug`/`step_id` sont stables (clé de progression).
+
+---
+
 ## Notifications — `/api/notifications`
 
 Notifications in-app créées **de façon synchrone** : live d'une chaîne suivie,

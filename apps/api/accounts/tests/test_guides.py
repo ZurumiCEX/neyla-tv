@@ -40,3 +40,43 @@ def test_mark_is_idempotent(auth_client_factory):
     client.post(url, {"key": "k:1"}, format="json")
     client.post(url, {"key": "k:1"}, format="json")
     assert GuideProgress.objects.filter(user=user, key="k:1").count() == 1
+
+
+# --- Guides gérés en base (contenu) -----------------------------------------
+
+
+def test_guides_seeded_by_migration():
+    from accounts.models import Guide, GuideStep
+
+    assert Guide.objects.count() == 5
+    assert GuideStep.objects.filter(guide__slug="streaming-setup").count() == 5
+
+
+def test_guides_list_public_and_localized(api_client):
+    resp = api_client.get(reverse("guides-list"), {"locale": "en"})
+    assert resp.status_code == 200
+    results = resp.json()["results"]
+    assert len(results) == 5
+    gs = next(g for g in results if g["slug"] == "getting-started")
+    assert gs["title"] == "Getting started"
+    assert gs["steps"][0]["id"] == "verify-email"
+
+
+def test_guides_list_unpublished_hidden(api_client):
+    from accounts.models import Guide
+
+    Guide.objects.filter(slug="security").update(is_published=False)
+    slugs = [g["slug"] for g in api_client.get(reverse("guides-list")).json()["results"]]
+    assert "security" not in slugs
+
+
+def test_guides_admin_changelist_lists_guides(client):
+    from accounts.models import User
+
+    boss = User.objects.create_superuser(
+        username="boss-guide", email="boss-guide@example.com", password="pw-12345"
+    )
+    client.force_login(boss)
+    resp = client.get("/admin/accounts/guide/")
+    assert resp.status_code == 200
+    assert b"getting-started" in resp.content

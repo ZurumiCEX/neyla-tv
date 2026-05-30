@@ -62,6 +62,8 @@ _APP_CATEGORY: dict[str, str] = {
 # Ex. : la collaboration (app « social ») relève du live, pas de l'audience.
 _MODEL_CATEGORY: dict[str, str] = {
     "collaboration": "Création & live",
+    "guide": "Engagement & gamification",
+    "guideprogress": "Engagement & gamification",
 }
 
 # Choix d'icône par modèle (premier mot-clé trouvé dans le nom, sinon « dot »).
@@ -74,6 +76,7 @@ _ITEM_ICON_RULES: list[tuple[str, str]] = [
     ("two factor", "lock"),
     ("twofactor", "lock"),
     ("2fa", "lock"),
+    ("guide progress", "trophy"),
     ("guide", "book"),
     ("follow", "heart"),
     ("invit", "ticket"),

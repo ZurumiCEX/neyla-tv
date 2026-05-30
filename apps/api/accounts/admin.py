@@ -4,7 +4,7 @@ from django.db.models import Count, Sum
 
 from config.admin_widgets import stat_grid
 
-from .models import GuideProgress, TwoFactor, User, UserSession
+from .models import Guide, GuideProgress, GuideStep, TwoFactor, User, UserSession
 
 
 class UserSessionInline(admin.TabularInline):
@@ -96,8 +96,49 @@ class TwoFactorAdmin(admin.ModelAdmin):
     readonly_fields = ("user", "secret", "recovery_codes", "created_at", "updated_at")
 
 
+class GuideStepInline(admin.StackedInline):
+    """Étapes éditables directement depuis le guide."""
+
+    model = GuideStep
+    extra = 1
+    ordering = ("order", "id")
+    fields = (
+        "order",
+        "step_id",
+        ("title_fr", "title_en", "title_pt"),
+        "body_fr",
+        "body_en",
+        "body_pt",
+    )
+
+
+@admin.register(Guide)
+class GuideAdmin(admin.ModelAdmin):
+    list_display = ("title_fr", "slug", "icon", "order", "is_published", "step_count", "updated_at")
+    list_display_links = ("title_fr",)
+    list_editable = ("order", "is_published")
+    list_filter = ("is_published", "icon")
+    search_fields = ("slug", "title_fr", "title_en", "title_pt")
+    prepopulated_fields = {"slug": ("title_fr",)}
+    ordering = ("order", "id")
+    inlines = (GuideStepInline,)
+    fieldsets = (
+        (None, {"fields": ("slug", "icon", "order", "is_published")}),
+        ("Titre", {"fields": ("title_fr", "title_en", "title_pt")}),
+        ("Description", {"fields": ("desc_fr", "desc_en", "desc_pt")}),
+    )
+
+    @admin.display(description="Étapes")
+    def step_count(self, obj):
+        return obj.steps.count()
+
+
 @admin.register(GuideProgress)
 class GuideProgressAdmin(admin.ModelAdmin):
+    """Progression des utilisateurs (lecture seule — généré par l'usage)."""
+
     list_display = ("user", "key", "completed_at")
+    list_filter = ("completed_at",)
     search_fields = ("user__username", "key")
+    date_hierarchy = "completed_at"
     readonly_fields = ("user", "key", "completed_at")

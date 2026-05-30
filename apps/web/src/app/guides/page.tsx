@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { getGuides, GUIDE_ICONS } from "@/lib/guides";
+import { GUIDE_ICONS } from "@/lib/guides";
+import { useGuides } from "@/lib/use-guides";
 import { useI18n, useT } from "@/lib/i18n";
 import { useGuideProgress } from "@/lib/use-guide-progress";
 
@@ -9,7 +10,7 @@ export default function GuidesPage() {
   const { locale } = useI18n();
   const t = useT();
   const { completed } = useGuideProgress();
-  const guides = getGuides(locale);
+  const guides = useGuides(locale);
 
   const totalSteps = guides.reduce((n, g) => n + g.steps.length, 0);
   const doneSteps = guides.reduce(
