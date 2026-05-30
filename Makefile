@@ -1,9 +1,9 @@
 COMPOSE := docker compose -f infra/compose/docker-compose.yml --env-file .env
 
-.PHONY: help up down logs migrate test lint format shell ps build
+.PHONY: help up down logs migrate seed test lint format shell ps build
 
 help:
-	@echo "Targets: up down logs migrate test lint format shell ps build"
+	@echo "Targets: up down logs migrate seed test lint format shell ps build"
 
 up:
 	$(COMPOSE) up -d --build
@@ -22,6 +22,10 @@ build:
 
 migrate:
 	$(COMPOSE) exec api python manage.py migrate
+
+# Données de démo (20 streamers live, catégories, viewers…). Idempotent.
+seed:
+	$(COMPOSE) exec api python manage.py seed_demo --flush
 
 shell:
 	$(COMPOSE) exec api python manage.py shell
