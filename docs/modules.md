@@ -84,6 +84,12 @@ Chaque app est autonome : `models`, `views`, `serializers`, `services`,
 - **`gamification`** : `Achievement` / `UserAchievement` ;
   `check_and_award(user, event)` (best-effort) hooké dans login, candidature,
   live, follow, tip, abonnement.
+- **`streamers` (Creator Application System)** : `StreamerApplication` détaillée
+  (identité, profil gaming, motivation, expérience, équipement, signaux forts)
+  + **score automatique** (`scoring.compute_score`, 0–100) ; états
+  `pending/under_review/interview/approved/rejected` ; `services.submit_application`
+  (calcule le score), `approve/reject/set_under_review/request_interview`.
+  Back-office Django : tri par score, filtres, notes & tags, actions de workflow.
 - **`invitations`** : `Invite` (code, max_uses, expiry) ; redemption à
   l'inscription (`?invite=CODE`) → `User.invited_by`. **La récompense de
   parrainage (Aura) est versée à la *vérification de l'email* du filleul**

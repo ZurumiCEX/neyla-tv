@@ -11,16 +11,19 @@ from rest_framework.response import Response
 
 from . import services
 from .models import StreamerApplication
-from .serializers import StreamerApplicationSerializer
+from .serializers import StreamerApplicationSerializer, StreamerApplicationWriteSerializer
 
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 @ratelimit(key="user", rate="3/h", method="POST", block=True)
 def submit(request: Request) -> Response:
-    motivation = (request.data.get("motivation") or "").strip()
+    serializer = StreamerApplicationWriteSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    data = dict(serializer.validated_data)
+    motivation = (data.pop("motivation", "") or "").strip()
     try:
-        application = services.submit_application(request.user, motivation)
+        application = services.submit_application(request.user, motivation, fields=data)
     except services.AlreadyStreamerError as exc:
         return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)
     return Response(
