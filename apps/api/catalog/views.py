@@ -36,8 +36,34 @@ def _paginate(request: Request) -> tuple[int, int]:
     return limit, offset
 
 
+def _viewers_for(channel_ids: list[int]) -> dict[int, int]:
+    """Compteur de spectateurs par chaîne, avec repli prod-safe.
+
+    Source primaire : présence temps réel (Redis). Si la carte est entièrement
+    vide (Redis indisponible, démarrage à froid, ou données de seed sans Redis),
+    on estime via le pic de la session en cours. Le repli ne se déclenche que
+    lorsque AUCUNE chaîne n'a de présence (donc le comportement prod normal,
+    où au moins une chaîne a des spectateurs, est inchangé).
+    """
+    if not channel_ids:
+        return {}
+    viewers_map = bulk_viewers_count(channel_ids)
+    if any(viewers_map.values()):
+        return viewers_map
+    from channels_app.models import StreamSession
+
+    peaks: dict[int, int] = {}
+    for cid, peak in (
+        StreamSession.objects.filter(channel_id__in=channel_ids, ended_at__isnull=True)
+        .values_list("channel_id", "peak_viewers")
+        .order_by("channel_id")
+    ):
+        peaks[cid] = max(peaks.get(cid, 0), int(peak or 0))
+    return {cid: peaks.get(cid, 0) for cid in channel_ids}
+
+
 def _serialize_live_with_viewers(channels: list[Channel]) -> list[dict]:
-    viewers_map = bulk_viewers_count([c.id for c in channels])
+    viewers_map = _viewers_for([c.id for c in channels])
     sorted_channels = sorted(channels, key=lambda c: viewers_map.get(c.id, 0), reverse=True)
     data = PublicChannelSerializer(sorted_channels, many=True).data
     for item, channel in zip(data, sorted_channels, strict=True):
@@ -68,9 +94,11 @@ def discover_categories(request: Request) -> Response:
         ).order_by("-live_count", "name")[offset : offset + limit]
     )
     data = GameWithCountSerializer(games, many=True).data
-    # Total spectateurs par catégorie (somme des viewers Redis des lives).
-    live = Channel.objects.filter(is_live=True, category__in=games).values_list("id", "category_id")
-    viewers_map = bulk_viewers_count([cid for cid, _ in live])
+    # Total spectateurs par catégorie (somme des viewers des lives, repli pic).
+    live = list(
+        Channel.objects.filter(is_live=True, category__in=games).values_list("id", "category_id")
+    )
+    viewers_map = _viewers_for([cid for cid, _ in live])
     totals: dict[int, int] = {}
     for channel_id, category_id in live:
         totals[category_id] = totals.get(category_id, 0) + viewers_map.get(channel_id, 0)

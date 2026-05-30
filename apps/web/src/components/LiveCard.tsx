@@ -38,7 +38,7 @@ export function LiveCard({ channel }: { channel: LiveChannel }) {
         )}
         {channel.is_live && (
           <span className="absolute left-2 top-2 flex items-center gap-1 rounded bg-secondary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
-            <span className="h-1.5 w-1.5 rounded-[1px] bg-white" />
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
             LIVE
           </span>
         )}

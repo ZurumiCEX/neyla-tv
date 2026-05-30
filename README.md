@@ -97,6 +97,23 @@ docker compose -f infra/compose/docker-compose.yml exec api \
 | `make lint`     | Ruff + Black --check + ESLint                  |
 | `make format`   | Auto-fix (Ruff, Black, isort, Prettier)        |
 
+### Données de démonstration (test visuel)
+
+Peuple la plateforme avec du contenu factice (streamers approuvés, lives en
+cours avec vignettes, catégories de jeux avec box art, viewers, abonnements,
+tips…) pour tester le rendu :
+
+```bash
+python manage.py seed_demo --flush                 # 20 streamers, tous en direct
+python manage.py seed_demo --streamers 30 --live-ratio 0.7
+```
+
+Idempotent et hors-ligne (Cloudflare/paiements en mode FAKE). Les vignettes et
+box art utilisent un service de placeholder déterministe. Les compteurs de
+spectateurs viennent de Redis ; sans Redis, la section « Live en cours » se
+replie sur le pic de la session. Connexion : `<handle>@demo.neyla.tv` /
+`DemoPass2026!` (ex. `admin@demo.neyla.tv`, `streamer1@demo.neyla.tv`).
+
 ## 📁 Structure
 
 ```
