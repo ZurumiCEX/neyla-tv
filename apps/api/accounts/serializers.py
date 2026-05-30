@@ -12,6 +12,14 @@ class RegisterSerializer(serializers.Serializer):
     username = serializers.RegexField(USERNAME_REGEX)
     password = serializers.CharField(write_only=True, min_length=10, max_length=128)
     invite = serializers.CharField(required=False, allow_blank=True, default="", max_length=16)
+    terms_accepted = serializers.BooleanField(write_only=True)
+
+    def validate_terms_accepted(self, value: bool) -> bool:
+        if not value:
+            raise serializers.ValidationError(
+                "Vous devez attester avoir 13 ans ou plus et accepter les conditions d'utilisation."
+            )
+        return value
 
 
 class PublicUserSerializer(serializers.ModelSerializer):

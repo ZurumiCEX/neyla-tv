@@ -80,8 +80,9 @@ def register(request: Request) -> Response:
     serializer.is_valid(raise_exception=True)
     data = dict(serializer.validated_data)
     invite_code = data.pop("invite", "")
+    terms_accepted = data.pop("terms_accepted", False)
     try:
-        user = register_user(**data, invite_code=invite_code)
+        user = register_user(**data, invite_code=invite_code, terms_accepted=terms_accepted)
     except RegistrationError as exc:
         return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
     except DjangoValidationError as exc:

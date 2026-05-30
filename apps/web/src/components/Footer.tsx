@@ -34,12 +34,21 @@ export function Footer() {
         { label: t("nav.settings"), href: "/settings" },
       ],
     },
+    {
+      titleKey: "footer.legal",
+      links: [
+        { label: t("footer.terms"), href: "/terms" },
+        { label: t("footer.privacy"), href: "/privacy" },
+        { label: t("footer.about"), href: "/about" },
+        { label: t("footer.contact"), href: "/contact" },
+      ],
+    },
   ];
 
   return (
     <footer className="mt-12 border-t border-neutral-800 bg-neutral-950">
       <div className="mx-auto max-w-7xl px-6 py-12">
-        <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-8 sm:grid-cols-2 md:grid-cols-4">
           {cols.map((c) => (
             <div key={c.titleKey}>
               <p className="mb-3 text-sm font-bold text-neutral-100">{t(c.titleKey)}</p>
@@ -59,9 +68,12 @@ export function Footer() {
           ))}
         </div>
 
-        {/* Logo centré, taille raisonnable */}
-        <div className="my-10 flex justify-center">
-          <Link href="/" className="text-3xl font-extrabold tracking-tight">
+        {/* Logo centré — agrandi ×2 environ (text-3xl → text-7xl) */}
+        <div className="my-12 flex justify-center">
+          <Link
+            href="/"
+            className="text-6xl font-extrabold tracking-tight sm:text-7xl"
+          >
             Neyla<span className="text-secondary-light">.tv</span>
           </Link>
         </div>

@@ -16,13 +16,14 @@ pytestmark = pytest.mark.django_db
 def test_create_and_redeem_links_inviter():
     inviter = UserFactory()
     invite = services.create_invite(inviter)
-    newbie = UserFactory()
+    newbie = UserFactory(email_verified_at=None)
     services.redeem(invite.code, newbie)
     newbie.refresh_from_db()
     invite.refresh_from_db()
     assert newbie.invited_by_id == inviter.id
     assert invite.used_count == 1
-    assert services.successful_count(inviter) == 1
+    # Avant vérif email, le filleul n'est pas encore « validé ».
+    assert services.successful_count(inviter) == 0
 
 
 def test_redeem_rejects_self_use():
@@ -55,6 +56,7 @@ def test_registration_with_invite_links_inviter():
         username="newbie",
         password="correct-horse-battery-staple",
         invite_code=invite.code,
+        terms_accepted=True,
     )
     assert user.invited_by_id == inviter.id
 

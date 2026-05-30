@@ -211,6 +211,126 @@ def _daily_new_users(days: int) -> list[dict]:
     return [{"date": d, "count": c} for d, c in buckets.items()]
 
 
+_PERIOD_DEFAULTS = {"day": 30, "week": 12, "month": 12}
+
+
+def _bucket_key(dt, period: str) -> str:
+    local = timezone.localtime(dt).date()
+    if period == "day":
+        return local.isoformat()
+    if period == "week":
+        monday = local - timedelta(days=local.weekday())
+        return monday.isoformat()
+    # month
+    return local.strftime("%Y-%m")
+
+
+def _period_starts(period: str, n: int) -> list[str]:
+    """Liste des clés ordonnées des N dernières périodes (jour/semaine/mois)."""
+    today = timezone.localtime(timezone.now()).date()
+    keys: list[str] = []
+    if period == "day":
+        for i in range(n - 1, -1, -1):
+            keys.append((today - timedelta(days=i)).isoformat())
+    elif period == "week":
+        monday = today - timedelta(days=today.weekday())
+        for i in range(n - 1, -1, -1):
+            keys.append((monday - timedelta(weeks=i)).isoformat())
+    else:  # month
+        year, month = today.year, today.month
+        months: list[tuple[int, int]] = []
+        for _ in range(n):
+            months.append((year, month))
+            month -= 1
+            if month == 0:
+                month = 12
+                year -= 1
+        for y, m in reversed(months):
+            keys.append(f"{y:04d}-{m:02d}")
+    return keys
+
+
+def creator_revenue(user, period: str = "day", n: int | None = None) -> dict:
+    """Revenus consolidés du créateur (tips + abonnements + parrainage) par période.
+
+    Buckets Python (agnostique SGBD), même approche que ``_revenue_series``.
+    Inclut aussi des totaux jour/semaine/mois et le solde retirable courant.
+    """
+    from payments.models import LedgerEntry
+    from payments.services import withdrawable_balance
+
+    period = period if period in _PERIOD_DEFAULTS else "day"
+    n = n or _PERIOD_DEFAULTS[period]
+    n = max(1, min(int(n), 90))
+
+    keys = _period_starts(period, n)
+    buckets: dict[str, dict] = {
+        k: {"date": k, "tips": 0, "subs": 0, "referral": 0, "total": 0} for k in keys
+    }
+    valid_keys = set(buckets.keys())
+
+    # Première période → début (utilisé pour limiter la requête).
+    if period == "day":
+        since = timezone.now() - timedelta(days=n - 1)
+    elif period == "week":
+        since = timezone.now() - timedelta(weeks=n - 1, days=timezone.localtime().weekday())
+    else:
+        since = timezone.now() - timedelta(days=31 * n)
+
+    kinds = (
+        LedgerEntry.Kind.TIP_RECEIVED,
+        LedgerEntry.Kind.SUB_EARNED,
+        LedgerEntry.Kind.REFERRAL,
+    )
+    entries = LedgerEntry.objects.filter(
+        wallet__user=user, kind__in=kinds, created_at__gte=since
+    ).only("kind", "amount", "created_at")
+
+    for e in entries:
+        key = _bucket_key(e.created_at, period)
+        if key not in valid_keys:
+            continue
+        b = buckets[key]
+        amt = int(e.amount)
+        if e.kind == LedgerEntry.Kind.TIP_RECEIVED:
+            b["tips"] += amt
+        elif e.kind == LedgerEntry.Kind.SUB_EARNED:
+            b["subs"] += amt
+        elif e.kind == LedgerEntry.Kind.REFERRAL:
+            b["referral"] += amt
+        b["total"] += amt
+
+    series = [buckets[k] for k in keys]
+    totals = {
+        "tips": sum(b["tips"] for b in series),
+        "subs": sum(b["subs"] for b in series),
+        "referral": sum(b["referral"] for b in series),
+        "total": sum(b["total"] for b in series),
+    }
+
+    # Totaux 24h / 7j / 30j (toujours en jours) pour les cartes résumé.
+    from django.db.models import Sum
+
+    now = timezone.now()
+    summary = {}
+    for label, days in (("day", 1), ("week", 7), ("month", 30)):
+        floor = now - timedelta(days=days)
+        summary[label] = int(
+            LedgerEntry.objects.filter(
+                wallet__user=user, kind__in=kinds, created_at__gte=floor
+            ).aggregate(s=Sum("amount"))["s"]
+            or 0
+        )
+
+    return {
+        "period": period,
+        "series": series,
+        "totals": totals,
+        "summary": summary,
+        "withdrawable": withdrawable_balance(user),
+    }
+
+
 def admin_dashboard_metrics(days: int = 30) -> dict:
     """Agrégat complet pour le tableau de bord du Django admin (KPIs + séries)."""
     from django.db.models import Q

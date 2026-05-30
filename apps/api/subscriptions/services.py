@@ -78,6 +78,66 @@ def subscribe(user, channel_slug: str) -> Subscription:
     return sub
 
 
+@transaction.atomic
+def gift_subscription(gifter, channel_slug: str, recipient_username: str) -> Subscription:
+    """Offre un abonnement : débite l'offreur en Aura, abonne le destinataire.
+
+    Refuse : s'offrir à soi, offreur == créateur, destinataire = créateur,
+    destinataire introuvable, solde insuffisant (remonte ``PaymentError``).
+    """
+    from accounts.models import User
+
+    channel = _channel(channel_slug)
+    if channel.user_id == gifter.id:
+        raise SubscriptionError("Tu ne peux pas offrir un abonnement à ta propre chaîne.")
+    recipient = User.objects.filter(username=(recipient_username or "").strip().lower()).first()
+    if recipient is None:
+        raise SubscriptionError("Destinataire introuvable.")
+    if recipient.id == gifter.id:
+        raise SubscriptionError("Tu ne peux pas t'offrir un abonnement à toi-même.")
+    if recipient.id == channel.user_id:
+        raise SubscriptionError("Le créateur ne peut pas recevoir un abonnement à sa chaîne.")
+    tier = active_tier(channel)
+    if tier is None:
+        raise SubscriptionError("Aucun abonnement disponible sur cette chaîne.")
+
+    from payments.services import charge_subscription
+
+    charge_subscription(gifter, channel.user, tier.price_aura)
+
+    now = timezone.now()
+    sub, _ = Subscription.objects.update_or_create(
+        subscriber=recipient,
+        channel=channel,
+        defaults={
+            "tier": tier,
+            "gifted_by": gifter,
+            "status": Subscription.Status.ACTIVE,
+            "started_at": now,
+            "current_period_end": now + timezone.timedelta(days=PERIOD_DAYS),
+        },
+    )
+    _notify(channel.user, recipient)
+    _notify_gift(recipient, gifter, channel)
+    return sub
+
+
+def _notify_gift(recipient, gifter, channel) -> None:
+    from notifications.models import Notification
+    from notifications.services import create_notification
+
+    create_notification(
+        recipient=recipient,
+        type=Notification.Type.SUBSCRIPTION,
+        actor=gifter,
+        payload={
+            "gifted": True,
+            "gifter": gifter.username,
+            "channel": channel.slug,
+        },
+    )
+
+
 def cancel(user, channel_slug: str) -> int:
     channel = _channel(channel_slug)
     return Subscription.objects.filter(subscriber=user, channel=channel).update(

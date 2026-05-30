@@ -37,6 +37,13 @@ class Subscription(models.Model):
         "channels_app.Channel", on_delete=models.CASCADE, related_name="subscribers"
     )
     tier = models.ForeignKey(SubTier, on_delete=models.SET_NULL, null=True, blank=True)
+    gifted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="gifted_subscriptions",
+    )
     status = models.CharField(
         max_length=10, choices=Status.choices, default=Status.ACTIVE, db_index=True
     )

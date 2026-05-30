@@ -10,6 +10,7 @@ export default function RegisterPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [invite, setInvite] = useState("");
+  const [accepted, setAccepted] = useState(false);
   const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -25,7 +26,13 @@ export default function RegisterPage() {
     try {
       await apiFetch("/api/auth/register", {
         method: "POST",
-        body: JSON.stringify({ email, username, password, invite }),
+        body: JSON.stringify({
+          email,
+          username,
+          password,
+          invite,
+          terms_accepted: accepted,
+        }),
       });
       setStatus({ ok: true, msg: t("auth.registerOk") });
     } catch (err) {
@@ -58,15 +65,30 @@ export default function RegisterPage() {
           minLength={10}
         />
         <Field
-          label={t("auth.inviteOptional")}
+          label={t("auth.referralOptional")}
           type="text"
           value={invite}
           onValueChange={(v) => setInvite(v.toUpperCase())}
           maxLength={16}
         />
+        <label className="flex items-start gap-2 text-sm text-neutral-300">
+          <input
+            type="checkbox"
+            checked={accepted}
+            onChange={(e) => setAccepted(e.target.checked)}
+            required
+            className="mt-0.5 h-4 w-4 cursor-pointer accent-emerald-500"
+          />
+          <span>
+            {t("auth.ageTerms")}{" "}
+            <a href="/terms" className="text-emerald-300 underline">
+              {t("auth.termsLink")}
+            </a>
+          </span>
+        </label>
         <button
           type="submit"
-          disabled={busy}
+          disabled={busy || !accepted}
           className="w-full rounded-lg bg-emerald-500 px-4 py-2 font-semibold text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
         >
           {busy ? "..." : t("auth.signup")}
