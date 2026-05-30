@@ -338,6 +338,35 @@ def password_reset_confirm(request: Request) -> Response:
     return Response({"detail": "Mot de passe mis à jour."})
 
 
+@api_view(["GET"])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def guides_list(request: Request) -> Response:
+    """Guides/tutoriels publiés, localisés (FR/EN/PT) pour le front."""
+    from .models import Guide
+
+    locale = (request.query_params.get("locale") or "fr").lower()
+    if locale not in {"fr", "en", "pt"}:
+        locale = "fr"
+    guides = (
+        Guide.objects.filter(is_published=True).prefetch_related("steps").order_by("order", "id")
+    )
+    results = [
+        {
+            "slug": g.slug,
+            "icon": g.icon,
+            "title": g.title(locale),
+            "desc": g.desc(locale),
+            "steps": [
+                {"id": s.step_id, "title": s.title(locale), "body": s.body(locale)}
+                for s in g.steps.all()
+            ],
+        }
+        for g in guides
+    ]
+    return Response({"results": results})
+
+
 @api_view(["GET", "POST"])
 @permission_classes([IsAuthenticated])
 def guide_progress(request: Request) -> Response:

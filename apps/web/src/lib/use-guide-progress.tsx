@@ -1,10 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 
-/** Suivi des acquis des tutoriels (persisté côté serveur si connecté). */
-export function useGuideProgress() {
+type GuideProgressState = {
+  completed: Set<string>;
+  toggle: (key: string, done: boolean) => Promise<void>;
+  ready: boolean;
+  isAuthed: boolean;
+};
+
+const GuideProgressContext = createContext<GuideProgressState | null>(null);
+
+/**
+ * Source UNIQUE de la progression des tutoriels, partagée par toute l'app
+ * (menu d'en-tête + pages). Évite que l'icône reste à 0 % alors que des étapes
+ * viennent d'être validées sur une autre vue.
+ */
+export function GuideProgressProvider({ children }: { children: React.ReactNode }) {
   const { user, loading, authFetch } = useAuth();
   const [completed, setCompleted] = useState<Set<string>>(new Set());
   const [ready, setReady] = useState(false);
@@ -24,7 +37,6 @@ export function useGuideProgress() {
 
   const toggle = useCallback(
     async (key: string, done: boolean) => {
-      // Optimiste.
       setCompleted((prev) => {
         const next = new Set(prev);
         if (done) next.add(key);
@@ -37,7 +49,6 @@ export function useGuideProgress() {
           body: JSON.stringify({ key, done }),
         });
       } catch {
-        // rollback
         setCompleted((prev) => {
           const next = new Set(prev);
           if (done) next.delete(key);
@@ -49,5 +60,18 @@ export function useGuideProgress() {
     [authFetch],
   );
 
-  return { completed, toggle, ready, isAuthed: !!user };
+  return (
+    <GuideProgressContext.Provider value={{ completed, toggle, ready, isAuthed: !!user }}>
+      {children}
+    </GuideProgressContext.Provider>
+  );
+}
+
+/** Suivi des acquis des tutoriels (état partagé via le provider). */
+export function useGuideProgress(): GuideProgressState {
+  const ctx = useContext(GuideProgressContext);
+  if (!ctx) {
+    throw new Error("useGuideProgress doit être utilisé sous <GuideProgressProvider>");
+  }
+  return ctx;
 }

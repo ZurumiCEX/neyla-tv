@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useI18n, useT } from "@/lib/i18n";
-import { getGuides } from "@/lib/guides";
+import { useGuides } from "@/lib/use-guides";
 import { useGuideProgress } from "@/lib/use-guide-progress";
 
 export function GuidesMenu() {
@@ -12,7 +12,7 @@ export function GuidesMenu() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
   const { completed } = useGuideProgress();
-  const guides = getGuides(locale);
+  const guides = useGuides(locale);
 
   useEffect(() => {
     function onClick(e: MouseEvent) {

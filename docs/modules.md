@@ -27,6 +27,11 @@ Chaque app est autonome : `models`, `views`, `serializers`, `services`,
   `display_name`, `avatar_url`, `bio`, `email_verified_at`, `terms_accepted_at`,
   `invited_by`). `AUTH_USER_MODEL`. L'inscription **exige** `terms_accepted=true`
   (attestation 13 ans + CGU).
+- **Guides/tutoriels** : modèles `Guide` + `GuideStep` (contenu localisé FR/EN/PT,
+  icône, ordre, publication) gérés en **back-office Django** (CRUD, étapes en
+  inline) ; `GuideProgress` (clé `"<slug>:<step_id>"`) suit les acquis par
+  utilisateur. API publique `GET /api/guides`. Contenu initial semé par migration
+  de données (`accounts/guides_seed.py`).
 - **À noter** : `tokens.py` (génération de tokens email signés), `tasks.py`
   (envoi email via Celery), `services.py` (logique métier). Hash Argon2.
 - → [ADR 002](adr/002-jwt-strategy.md)

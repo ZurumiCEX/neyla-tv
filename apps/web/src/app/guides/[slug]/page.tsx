@@ -2,8 +2,7 @@
 
 import { use } from "react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { getGuide, getGuides } from "@/lib/guides";
+import { useGuides } from "@/lib/use-guides";
 import { useI18n, useT } from "@/lib/i18n";
 import { useGuideProgress } from "@/lib/use-guide-progress";
 
@@ -13,10 +12,19 @@ export default function GuideDetailPage({ params }: { params: Promise<{ slug: st
   const t = useT();
   const { completed, toggle, isAuthed } = useGuideProgress();
 
-  const guide = getGuide(locale, slug);
-  if (!guide) notFound();
+  const all = useGuides(locale);
+  const guide = all.find((g) => g.slug === slug);
+  if (!guide) {
+    return (
+      <main className="mx-auto max-w-3xl px-4 py-8">
+        <Link href="/guides" className="text-sm text-neutral-400 hover:text-emerald-300">
+          ← {t("guides.title")}
+        </Link>
+        <p className="mt-6 text-neutral-400">{t("common.loading")}</p>
+      </main>
+    );
+  }
 
-  const all = getGuides(locale);
   const idx = all.findIndex((g) => g.slug === slug);
   const next = all[idx + 1];
 
