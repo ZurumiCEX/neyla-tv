@@ -76,7 +76,7 @@ export default function CharityPage() {
   }, [load]);
 
   return (
-    <main className="mx-auto max-w-5xl p-6">
+    <main className="w-full p-4 sm:p-6">
       <header className="mb-6">
         <h1 className="text-3xl font-extrabold tracking-tight">{t("charity.title")}</h1>
         <p className="mt-1 text-sm text-neutral-400">{t("charity.subtitle")}</p>
@@ -138,7 +138,14 @@ function CharityEventView({
       <section className="mb-6 overflow-hidden rounded-2xl border border-secondary/30 bg-gradient-to-br from-secondary/15 via-neutral-900 to-emerald-500/10">
         {event.cover_url && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={event.cover_url} alt="" className="h-44 w-full object-cover opacity-80" />
+          <img
+            src={event.cover_url}
+            alt=""
+            className="h-44 w-full object-cover opacity-80"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).style.display = "none";
+            }}
+          />
         )}
         <div className="p-6">
           <p className="text-xs font-bold uppercase tracking-widest text-secondary-light">

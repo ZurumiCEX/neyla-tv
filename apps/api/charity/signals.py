@@ -18,7 +18,7 @@ def mirror_charity_into_platform_event(sender, instance: CharityEvent, **kwargs)
             "kind": PlatformEvent.Kind.CHARITY,
             "description_md": instance.description_md,
             "cover_url": instance.cover_url,
-            "link_url": f"/charity/{instance.slug}",
+            "link_url": "/charity",
             "starts_at": instance.starts_at,
             "ends_at": instance.ends_at,
             "is_published": instance.is_published,

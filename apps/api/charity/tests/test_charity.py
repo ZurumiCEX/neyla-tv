@@ -162,7 +162,7 @@ def test_charity_event_mirrors_into_platform_event():
     pe = PlatformEvent.objects.filter(slug=f"charity-{e.slug}").first()
     assert pe is not None
     assert pe.kind == PlatformEvent.Kind.CHARITY
-    assert pe.link_url == f"/charity/{e.slug}"
+    assert pe.link_url == "/charity"
     assert pe.is_published is True
     # Update propagates.
     e.is_published = False
