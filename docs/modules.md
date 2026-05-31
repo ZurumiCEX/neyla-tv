@@ -77,15 +77,20 @@ Chaque app est autonome : `models`, `views`, `serializers`, `services`,
 - **`payments` (étendu)** : devise **XOF** + `conversion.py` (EUR fixe / USD
   manuel) ; `FeeRule` + `split(montant, produit)` (remplace `CREATOR_SHARE`) ;
   ledger enrichi (`currency`/`related_*`/`metadata`) ; `admin_views.py`
-  (transactions unifiées, commissions, résolution payouts).
+  (transactions unifiées, commissions, résolution payouts). **Business model
+  unifié** : tip 30 % / abonnement 30 % (sur le créateur) ; achat 1 %
+  **streamer uniquement** (viewer = 0 %). Taux par défaut seedés via migration
+  `payments/0008_seed_default_fees` ; admin éditable.
 - **`audit`** : `AuditEvent` (`actor`, `action`, `target`, `meta`) + `record()`,
   appelé sur les actions sensibles (approbation, payout, changement de rôle…).
 - **`uploads`** : `services.upload_image()` vers **Cloudflare R2** (boto3, mode
   FAKE hors-ligne) ; endpoints avatar / bannière / vignette de jeu.
-- **`subscriptions`** : `SubTier` (palier prix Aura + perks) et `Subscription`
-  (statut, période, `gifted_by` pour les cadeaux) ; `subscribe()` débite le wallet
-  via `split`, `gift_subscription()` permet d'offrir un abonnement à un autre
-  utilisateur. Endpoints : `POST /subscriptions/gift`, `GET /subscriptions/gifted`.
+- **`subscriptions`** : `SubTier` (palier prix Aura + `perks` texte +
+  **`badge_url`** + **`stickers_urls`** pour les avantages personnalisables, repli
+  sur pack par défaut côté front) et `Subscription` (statut, période, `gifted_by`
+  pour les cadeaux) ; `subscribe()` débite le wallet via `split`,
+  `gift_subscription()` permet d'offrir un abonnement à un autre utilisateur.
+  Endpoints : `POST /subscriptions/gift`, `GET /subscriptions/gifted`.
 - **`gamification`** : `Achievement` / `UserAchievement` ;
   `check_and_award(user, event)` (best-effort) hooké dans login, candidature,
   live, follow, tip, abonnement.

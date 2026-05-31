@@ -6,16 +6,27 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
+DEFAULT_BADGE_URL = ""  # le frontend rend un badge SVG par défaut si vide
+DEFAULT_STICKERS: list[str] = []  # le frontend rend un pack de stickers par défaut si vide
+
 
 class SubTier(models.Model):
-    """Palier d'abonnement d'une chaîne (un actif par chaîne au MVP)."""
+    """Palier d'abonnement d'une chaîne (un actif par chaîne au MVP).
+
+    Le streamer peut uploader son propre badge et ses stickers exclusifs. À défaut,
+    le front affiche un pack par défaut.
+    """
 
     channel = models.ForeignKey(
         "channels_app.Channel", on_delete=models.CASCADE, related_name="sub_tiers"
     )
     name = models.CharField(max_length=60, default="Abonnement")
     price_aura = models.PositiveIntegerField(default=100)
-    perks = models.JSONField(default=list, blank=True)  # list[str]
+    perks = models.JSONField(default=list, blank=True)  # list[str] (texte libre)
+    badge_url = models.URLField(blank=True, help_text="URL du badge abonné (PNG/SVG/WebP).")
+    stickers_urls = models.JSONField(
+        default=list, blank=True, help_text="Liste d'URL de stickers exclusifs (max 6 recommandé)."
+    )
     is_active = models.BooleanField(default=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

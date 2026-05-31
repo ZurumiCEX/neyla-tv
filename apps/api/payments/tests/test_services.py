@@ -84,3 +84,37 @@ def test_tip_endpoint(auth_client_factory):
     assert resp.status_code == 201
     assert resp.json()["creator_share"] == 14
     assert Tip.objects.count() == 1
+
+
+# --- Business model : commission d'achat 1% sur les streamers uniquement ---
+
+
+def test_viewer_purchase_no_commission():
+    """Un viewer (non streamer) achète : aucune commission, 1 Aura = 1 Aura."""
+    from payments.models import FeeRule
+
+    FeeRule.objects.get_or_create(
+        product=FeeRule.Product.PURCHASE,
+        defaults={"mode": FeeRule.Mode.PERCENTAGE, "value": 1, "is_active": True},
+    )
+    user = UserFactory()
+    services.create_purchase(user, 1000)
+    assert services.get_wallet(user).aura_balance == 1000
+
+
+def test_streamer_purchase_takes_1pct_commission():
+    """Un streamer approuvé subit 1% de commission sur ses achats."""
+    from channels_app.models import Channel
+    from channels_app.services import provision_channel
+    from payments.models import FeeRule
+
+    FeeRule.objects.get_or_create(
+        product=FeeRule.Product.PURCHASE,
+        defaults={"mode": FeeRule.Mode.PERCENTAGE, "value": 1, "is_active": True},
+    )
+    streamer = UserFactory()
+    channel = Channel.objects.get(user=streamer)
+    provision_channel(channel)  # is_provisioned = True
+    services.create_purchase(streamer, 1000)
+    # 1% sur 1000 = 10 → crédit = 990
+    assert services.get_wallet(streamer).aura_balance == 990

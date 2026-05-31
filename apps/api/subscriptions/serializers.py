@@ -8,7 +8,14 @@ from .models import Subscription, SubTier
 class SubTierSerializer(serializers.ModelSerializer):
     class Meta:
         model = SubTier
-        fields = ("name", "price_aura", "perks", "is_active")
+        fields = (
+            "name",
+            "price_aura",
+            "perks",
+            "badge_url",
+            "stickers_urls",
+            "is_active",
+        )
 
 
 def _channel_payload(c):
@@ -80,5 +87,12 @@ class TierWriteSerializer(serializers.Serializer):
     price_aura = serializers.IntegerField(min_value=1, max_value=1_000_000)
     perks = serializers.ListField(
         child=serializers.CharField(max_length=120), required=False, default=list
+    )
+    badge_url = serializers.URLField(required=False, allow_blank=True, default="")
+    stickers_urls = serializers.ListField(
+        child=serializers.URLField(allow_blank=False),
+        required=False,
+        default=list,
+        max_length=12,
     )
     is_active = serializers.BooleanField(required=False, default=True)

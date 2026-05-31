@@ -29,44 +29,44 @@ export default function MaChainePage() {
   ];
 
   return (
-    <main className="mx-auto max-w-3xl p-8">
-      <h1 className="mb-4 text-2xl font-bold">{t("nav.myChannel")}</h1>
-
-      <div className="mb-6 flex flex-wrap gap-1 border-b border-neutral-800">
-        {tabs.map((tb) => (
-          <button
-            key={tb.id}
-            type="button"
-            onClick={() => setTab(tb.id)}
-            className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition ${
-              tab === tb.id
-                ? "border-secondary text-secondary-light"
-                : "border-transparent text-neutral-400 hover:text-neutral-200"
-            }`}
-          >
-            {tb.label}
-          </button>
-        ))}
+    <main className={tab === "overview" ? "" : "mx-auto max-w-3xl p-8"}>
+      <div className="mx-auto max-w-7xl px-4 pt-6 sm:px-8">
+        <h1 className="mb-4 text-2xl font-bold">{t("nav.myChannel")}</h1>
+        <div className="mb-4 flex flex-wrap items-center gap-3 border-b border-neutral-800">
+          <div className="flex flex-wrap gap-1">
+            {tabs.map((tb) => (
+              <button
+                key={tb.id}
+                type="button"
+                onClick={() => setTab(tb.id)}
+                className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition ${
+                  tab === tb.id
+                    ? "border-secondary text-secondary-light"
+                    : "border-transparent text-neutral-400 hover:text-neutral-200"
+                }`}
+              >
+                {tb.label}
+              </button>
+            ))}
+          </div>
+          {tab === "overview" && (
+            <Link
+              href={`/c/${user.username}`}
+              className="ml-auto mb-2 text-xs text-neutral-400 hover:text-secondary-light"
+            >
+              {t("mychan.openInNewTab")} ↗
+            </Link>
+          )}
+        </div>
       </div>
 
       {tab === "overview" && (
-        <div className="space-y-3">
-          <p className="text-sm text-neutral-400">{t("mychan.overviewDesc")}</p>
-          <div className="flex flex-wrap gap-3">
-            <Link
-              href={`/c/${user.username}`}
-              className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-emerald-400"
-            >
-              {t("mychan.viewPublic")}
-            </Link>
-            <Link
-              href="/dashboard"
-              className="rounded-lg border border-secondary bg-secondary/10 px-4 py-2 text-sm font-semibold text-secondary-light hover:bg-secondary/20"
-            >
-              {t("nav.dashboard")}
-            </Link>
-          </div>
-        </div>
+        /* Affiche directement la page publique de la chaîne, embarquée. */
+        <iframe
+          src={`/c/${user.username}`}
+          title={t("nav.myChannel")}
+          className="block h-[calc(100vh-180px)] w-full border-0 bg-neutral-950"
+        />
       )}
 
       {tab === "achievements" && <AchievementsView />}

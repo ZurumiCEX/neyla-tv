@@ -41,7 +41,14 @@ def my_tier(request: Request) -> Response:
     serializer = TierWriteSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     data = serializer.validated_data
-    tier = services.set_tier(channel, data["price_aura"], data["perks"], data["is_active"])
+    tier = services.set_tier(
+        channel,
+        data["price_aura"],
+        data["perks"],
+        data["is_active"],
+        badge_url=data.get("badge_url", ""),
+        stickers_urls=data.get("stickers_urls", []),
+    )
     return Response(SubTierSerializer(tier).data, status=status.HTTP_200_OK)
 
 
