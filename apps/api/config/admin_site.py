@@ -50,6 +50,8 @@ _APP_CATEGORY: dict[str, str] = {
     "gamification": "Engagement & gamification",
     "notifications": "Engagement & gamification",
     "charity": "Engagement & gamification",
+    "announcements": "Système & journaux",
+    "ops": "Système & journaux",
     "moderation": "Modération & sécurité",
     "safety": "Modération & sécurité",
     "chat": "Modération & sécurité",

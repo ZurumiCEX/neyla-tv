@@ -35,4 +35,5 @@ urlpatterns = [
     path("api/", include("gamification.urls")),
     path("api/", include("invitations.urls")),
     path("api/", include("charity.urls")),
+    path("api/", include("announcements.urls")),
 ]
