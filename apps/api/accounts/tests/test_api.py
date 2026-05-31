@@ -196,3 +196,51 @@ def test_logout_clears_cookie(api_client, user):
     response = api_client.post(reverse("auth-logout"))
     assert response.status_code == 204
     assert response.cookies[settings.REFRESH_COOKIE_NAME].value == ""
+
+
+# --- Sécurité anti-abus (honeypot + disposable email) ---
+
+
+def test_register_honeypot_blocks_bot(api_client):
+    """Si le champ caché `website` est rempli, l'inscription est refusée."""
+    resp = api_client.post(
+        reverse("auth-register"),
+        {
+            "email": "bot@example.com",
+            "username": "spammer",
+            "password": "correct-horse-battery-staple",
+            "terms_accepted": True,
+            "website": "http://spam.example.com",
+        },
+        format="json",
+    )
+    assert resp.status_code == 400
+
+
+def test_register_disposable_email_rejected(api_client):
+    resp = api_client.post(
+        reverse("auth-register"),
+        {
+            "email": "throwaway@yopmail.com",
+            "username": "throwaway",
+            "password": "correct-horse-battery-staple",
+            "terms_accepted": True,
+        },
+        format="json",
+    )
+    assert resp.status_code == 400
+
+
+def test_register_accepts_clean_payload_in_fake_captcha_mode(api_client):
+    """En mode FAKE (pas de TURNSTILE_SECRET_KEY), aucun token n'est exigé."""
+    resp = api_client.post(
+        reverse("auth-register"),
+        {
+            "email": "newbie-clean@example.com",
+            "username": "cleanguy",
+            "password": "correct-horse-battery-staple",
+            "terms_accepted": True,
+        },
+        format="json",
+    )
+    assert resp.status_code == 201

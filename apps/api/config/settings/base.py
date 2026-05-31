@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     # Local
     "accounts",
     "analytics",
+    "announcements",
     "audit",
     "catalog",
     "channels_app",
@@ -44,6 +45,7 @@ INSTALLED_APPS = [
     "invitations",
     "moderation",
     "notifications",
+    "ops",
     "payments",
     "safety",
     "social",
@@ -64,7 +66,16 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # Mode maintenance : bloque tout sauf staff + IPs allow-listées (cf. ops/middleware.py).
+    "ops.middleware.MaintenanceModeMiddleware",
 ]
+
+# IPs autorisées à bypasser le mode maintenance (admin techniques en intervention).
+MAINTENANCE_ALLOWED_IPS = env.list("MAINTENANCE_ALLOWED_IPS", default=[])
+
+# Cloudflare Turnstile (captcha gratuit, performant en Afrique). Vide → désactivé.
+TURNSTILE_SITE_KEY = env("TURNSTILE_SITE_KEY", default="")
+TURNSTILE_SECRET_KEY = env("TURNSTILE_SECRET_KEY", default="")
 
 ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"

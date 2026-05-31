@@ -22,11 +22,46 @@ HTTP sont préfixées par `/api/`. L'admin Django est servi sous `/admin/`.
 
 ---
 
-## Health
+## Health & status
 
 | Méthode | Chemin | Auth | Description |
 |---------|--------|------|-------------|
-| `GET` | `/api/healthz` | — | Ping DB + Redis. `200 {status:"ok",db,redis}` si tout est up, sinon `503 {status:"degraded",...}`. |
+| `GET` | `/api/livez` | — | Liveness simple (process up). Aucune dépendance. |
+| `GET` | `/api/healthz` | — | Ping DB + Redis. `200 {status, db, redis}` ou `503 {degraded,…}`. |
+| `GET` | `/api/status` | — | État détaillé pour la page publique `/statut` : `services: {api, database, redis, cloudflare_stream}` avec `{ok, latency_ms}` chacun, `checked_at`, `uptime_pct_30d`, `incidents`. |
+
+---
+
+## Charity Day — `/api/charity/`
+
+Module RSE : 1 événement caritatif par mois, dons en Aura, transparence totale.
+Les commissions plateforme sont prélevées sur les flux Tips/Subs (cf. monétisation) ;
+les dons Charity Day passent du wallet utilisateur vers la cause via un ledger
+dédié (`LedgerEntry.Kind.CHARITY_DONATION`).
+
+| Méthode | Chemin | Auth | Description |
+|---------|--------|------|-------------|
+| `GET` | `/api/charity/events` | — | Liste publiée des Charity Days (récents + à venir). |
+| `GET` | `/api/charity/events/current` | — | Événement en cours (sinon le prochain) avec totaux + leaderboard. |
+| `GET` | `/api/charity/events/<slug>` | — | Détail + agrégats : `total`, `donor_count`, `by_charity`, `top_donors`. |
+| `GET` | `/api/charity/charities` | — | Catalogue des associations agréées. |
+| `POST` | `/api/charity/donate` | JWT, 5/min | `{event_slug, charity_slug, aura_amount, message?, anonymous?}`. Atomique : débit wallet + création donation + maj cache total. Refus si < floor, hors fenêtre, asso non bénéficiaire. |
+
+## Calendrier d'événements — `/api/events/`
+
+| Méthode | Chemin | Auth | Description |
+|---------|--------|------|-------------|
+| `GET` | `/api/events` | — | Liste publique, filtrable par `kind` (`charity\|tournament\|premiere\|announcement\|maintenance`) et `from`/`to` ISO. |
+| `GET` | `/api/events/upcoming?limit=5` | — | N prochains événements (header menu). |
+| `GET` | `/api/events/<slug>` | — | Détail d'un événement. |
+
+Les `CharityEvent` sont automatiquement miroir dans `PlatformEvent` (signal).
+
+## Annonces — `/api/announcements/`
+
+| Méthode | Chemin | Auth | Description |
+|---------|--------|------|-------------|
+| `GET` | `/api/announcements/active` | optionnel (filtre audience) | Annonces actives selon `audience` (anonymous/viewers/streamers/all) : `{results:[{id, title, body, level, display_mode, dismissible, cta_label, cta_url}]}`. |
 
 ---
 

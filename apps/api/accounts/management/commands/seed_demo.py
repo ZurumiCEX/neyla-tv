@@ -402,12 +402,24 @@ class Command(BaseCommand):
         from charity.models import Charity, CharityEvent
 
         causes = [
-            ("education-numerique", "Éducation Numérique Afrique", "SN",
-             "Soutien à l'accès au numérique dans les écoles ouest-africaines."),
-            ("sante-mentale-jeunes", "Santé Mentale des Jeunes", "CI",
-             "Programmes d'écoute et de prévention pour la jeunesse."),
-            ("environnement-sahel", "Environnement Sahel", "BF",
-             "Reforestation et lutte contre la désertification."),
+            (
+                "education-numerique",
+                "Éducation Numérique Afrique",
+                "SN",
+                "Soutien à l'accès au numérique dans les écoles ouest-africaines.",
+            ),
+            (
+                "sante-mentale-jeunes",
+                "Santé Mentale des Jeunes",
+                "CI",
+                "Programmes d'écoute et de prévention pour la jeunesse.",
+            ),
+            (
+                "environnement-sahel",
+                "Environnement Sahel",
+                "BF",
+                "Reforestation et lutte contre la désertification.",
+            ),
         ]
         charities = []
         for slug, name, country, desc in causes:
@@ -464,11 +476,17 @@ class Command(BaseCommand):
             return
         import contextlib
 
-        donors = (viewers[:8] + [s for _u, _c in [(None, None)] for s in []])
+        donors = viewers[:8] + [s for _u, _c in [(None, None)] for s in []]
         donors = viewers[:8] + [u for u, _ch in streamers[:2]]
         amounts = [50, 25, 200, 75, 500, 30, 1200, 80, 300, 90]
-        for donor, amount in zip(donors, amounts):
+        for donor, amount in zip(donors, amounts, strict=False):
             cause = random.choice(charities)
             with contextlib.suppress(Exception):
-                charity_services.donate(donor, current.slug, cause.slug, amount,
-                                        message="bravo !", is_anonymous=(amount > 1000))
+                charity_services.donate(
+                    donor,
+                    current.slug,
+                    cause.slug,
+                    amount,
+                    message="bravo !",
+                    is_anonymous=(amount > 1000),
+                )
