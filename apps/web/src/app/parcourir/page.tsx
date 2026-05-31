@@ -27,7 +27,7 @@ export default async function BrowsePage() {
   ]);
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-6">
+    <main className="w-full px-4 py-6">
       <h1 className="mb-4 text-2xl font-bold">{t("nav.browse")}</h1>
       <BrowseTabs lives={lives.results} categories={cats.results} />
     </main>
