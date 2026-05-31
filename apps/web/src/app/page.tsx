@@ -36,7 +36,7 @@ export default async function HomePage() {
   ]);
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-6">
+    <main className="w-full px-4 py-6">
       <HomeVideoCarousel videos={HERO_VIDEOS} />
 
       <section>

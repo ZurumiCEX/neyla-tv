@@ -67,7 +67,7 @@ export default async function ChannelPage({ params }: { params: Promise<{ slug: 
   ).catch(() => ({ results: [], unlocked: 0 }));
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-6">
+    <main className="w-full px-4 py-6">
       {channel.banner_url && (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={channel.banner_url} alt="" className="mb-4 h-40 w-full rounded-xl object-cover" />

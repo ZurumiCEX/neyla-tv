@@ -69,7 +69,7 @@ export default function SuivisPage() {
   ];
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-6">
+    <main className="w-full px-4 py-6">
       <h1 className="mb-4 text-2xl font-bold">{t("suivis.title")}</h1>
 
       <div className="mb-6 flex flex-wrap gap-1 border-b border-neutral-800">
