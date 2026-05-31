@@ -160,6 +160,12 @@ class Command(BaseCommand):
             value=30,
             defaults={"is_active": True},
         )
+        FeeRule.objects.get_or_create(
+            product=FeeRule.Product.PURCHASE,
+            mode=FeeRule.Mode.PERCENTAGE,
+            value=1,
+            defaults={"is_active": True},
+        )
 
     def _games(self):
         from catalog.models import Game

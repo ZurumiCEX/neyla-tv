@@ -76,3 +76,48 @@ def test_subscribe_endpoint_and_status(auth_client_factory):
     assert resp.status_code == 201
     status_resp = client.get(reverse("subscription-status", kwargs={"slug": channel.slug}))
     assert status_resp.json()["subscribed"] is True
+
+
+def test_set_tier_persists_badge_and_stickers():
+    from accounts.factories import UserFactory
+    from channels_app.models import Channel
+    from subscriptions import services
+
+    user = UserFactory()
+    channel = Channel.objects.get(user=user)
+    tier = services.set_tier(
+        channel,
+        price_aura=100,
+        perks=["Badge abonné"],
+        badge_url="https://example.com/badge.png",
+        stickers_urls=["https://example.com/s1.png", "https://example.com/s2.png", ""],
+    )
+    assert tier.badge_url == "https://example.com/badge.png"
+    assert tier.stickers_urls == [
+        "https://example.com/s1.png",
+        "https://example.com/s2.png",
+    ]
+
+
+def test_my_tier_put_accepts_badge_and_stickers(auth_client_factory):
+    from django.urls import reverse
+
+    from accounts.factories import UserFactory
+
+    user = UserFactory()
+    client = auth_client_factory(user)
+    resp = client.put(
+        reverse("streamer-tier"),
+        {
+            "price_aura": 200,
+            "perks": ["Stickers exclusifs"],
+            "badge_url": "https://example.com/b.png",
+            "stickers_urls": ["https://example.com/x.png"],
+            "is_active": True,
+        },
+        format="json",
+    )
+    assert resp.status_code == 200, resp.content
+    body = resp.json()
+    assert body["badge_url"] == "https://example.com/b.png"
+    assert body["stickers_urls"] == ["https://example.com/x.png"]

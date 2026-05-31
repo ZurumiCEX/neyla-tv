@@ -16,12 +16,21 @@ class SubscriptionError(Exception):
     """Erreur métier abonnement."""
 
 
-def set_tier(channel: Channel, price_aura: int, perks: list, is_active: bool = True) -> SubTier:
+def set_tier(
+    channel: Channel,
+    price_aura: int,
+    perks: list,
+    is_active: bool = True,
+    badge_url: str = "",
+    stickers_urls: list | None = None,
+) -> SubTier:
     tier, _ = SubTier.objects.update_or_create(
         channel=channel,
         defaults={
             "price_aura": int(price_aura),
             "perks": perks or [],
+            "badge_url": (badge_url or "").strip(),
+            "stickers_urls": [s for s in (stickers_urls or []) if s],
             "is_active": is_active,
         },
     )

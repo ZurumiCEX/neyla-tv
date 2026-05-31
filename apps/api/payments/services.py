@@ -119,15 +119,51 @@ def adjust_balance(actor, user, amount: int, reason: str = "") -> Wallet:
     return wallet
 
 
+def _is_streamer(user) -> bool:
+    """True si l'utilisateur est un streamer approuvé (chaîne provisionnée).
+
+    Lit la chaîne via une requête fraîche (pas via la relation OneToOne cachée),
+    pour que les flux longs (webhook → confirm_purchase) voient bien un
+    provisionnement intervenu entre-temps.
+    """
+    from channels_app.models import Channel
+
+    try:
+        return Channel.objects.filter(user_id=user.id).exclude(live_input_uid="").exists()
+    except Exception:
+        return False
+
+
 @transaction.atomic
 def confirm_purchase(purchase: Purchase) -> Purchase:
-    """Idempotent : crédite le wallet une seule fois (anti-rejeu webhook)."""
+    """Idempotent : crédite le wallet une seule fois (anti-rejeu webhook).
+
+    Business model :
+    - Viewer (non streamer) : achat 1 FCFA = 1 Aura strict (aucune commission).
+    - Streamer : commission `FeeRule.PURCHASE` prélevée sur l'Aura crédité
+      (par défaut 1 %). C'est le seul point de prélèvement côté achat ; les tips
+      et abonnements appliquent ensuite leur propre split sur les flux entrants,
+      garantissant qu'aucun montant n'est prélevé deux fois pour le même flux.
+    """
     if purchase.status == Purchase.Status.PAID:
         return purchase
     purchase.status = Purchase.Status.PAID
     purchase.save(update_fields=["status"])
     wallet = Wallet.objects.select_for_update().get_or_create(user=purchase.user)[0]
-    _apply(wallet, purchase.credits, LedgerEntry.Kind.PURCHASE, f"purchase:{purchase.id}")
+
+    credits = int(purchase.credits)
+    fee = 0
+    if _is_streamer(purchase.user):
+        credited, fee = split(credits, FeeRule.Product.PURCHASE)
+    else:
+        credited = credits
+    _apply(
+        wallet,
+        credited,
+        LedgerEntry.Kind.PURCHASE,
+        f"purchase:{purchase.id}",
+        metadata={"gross": credits, "platform_fee": fee} if fee else None,
+    )
     return purchase
 
 

@@ -6,8 +6,8 @@ import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useT } from "@/lib/i18n";
-import { AURA_TIERS, AuraBadge } from "@/components/AuraBadge";
 import { ChatBansManager } from "@/components/ChatBansManager";
+import { SubPerksSection } from "@/components/SubPerksSection";
 import { ChatPanel } from "@/components/ChatPanel";
 import { CollaborationManager } from "@/components/CollaborationManager";
 import { CopyButton } from "@/components/CopyButton";
@@ -63,6 +63,8 @@ type SubTier = {
   name?: string;
   price_aura?: number;
   perks?: string[];
+  badge_url?: string;
+  stickers_urls?: string[];
   is_active?: boolean;
 };
 
@@ -121,6 +123,8 @@ export default function DashboardPage() {
 
   const [tierPrice, setTierPrice] = useState("100");
   const [tierPerks, setTierPerks] = useState("");
+  const [tierBadge, setTierBadge] = useState("");
+  const [tierStickers, setTierStickers] = useState("");
   const [tierActive, setTierActive] = useState(true);
   const [tierSaving, setTierSaving] = useState(false);
   const [tierSaved, setTierSaved] = useState(false);
@@ -148,6 +152,8 @@ export default function DashboardPage() {
             if (typeof tier.price_aura === "number") {
               setTierPrice(String(tier.price_aura));
               setTierPerks((tier.perks ?? []).join("\n"));
+              setTierBadge(tier.badge_url ?? "");
+              setTierStickers((tier.stickers_urls ?? []).join("\n"));
               setTierActive(tier.is_active ?? true);
             }
           })
@@ -281,9 +287,20 @@ export default function DashboardPage() {
         .split("\n")
         .map((p) => p.trim())
         .filter(Boolean);
+      const stickers_urls = tierStickers
+        .split("\n")
+        .map((s) => s.trim())
+        .filter((s) => /^https?:\/\//.test(s))
+        .slice(0, 12);
       await authFetch("/api/streamer/tier", {
         method: "PUT",
-        body: JSON.stringify({ price_aura: Number(tierPrice) || 1, perks, is_active: tierActive }),
+        body: JSON.stringify({
+          price_aura: Number(tierPrice) || 1,
+          perks,
+          badge_url: tierBadge.trim(),
+          stickers_urls,
+          is_active: tierActive,
+        }),
       });
       setTierSaved(true);
     } catch (err) {
@@ -632,31 +649,17 @@ export default function DashboardPage() {
                 </div>
               </section>
 
-              <section className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
-                <h2 className="font-semibold">{t("dash.tierGuideTitle")}</h2>
-                <p className="mb-4 mt-1 text-sm text-neutral-400">{t("dash.tierGuideDesc")}</p>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  {AURA_TIERS.map((tr) => {
-                    const reached = Number(tierPrice) >= tr.min;
-                    return (
-                      <div key={tr.key} className="flex items-center gap-2">
-                        <AuraBadge tier={tr} size={28} locked={!reached} />
-                        <div className="min-w-0">
-                          <p
-                            className="truncate text-sm font-medium"
-                            style={{ color: reached ? tr.color : "#71717a" }}
-                          >
-                            {t(`aura.tier.${tr.key}`)}
-                          </p>
-                          <p className="text-xs text-neutral-500">
-                            {tr.min.toLocaleString("fr-FR")}+ Aura
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
+              {/* Avantages d'abonnement : badge + stickers (URL en attendant
+                  l'upload Cloudflare R2). Defaults rendus si vide. */}
+              <SubPerksSection
+                badge={tierBadge}
+                setBadge={setTierBadge}
+                stickers={tierStickers}
+                setStickers={setTierStickers}
+                onSave={saveTier}
+                saving={tierSaving}
+                saved={tierSaved}
+              />
 
               <section className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
                 <h2 className="font-semibold">{t("dash.payoutTitle")}</h2>

@@ -219,9 +219,20 @@ Calculées **à la demande** (pas de tâche planifiée). DAU/MAU s'appuient sur
 
 Crédits "Aura". **Devise = FCFA (XOF)** ; équivalents EUR (parité fixe 655,957) et
 USD (taux manuel) renvoyés pour l'affichage. Achat via provider abstrait (**FAKE**
-par défaut, **Stripe** si clé, **mobile money** à brancher), tips avec partage
-**70 % créateur / 30 % plateforme**, retrait. Toutes les mutations passent par un
-grand livre (`LedgerEntry`) atomique.
+par défaut, **Stripe** si clé, **mobile money** à brancher). Toutes les mutations
+passent par un grand livre (`LedgerEntry`) atomique.
+
+**Business model** (commissions plateforme, prélèvement *unique* par flux pour
+éviter le double prélèvement du streamer) :
+
+| Flux | Commission | Sur qui ? | Quand |
+|------|------------|-----------|-------|
+| **Tip** | 30 % | Sur le créateur (split à la réception) | À chaque tip |
+| **Abonnement** | 30 % | Sur le créateur (split au prélèvement) | À chaque période payée |
+| **Achat d'Aura** | 1 % | **Streamer uniquement** (viewer = 0 %) | À la confirmation de l'achat |
+
+Les taux sont stockés dans `FeeRule` (admin-éditables) et seedés au déploiement
+(migration `payments/0008_seed_default_fees`). Un viewer n'est jamais prélevé.
 
 | Méthode | Chemin | Auth | Description |
 |---------|--------|------|-------------|
