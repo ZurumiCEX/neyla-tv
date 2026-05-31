@@ -81,6 +81,22 @@ def register(request: Request) -> Response:
     data = dict(serializer.validated_data)
     invite_code = data.pop("invite", "")
     terms_accepted = data.pop("terms_accepted", False)
+    captcha_token = data.pop("captcha_token", "")
+    data.pop("website", None)  # honeypot, déjà validé par le serializer
+
+    # Captcha : exigé uniquement si la clé Turnstile est configurée (prod).
+    from safety.captcha import is_enabled as captcha_enabled
+    from safety.captcha import verify as captcha_verify
+
+    if captcha_enabled():
+        client_ip = request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")[
+            0
+        ].strip() or request.META.get("REMOTE_ADDR", "")
+        if not captcha_verify(captcha_token, client_ip):
+            return Response(
+                {"detail": "Captcha invalide.", "captcha_required": True},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
     try:
         user = register_user(**data, invite_code=invite_code, terms_accepted=terms_accepted)
     except RegistrationError as exc:

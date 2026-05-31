@@ -83,6 +83,20 @@ Chaque app est autonome : `models`, `views`, `serializers`, `services`,
   `payments/0008_seed_default_fees` ; admin éditable.
 - **`audit`** : `AuditEvent` (`actor`, `action`, `target`, `meta`) + `record()`,
   appelé sur les actions sensibles (approbation, payout, changement de rôle…).
+- **`charity` (différenciation RSE)** : `Charity` (asso agréée), `CharityEvent`
+  (Charity Day mensuel, floor de don, bénéficiaires M2M, total cached),
+  `CharityDonation` (audit lecture seule), `PlatformEvent` (calendrier
+  généraliste, miroir auto des `CharityEvent`). Service `donate()` atomique
+  (ledger `CHARITY_DONATION`, refus floor/hors fenêtre/asso non-bénéficiaire).
+  Endpoints publics + `POST /api/charity/donate` (auth).
+- **`announcements`** : `SiteAnnouncement` (level, display_mode ticker/popup,
+  audience anonymous/viewers/streamers/all, fenêtre temporelle, dismissible,
+  CTA). API publique filtrée par audience.
+- **`ops`** : `SiteFlag` (k/v) + `MaintenanceModeMiddleware` (503 sauf staff
+  + IPs allow-listées, bypass /admin/, /api/healthz, /api/livez, /api/status).
+- **`safety` (étendu)** : `captcha.py` (Cloudflare Turnstile, mode FAKE si pas
+  de clé) + `is_disposable()` (blocklist domaines email jetables). Honeypot
+  `website` au register + validation `is_disposable` sur l'email.
 - **`uploads`** : `services.upload_image()` vers **Cloudflare R2** (boto3, mode
   FAKE hors-ligne) ; endpoints avatar / bannière / vignette de jeu.
 - **`subscriptions`** : `SubTier` (palier prix Aura + `perks` texte +
@@ -134,6 +148,9 @@ Chaque app est autonome : `models`, `views`, `serializers`, `services`,
 | `/c/[slug]` | `page.tsx` | Page chaîne : player + chat + **bouton partager** |
 | `/categories/[slug]` | `page.tsx` | Lives d'une catégorie |
 | `/search` | `SearchView.tsx` | Recherche |
+| `/charity` | `page.tsx` | Charity Day en cours : total, leaderboard, formulaire de don |
+| `/calendrier` | `page.tsx` | Calendrier des événements (filtrable par kind) |
+| `/statut` | `page.tsx` | Page publique d'état (services + uptime + incidents) |
 
 ### Composants — `src/components/`
 `HlsPlayer` (lecture HLS via hls.js), `ChatPanel` (WebSocket chat),

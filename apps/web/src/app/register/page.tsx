@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { useT } from "@/lib/i18n";
+import { TurnstileWidget } from "@/components/TurnstileWidget";
+import { isTurnstileEnabled } from "@/lib/turnstile";
 
 export default function RegisterPage() {
   const t = useT();
@@ -11,6 +13,9 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [invite, setInvite] = useState("");
   const [accepted, setAccepted] = useState(false);
+  // Honeypot : champ visuellement caché. Rempli ⇒ bot.
+  const [website, setWebsite] = useState("");
+  const [captchaToken, setCaptchaToken] = useState("");
   const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -18,6 +23,8 @@ export default function RegisterPage() {
     const code = new URLSearchParams(window.location.search).get("invite");
     if (code) setInvite(code.toUpperCase());
   }, []);
+
+  const onCaptcha = useCallback((token: string) => setCaptchaToken(token), []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -32,6 +39,8 @@ export default function RegisterPage() {
           password,
           invite,
           terms_accepted: accepted,
+          website, // honeypot, le serveur rejette si non vide
+          captcha_token: captchaToken,
         }),
       });
       setStatus({ ok: true, msg: t("auth.registerOk") });
@@ -71,6 +80,19 @@ export default function RegisterPage() {
           onValueChange={(v) => setInvite(v.toUpperCase())}
           maxLength={16}
         />
+        {/* Honeypot anti-bot : caché aux humains via aria/tabindex/css. */}
+        <div aria-hidden className="hidden">
+          <label>
+            Ne pas remplir
+            <input
+              type="text"
+              tabIndex={-1}
+              autoComplete="off"
+              value={website}
+              onChange={(e) => setWebsite(e.target.value)}
+            />
+          </label>
+        </div>
         <label className="flex items-start gap-2 text-sm text-neutral-300">
           <input
             type="checkbox"
@@ -86,9 +108,10 @@ export default function RegisterPage() {
             </a>
           </span>
         </label>
+        <TurnstileWidget onVerify={onCaptcha} />
         <button
           type="submit"
-          disabled={busy || !accepted}
+          disabled={busy || !accepted || (isTurnstileEnabled() && !captchaToken)}
           className="w-full rounded-lg bg-emerald-500 px-4 py-2 font-semibold text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
         >
           {busy ? "..." : t("auth.signup")}

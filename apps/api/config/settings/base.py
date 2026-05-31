@@ -73,6 +73,10 @@ MIDDLEWARE = [
 # IPs autorisées à bypasser le mode maintenance (admin techniques en intervention).
 MAINTENANCE_ALLOWED_IPS = env.list("MAINTENANCE_ALLOWED_IPS", default=[])
 
+# Cloudflare Turnstile (captcha gratuit, performant en Afrique). Vide → désactivé.
+TURNSTILE_SITE_KEY = env("TURNSTILE_SITE_KEY", default="")
+TURNSTILE_SECRET_KEY = env("TURNSTILE_SECRET_KEY", default="")
+
 ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"

@@ -13,12 +13,33 @@ class RegisterSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True, min_length=10, max_length=128)
     invite = serializers.CharField(required=False, allow_blank=True, default="", max_length=16)
     terms_accepted = serializers.BooleanField(write_only=True)
+    # Honeypot : champ invisible côté UI ; rempli ⇒ bot.
+    website = serializers.CharField(
+        required=False, allow_blank=True, default="", write_only=True, max_length=200
+    )
+    # Token Cloudflare Turnstile (vérifié côté vue). Optionnel en mode FAKE.
+    captcha_token = serializers.CharField(
+        required=False, allow_blank=True, default="", write_only=True, max_length=2048
+    )
 
     def validate_terms_accepted(self, value: bool) -> bool:
         if not value:
             raise serializers.ValidationError(
                 "Vous devez attester avoir 13 ans ou plus et accepter les conditions d'utilisation."
             )
+        return value
+
+    def validate_website(self, value: str) -> str:
+        # Honeypot : aucun utilisateur réel ne remplit ce champ.
+        if value:
+            raise serializers.ValidationError("Spam détecté.")
+        return value
+
+    def validate_email(self, value: str) -> str:
+        from safety.captcha import is_disposable
+
+        if is_disposable(value):
+            raise serializers.ValidationError("Ce domaine d'email n'est pas autorisé.")
         return value
 
 
