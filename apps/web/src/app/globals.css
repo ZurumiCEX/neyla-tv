@@ -1,3 +1,51 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* --------------------------------------------------------------------------
+   Thème clair / sombre.
+
+   On évite de réécrire toutes les classes Tailwind des composants : on
+   intercepte `[data-theme="light"]` et on ré-applique des couleurs claires
+   sur les classes neutres les plus utilisées (bg-neutral-*, text-neutral-*,
+   border-neutral-*). Les composants restent rédigés en "thème sombre" et
+   basculent automatiquement.
+   -------------------------------------------------------------------------- */
+
+html[data-theme="light"] body {
+  background-color: #f7f7f8;
+  color: #0a0a0a;
+}
+
+/* Surfaces (fonds) */
+html[data-theme="light"] .bg-neutral-950 { background-color: #ffffff !important; }
+html[data-theme="light"] .bg-neutral-900 { background-color: #f3f4f6 !important; }
+html[data-theme="light"] .bg-neutral-800 { background-color: #e5e7eb !important; }
+
+/* Variantes avec opacité (ex. bg-neutral-950/90) */
+html[data-theme="light"] [class*="bg-neutral-950\\/"] { background-color: rgba(255, 255, 255, 0.9) !important; }
+html[data-theme="light"] [class*="bg-neutral-900\\/"] { background-color: rgba(243, 244, 246, 0.9) !important; }
+
+/* Textes */
+html[data-theme="light"] .text-neutral-100 { color: #0a0a0a !important; }
+html[data-theme="light"] .text-neutral-200 { color: #1f2937 !important; }
+html[data-theme="light"] .text-neutral-300 { color: #374151 !important; }
+html[data-theme="light"] .text-neutral-400 { color: #4b5563 !important; }
+html[data-theme="light"] .text-neutral-500 { color: #6b7280 !important; }
+
+/* Bordures */
+html[data-theme="light"] .border-neutral-800 { border-color: #e5e7eb !important; }
+html[data-theme="light"] .border-neutral-700 { border-color: #d1d5db !important; }
+
+/* Inputs natifs */
+html[data-theme="light"] input,
+html[data-theme="light"] select,
+html[data-theme="light"] textarea {
+  color-scheme: light;
+}
+
+/* Hover sur fonds sombres → un hover gris clair */
+html[data-theme="light"] .hover\:bg-neutral-800:hover,
+html[data-theme="light"] .hover\:bg-neutral-900:hover {
+  background-color: #e5e7eb !important;
+}

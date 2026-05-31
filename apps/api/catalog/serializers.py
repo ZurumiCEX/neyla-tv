@@ -8,7 +8,7 @@ from .models import Game
 class GameSerializer(serializers.ModelSerializer):
     class Meta:
         model = Game
-        fields = ("slug", "name", "box_art_url")
+        fields = ("slug", "name", "box_art_url", "group")
 
 
 class GameWithCountSerializer(GameSerializer):
