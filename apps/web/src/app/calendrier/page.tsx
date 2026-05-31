@@ -40,7 +40,7 @@ export default function CalendrierPage() {
   }, [kind]);
 
   return (
-    <main className="mx-auto max-w-5xl p-6">
+    <main className="w-full p-4 sm:p-6">
       <header className="mb-6">
         <h1 className="text-2xl font-bold">{t("events.calendarTitle")}</h1>
       </header>
