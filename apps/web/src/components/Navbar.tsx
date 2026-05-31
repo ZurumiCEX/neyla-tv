@@ -11,6 +11,7 @@ import { GuidesMenu } from "@/components/GuidesMenu";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { NotificationBell } from "@/components/NotificationBell";
 import { ProfileMenu } from "@/components/ProfileMenu";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export function Navbar() {
   const { user, loading } = useAuth();
@@ -73,6 +74,7 @@ export function Navbar() {
         {/* Droite : contrôles */}
         <div className="flex shrink-0 items-center gap-2 text-sm">
           <GuidesMenu />
+          <ThemeToggle />
           <LanguageSwitcher />
 
           {loading ? (

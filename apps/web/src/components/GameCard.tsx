@@ -9,6 +9,7 @@ export type GameSummary = {
   box_art_url?: string;
   live_count?: number;
   viewers?: number;
+  group?: string;
 };
 
 export function GameCard({ game }: { game: GameSummary }) {

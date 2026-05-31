@@ -88,11 +88,13 @@ def discover_live(request: Request) -> Response:
 @permission_classes([AllowAny])
 def discover_categories(request: Request) -> Response:
     limit, offset = _paginate(request)
-    games = list(
-        Game.objects.annotate(
-            live_count=Count("channels", filter=Q(channels__is_live=True))
-        ).order_by("-live_count", "name")[offset : offset + limit]
+    qs = Game.objects.annotate(
+        live_count=Count("channels", filter=Q(channels__is_live=True))
     )
+    group = (request.query_params.get("group") or "").strip().lower()
+    if group in dict(Game.Group.choices):
+        qs = qs.filter(group=group)
+    games = list(qs.order_by("-live_count", "name")[offset : offset + limit])
     data = GameWithCountSerializer(games, many=True).data
     # Total spectateurs par catégorie (somme des viewers des lives, repli pic).
     live = list(
@@ -105,6 +107,42 @@ def discover_categories(request: Request) -> Response:
     for item, game in zip(data, games, strict=True):
         item["viewers"] = totals.get(game.id, 0)
     return Response({"results": data})
+
+
+@api_view(["GET"])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def discover_groups(request: Request) -> Response:
+    """Macro-catégories style Twitch (Jeux, IRL, Discussions, Musique, Créativité).
+
+    Pour chaque groupe : nombre de catégories et de lives en cours.
+    """
+    counts = {g: 0 for g, _ in Game.Group.choices}
+    lives = {g: 0 for g, _ in Game.Group.choices}
+    for group, count in (
+        Game.objects.values_list("group").annotate(n=Count("id")).values_list("group", "n")
+    ):
+        counts[group] = count
+    for group, count in (
+        Channel.objects.filter(is_live=True, category__isnull=False)
+        .values_list("category__group")
+        .annotate(n=Count("id"))
+        .values_list("category__group", "n")
+    ):
+        lives[group] = count
+    return Response(
+        {
+            "results": [
+                {
+                    "slug": g,
+                    "name": label,
+                    "category_count": counts[g],
+                    "live_count": lives[g],
+                }
+                for g, label in Game.Group.choices
+            ]
+        }
+    )
 
 
 @api_view(["GET"])

@@ -5,6 +5,7 @@ from .models import Game
 
 @admin.register(Game)
 class GameAdmin(admin.ModelAdmin):
-    list_display = ("name", "slug", "created_at")
+    list_display = ("name", "slug", "group", "created_at")
+    list_filter = ("group",)
     search_fields = ("name", "slug")
     prepopulated_fields = {"slug": ("name",)}

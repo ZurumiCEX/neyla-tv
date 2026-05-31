@@ -13,6 +13,15 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fr">
+      <head>
+        {/* Évite le FOUC : applique le thème stocké avant l'hydratation React. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{var t=localStorage.getItem('neyla:theme');document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');}catch(_){document.documentElement.setAttribute('data-theme','dark');}",
+          }}
+        />
+      </head>
       <body className="min-h-screen bg-neutral-950 text-neutral-100 antialiased">
         <I18nProvider>
           <AuthProvider>
