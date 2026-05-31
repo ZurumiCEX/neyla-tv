@@ -24,6 +24,8 @@ export function Footer() {
         { label: t("nav.wallet"), href: "/wallet" },
         { label: t("nav.achievements"), href: "/achievements" },
         { label: t("guides.title"), href: "/guides" },
+        { label: t("footer.charity"), href: "/charity" },
+        { label: t("footer.status"), href: "/statut" },
       ],
     },
     {
