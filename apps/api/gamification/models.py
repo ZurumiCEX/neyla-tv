@@ -7,17 +7,38 @@ from django.db import models
 
 
 class Achievement(models.Model):
-    key = models.CharField(max_length=50, unique=True)
-    name = models.CharField(max_length=80)
-    description = models.CharField(max_length=200, blank=True)
-    icon = models.CharField(max_length=8, default="🏆")
+    key = models.CharField(
+        max_length=50,
+        unique=True,
+        help_text="Identifiant technique stable (ex. hard_worker). Sans espaces.",
+    )
+    name = models.CharField(max_length=80, help_text="Désignation affichée (ex. « Hard worker »).")
+    description = models.CharField(
+        max_length=300, blank=True, help_text="Phrase courte affichée à l'utilisateur."
+    )
+    criteria = models.TextField(
+        blank=True,
+        help_text="Conditions pour valider le succès "
+        "(ex. « Faire 5 streams d'environ 5h sur une semaine »).",
+    )
+    icon = models.CharField(
+        max_length=8, default="🏆", help_text="Emoji par défaut si aucune icône image."
+    )
+    icon_url = models.URLField(
+        blank=True,
+        help_text="URL d'une icône image (en attendant l'upload Cloudflare R2). "
+        "Prioritaire sur l'emoji.",
+    )
+    is_active = models.BooleanField(
+        default=True, db_index=True, help_text="Décocher pour masquer le succès du catalogue."
+    )
     order = models.PositiveIntegerField(default=0)
 
     class Meta:
         ordering = ["order", "id"]
 
     def __str__(self) -> str:
-        return self.key
+        return self.name or self.key
 
 
 class UserAchievement(models.Model):

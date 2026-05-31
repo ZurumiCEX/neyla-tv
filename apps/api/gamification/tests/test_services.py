@@ -53,4 +53,30 @@ def test_achievements_endpoint_lists_catalog(auth_client_factory):
     assert body["unlocked"] == 1
     first = next(a for a in body["results"] if a["key"] == "first_login")
     assert first["unlocked"] is True
+    assert "criteria" in first and "icon_url" in first  # champs enrichis exposés
     assert Achievement.objects.count() == len(services.CATALOG)
+
+
+def test_achievements_endpoint_hides_inactive(auth_client_factory):
+    services.sync_catalog()
+    Achievement.objects.filter(key="first_login").update(is_active=False)
+    client = auth_client_factory(UserFactory())
+    keys = [a["key"] for a in client.get(reverse("achievements-list")).json()["results"]]
+    assert "first_login" not in keys
+
+
+def test_user_achievements_public_returns_unlocked(api_client):
+    user = UserFactory(username="showcase")
+    services.check_and_award(user, "first_login")
+    services.check_and_award(user, "tip_sent")
+    resp = api_client.get(reverse("achievements-user", args=["showcase"]))
+    assert resp.status_code == 200  # public (sans auth)
+    body = resp.json()
+    assert body["unlocked"] == 2
+    keys = {a["key"] for a in body["results"]}
+    assert {"first_login", "first_tip_sent"} <= keys
+
+
+def test_user_achievements_unknown_user_empty(api_client):
+    body = api_client.get(reverse("achievements-user", args=["ghost"])).json()
+    assert body == {"results": [], "unlocked": 0}

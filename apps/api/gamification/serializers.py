@@ -11,7 +11,17 @@ class AchievementSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Achievement
-        fields = ("key", "name", "description", "icon", "order", "unlocked", "awarded_at")
+        fields = (
+            "key",
+            "name",
+            "description",
+            "criteria",
+            "icon",
+            "icon_url",
+            "order",
+            "unlocked",
+            "awarded_at",
+        )
 
     def get_unlocked(self, obj) -> bool:
         return obj.key in self.context.get("unlocked_map", {})

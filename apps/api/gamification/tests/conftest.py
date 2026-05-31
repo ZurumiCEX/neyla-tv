@@ -8,6 +8,11 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 
 @pytest.fixture
+def api_client() -> APIClient:
+    return APIClient()
+
+
+@pytest.fixture
 def auth_client_factory():
     def _make(user) -> APIClient:
         client = APIClient()
