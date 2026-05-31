@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     "audit",
     "catalog",
     "channels_app",
+    "charity",
     "chat",
     "gamification",
     "health",

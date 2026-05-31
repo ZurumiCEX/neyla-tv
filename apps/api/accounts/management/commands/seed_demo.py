@@ -81,6 +81,7 @@ class Command(BaseCommand):
         self._achievements(streamers, viewers)
         self._banned_words(admin)
         self._reports(streamers)
+        self._charity(streamers, viewers)
         self.stdout.write(
             self.style.SUCCESS(
                 f"Seed OK : {len(streamers)} streamers, {len(viewers)} viewers. "
@@ -392,3 +393,82 @@ class Command(BaseCommand):
                 channel_slug=target.slug,
                 details="Signalement de démonstration.",
             )
+
+    def _charity(self, streamers, viewers):
+        """Sème 3 associations + 2 Charity Days (1 en cours, 1 à venir) + dons demo."""
+        from django.utils import timezone
+
+        from charity import services as charity_services
+        from charity.models import Charity, CharityEvent
+
+        causes = [
+            ("education-numerique", "Éducation Numérique Afrique", "SN",
+             "Soutien à l'accès au numérique dans les écoles ouest-africaines."),
+            ("sante-mentale-jeunes", "Santé Mentale des Jeunes", "CI",
+             "Programmes d'écoute et de prévention pour la jeunesse."),
+            ("environnement-sahel", "Environnement Sahel", "BF",
+             "Reforestation et lutte contre la désertification."),
+        ]
+        charities = []
+        for slug, name, country, desc in causes:
+            c, _ = Charity.objects.get_or_create(
+                slug=slug,
+                defaults={
+                    "name": name,
+                    "country": country,
+                    "description": desc,
+                    "logo_url": f"{IMG}/{slug}/120/120",
+                },
+            )
+            charities.append(c)
+
+        now = timezone.now()
+        # Événement EN COURS (commencé hier, finit dans 6 jours).
+        current, _ = CharityEvent.objects.get_or_create(
+            slug=f"charity-day-{now:%Y-%m}",
+            defaults={
+                "title": f"Charity Day {now:%B %Y}",
+                "theme": "Éducation & Inclusion",
+                "description_md": (
+                    "**1 jour par mois, on stream pour une cause.**\n\n"
+                    "Choisis ton association, fais ton don en Aura. "
+                    "100% des dons sont reversés."
+                ),
+                "starts_at": now - timezone.timedelta(days=1),
+                "ends_at": now + timezone.timedelta(days=6),
+                "floor_aura": 10,
+                "cover_url": f"{IMG}/charity-current/1200/300",
+                "is_published": True,
+            },
+        )
+        current.beneficiaries.set(charities)
+
+        # Événement à venir (mois prochain).
+        future_when = now + timezone.timedelta(days=30)
+        future, _ = CharityEvent.objects.get_or_create(
+            slug=f"charity-day-{future_when:%Y-%m}",
+            defaults={
+                "title": f"Charity Day {future_when:%B %Y}",
+                "theme": "Santé & Bien-être",
+                "starts_at": future_when,
+                "ends_at": future_when + timezone.timedelta(days=7),
+                "floor_aura": 20,
+                "cover_url": f"{IMG}/charity-future/1200/300",
+                "is_published": True,
+            },
+        )
+        future.beneficiaries.set(charities[:2])
+
+        # Quelques dons demo (mix viewers + streamers, montants variés).
+        if not viewers:
+            return
+        import contextlib
+
+        donors = (viewers[:8] + [s for _u, _c in [(None, None)] for s in []])
+        donors = viewers[:8] + [u for u, _ch in streamers[:2]]
+        amounts = [50, 25, 200, 75, 500, 30, 1200, 80, 300, 90]
+        for donor, amount in zip(donors, amounts):
+            cause = random.choice(charities)
+            with contextlib.suppress(Exception):
+                charity_services.donate(donor, current.slug, cause.slug, amount,
+                                        message="bravo !", is_anonymous=(amount > 1000))

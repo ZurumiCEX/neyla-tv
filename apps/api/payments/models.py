@@ -29,6 +29,7 @@ class LedgerEntry(models.Model):
         PAYOUT = "payout", "Retrait"
         REFERRAL = "referral", "Parrainage"
         ADJUSTMENT = "adjustment", "Ajustement admin"
+        CHARITY_DONATION = "charity_donation", "Don caritatif"
 
     wallet = models.ForeignKey(Wallet, on_delete=models.CASCADE, related_name="entries")
     amount = models.IntegerField()  # Aura signé

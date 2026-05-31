@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useT } from "@/lib/i18n";
 import { AuraBalance } from "@/components/AuraBalance";
+import { EventsMenu } from "@/components/EventsMenu";
 import { GuidesMenu } from "@/components/GuidesMenu";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -79,12 +80,14 @@ export function Navbar() {
           ) : user ? (
             <>
               <AuraBalance />
+              <EventsMenu />
               <NotificationBell />
               <span className="hidden text-sm text-neutral-400 lg:inline">@{user.username}</span>
               <ProfileMenu />
             </>
           ) : (
             <>
+              <EventsMenu />
               <Link href="/login" className="text-neutral-300 hover:text-emerald-300">
                 {t("nav.login")}
               </Link>
