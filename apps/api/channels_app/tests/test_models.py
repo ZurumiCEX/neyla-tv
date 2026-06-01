@@ -16,15 +16,16 @@ def test_channel_created_on_user_signup():
     assert channel.slug == "streamer1"
 
 
-def test_channel_provisioned_via_fake_cloudflare():
+def test_channel_not_provisioned_at_signup():
+    """Le provisionnement Cloudflare est déclenché à l'approbation streamer,
+    pas à l'inscription : une Channel fraîche est créée NON provisionnée."""
     user = UserFactory(username="streamer2")
     channel = Channel.objects.get(user=user)
-    # Mode FAKE en CI : provisionnement immédiat via Celery eager.
-    assert channel.is_provisioned
-    assert channel.live_input_uid.startswith("fake-")
-    assert channel.rtmps_url == "rtmps://fake.local/live"
-    assert channel.rtmps_key.startswith("fake-key-")
-    assert channel.hls_playback_url.endswith("/manifest.m3u8")
+    assert not channel.is_provisioned
+    assert channel.live_input_uid == ""
+    assert channel.rtmps_url == ""
+    assert channel.rtmps_key == ""
+    assert channel.hls_playback_url == ""
 
 
 def test_no_duplicate_channel_on_user_update():
