@@ -277,6 +277,9 @@ SAFETY_REVIEW_UPLOADS = env.bool("SAFETY_REVIEW_UPLOADS", default=False)
 # qui retourne des URLs rtmps://fake.local pour développer hors-ligne.
 CLOUDFLARE_ACCOUNT_ID = env("CLOUDFLARE_ACCOUNT_ID", default="")
 CLOUDFLARE_API_TOKEN = env("CLOUDFLARE_API_TOKEN", default="")
+# Subdomain public (customer-XXXX.cloudflarestream.com) — utile pour l'iframe
+# embarqué Cloudflare. Optionnel : URLs HLS/RTMPS viennent directement de l'API.
+CLOUDFLARE_STREAM_SUBDOMAIN = env("CLOUDFLARE_STREAM_SUBDOMAIN", default="")
 CLOUDFLARE_WEBHOOK_SECRET = env("CLOUDFLARE_WEBHOOK_SECRET", default="dev-webhook-secret")
 # Tolérance de fraîcheur de la signature webhook (anti-rejeu).
 WEBHOOK_TIMESTAMP_TOLERANCE_SECONDS = 5 * 60
