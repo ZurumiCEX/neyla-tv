@@ -9,9 +9,12 @@ const REASONS = ["spam", "harassment", "hate", "other"] as const;
 export function ReportButton({
   channelSlug,
   targetUsername,
+  compact,
 }: {
   channelSlug: string;
   targetUsername: string;
+  /** Bouton icône seule (bandeau de la page chaîne). */
+  compact?: boolean;
 }) {
   const t = useT();
   const { user, authFetch } = useAuth();
@@ -48,9 +51,31 @@ export function ReportButton({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="rounded-md border border-neutral-700 px-2 py-1 text-xs text-neutral-400 hover:border-neutral-500 hover:text-neutral-200"
+        title={t("report.button")}
+        aria-label={compact ? t("report.button") : undefined}
+        className={
+          compact
+            ? "flex h-8 w-8 items-center justify-center rounded-md text-neutral-400 hover:bg-neutral-800 hover:text-neutral-100"
+            : "rounded-md border border-neutral-700 px-2 py-1 text-xs text-neutral-400 hover:border-neutral-500 hover:text-neutral-200"
+        }
       >
-        {t("report.button")}
+        {compact ? (
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <path d="M4 22V4M4 4h12l-2 4 2 4H4" />
+          </svg>
+        ) : (
+          t("report.button")
+        )}
       </button>
       {open && (
         <div className="absolute right-0 z-50 mt-2 w-64 space-y-2 rounded-xl border border-neutral-800 bg-neutral-900 p-3 shadow-xl">

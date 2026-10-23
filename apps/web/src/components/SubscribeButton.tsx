@@ -90,7 +90,7 @@ export function SubscribeButton({ channelSlug }: { channelSlug: string }) {
     return (
       <Link
         href="/login"
-        className="flex items-center gap-1.5 rounded-md bg-secondary px-4 py-1.5 text-sm font-semibold text-neutral-950 hover:bg-secondary-light"
+        className="flex h-9 items-center gap-1.5 rounded-md bg-secondary px-4 text-sm font-semibold text-neutral-950 hover:bg-secondary-light"
       >
         <SparkleIcon />
         {t("sub.subscribe", { price })}
@@ -106,7 +106,7 @@ export function SubscribeButton({ channelSlug }: { channelSlug: string }) {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className={`flex items-center gap-1.5 rounded-md px-4 py-1.5 text-sm font-semibold ${
+        className={`flex h-9 items-center gap-1.5 rounded-md px-4 text-sm font-semibold ${
           subscribed
             ? "bg-secondary/20 text-secondary-light hover:bg-secondary/30"
             : "bg-secondary text-neutral-950 hover:bg-secondary-light"

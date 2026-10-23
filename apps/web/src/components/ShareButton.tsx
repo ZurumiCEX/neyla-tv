@@ -8,13 +8,15 @@ type Props = {
   path: string;
   /** Titre/texte d'accompagnement pour les partages sociaux. */
   title?: string;
+  /** Bouton icône seule (bandeau de la page chaîne). */
+  compact?: boolean;
 };
 
 /**
  * Bouton de partage : copie du lien interne + cibles réseaux sociaux
  * (X, Facebook, WhatsApp, Telegram) et Web Share API si dispo.
  */
-export function ShareButton({ path, title }: Props) {
+export function ShareButton({ path, title, compact }: Props) {
   const t = useT();
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -83,9 +85,31 @@ export function ShareButton({ path, title }: Props) {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm text-neutral-200 hover:border-secondary hover:text-secondary-light"
+        title={t("share.title")}
+        aria-label={compact ? t("share.title") : undefined}
+        className={
+          compact
+            ? "flex h-8 w-8 items-center justify-center rounded-md text-neutral-400 hover:bg-neutral-800 hover:text-neutral-100"
+            : "rounded-md border border-neutral-700 px-3 py-1.5 text-sm text-neutral-200 hover:border-secondary hover:text-secondary-light"
+        }
       >
-        {t("share.title")}
+        {compact ? (
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <path d="M4 12v7a2 2 0 002 2h12a2 2 0 002-2v-7M16 6l-4-4-4 4M12 2v14" />
+          </svg>
+        ) : (
+          t("share.title")
+        )}
       </button>
       {open && (
         <div className="absolute right-0 z-40 mt-2 w-56 overflow-hidden rounded-xl border border-neutral-800 bg-neutral-900 shadow-xl">

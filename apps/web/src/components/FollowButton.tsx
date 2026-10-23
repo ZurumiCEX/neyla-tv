@@ -53,7 +53,7 @@ export function FollowButton({ username }: { username: string }) {
       type="button"
       onClick={toggle}
       disabled={busy || following === null}
-      className={`flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-sm font-semibold transition ${
+      className={`flex h-9 items-center gap-1.5 rounded-md px-4 text-sm font-semibold transition ${
         following
           ? "border border-neutral-700 text-neutral-200 hover:border-red-500 hover:text-red-300"
           : "bg-emerald-500 text-neutral-950 hover:bg-emerald-400"

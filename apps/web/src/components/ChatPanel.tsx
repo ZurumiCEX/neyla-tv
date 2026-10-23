@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useT } from "@/lib/i18n";
 import { EmojiPicker } from "@/components/EmojiPicker";
 import { RoleBadge } from "@/components/RoleBadge";
+import { ChatAuraFooter } from "@/components/channel/ChatAuraFooter";
 
 type ChatMessage = {
   id: string;
@@ -31,7 +32,35 @@ function wsBase(): string {
   return "";
 }
 
-export function ChatPanel({ slug, isLive }: { slug: string; isLive: boolean }) {
+// Couleurs de pseudo stables (hash du username), lisibles sur fond sombre.
+const NAME_COLORS = [
+  "#ffd95e",
+  "#7dd3fc",
+  "#f9a8d4",
+  "#86efac",
+  "#c4b5fd",
+  "#fdba74",
+  "#5eead4",
+  "#fca5a5",
+  "#a5b4fc",
+  "#bef264",
+];
+
+export function nameColor(username: string): string {
+  let h = 0;
+  for (let i = 0; i < username.length; i++) h = (h * 31 + username.charCodeAt(i)) | 0;
+  return NAME_COLORS[Math.abs(h) % NAME_COLORS.length];
+}
+
+type Props = {
+  slug: string;
+  isLive: boolean;
+  /** `sidebar` : colonne pleine hauteur de la page chaîne ; `card` : bloc encadré. */
+  variant?: "card" | "sidebar";
+  onCollapse?: () => void;
+};
+
+export function ChatPanel({ slug, isLive, variant = "card", onCollapse }: Props) {
   const t = useT();
   const { user, accessToken } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -121,35 +150,64 @@ export function ChatPanel({ slug, isLive }: { slug: string; isLive: boolean }) {
     return t("chat.placeholder");
   }, [canConnect, user, t]);
 
+  const disabled = !canConnect || !user;
+
   return (
-    <section className="flex h-[60vh] flex-col rounded-xl border border-neutral-800 bg-neutral-900/60">
-      <header className="flex items-center justify-between border-b border-neutral-800 px-4 py-2 text-sm">
-        <span className="font-semibold">Chat</span>
-        <span className={`text-xs ${connected ? "text-emerald-300" : "text-neutral-500"}`}>
-          {canConnect ? (connected ? t("chat.connected") : t("chat.disconnected")) : "—"}
-        </span>
+    <section
+      className={`flex flex-col bg-neutral-950 ${
+        variant === "sidebar"
+          ? "h-[70vh] border-t border-neutral-800 lg:h-full lg:border-t-0"
+          : "h-[60vh] overflow-hidden rounded-xl border border-neutral-800"
+      }`}
+      aria-label={t("chat.title")}
+    >
+      <header className="relative flex h-11 shrink-0 items-center justify-center border-b border-neutral-800 px-3 text-sm">
+        {onCollapse && (
+          <button
+            type="button"
+            onClick={onCollapse}
+            title={t("chat.collapse")}
+            aria-label={t("chat.collapse")}
+            className="absolute left-2 hidden h-8 w-8 items-center justify-center rounded-md text-neutral-400 hover:bg-neutral-800 hover:text-neutral-100 lg:flex"
+          >
+            <CollapseIcon />
+          </button>
+        )}
+        <span className="font-semibold uppercase tracking-wide">{t("chat.title")}</span>
+        <span
+          className={`absolute right-3 h-2 w-2 rounded-full ${
+            canConnect && connected ? "bg-green-400" : "bg-neutral-600"
+          }`}
+          title={canConnect ? (connected ? t("chat.connected") : t("chat.disconnected")) : ""}
+        />
       </header>
 
-      <div ref={listRef} className="flex-1 space-y-1 overflow-y-auto px-3 py-2 text-sm">
+      <div
+        ref={listRef}
+        className="flex-1 space-y-0.5 overflow-y-auto px-3 py-2 text-[13px] leading-6"
+      >
         {messages.length === 0 && (
           <p className="py-8 text-center text-xs text-neutral-500">{t("chat.empty")}</p>
         )}
         {messages.map((m) => (
-          <div key={m.id} className="group flex items-start gap-1 break-words">
+          <div
+            key={m.id}
+            className="group -mx-1.5 flex items-start gap-1 break-words rounded px-1.5 hover:bg-neutral-900"
+          >
             <span className="min-w-0 flex-1">
               <RoleBadge role={m.user.role} />
               {m.user.is_subscriber && (
                 <span
-                  className="mr-1 rounded bg-secondary/20 px-1 text-xs font-semibold text-secondary-light"
+                  className="mr-1 inline-flex h-4 w-4 translate-y-[2px] items-center justify-center rounded-sm bg-emerald-500 text-[10px] font-black text-neutral-950"
                   title={t("chat.subscriber")}
                 >
                   ★
                 </span>
               )}
-              <span className="font-semibold text-emerald-300">
+              <span className="chat-name font-bold" style={{ color: nameColor(m.user.username) }}>
                 {m.user.display_name || m.user.username}
               </span>
-              <span className="text-neutral-500"> : </span>
+              <span className="text-neutral-500">: </span>
               <span className="text-neutral-100">{m.content}</span>
             </span>
             {isStreamer && (
@@ -201,26 +259,49 @@ export function ChatPanel({ slug, isLive }: { slug: string; isLive: boolean }) {
           e.preventDefault();
           send();
         }}
-        className="flex gap-2 border-t border-neutral-800 p-2"
+        className="shrink-0 space-y-2 border-t border-neutral-800 p-3"
       >
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder={placeholder}
-          disabled={!canConnect || !user}
-          maxLength={500}
-          className="flex-1 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-100 outline-none focus:border-secondary-light disabled:opacity-50"
-        />
-        <EmojiPicker onSelect={addEmoji} disabled={!canConnect || !user} />
-        <button
-          type="submit"
-          disabled={!canConnect || !user || !input.trim()}
-          className="rounded-lg bg-emerald-500 px-3 py-1.5 text-sm font-semibold text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
-        >
-          {t("chat.send")}
-        </button>
+        <div className="flex items-center gap-1 rounded-lg border border-neutral-700 bg-neutral-900 pl-3 pr-1 focus-within:border-emerald-400">
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder={placeholder}
+            disabled={disabled}
+            maxLength={500}
+            className="h-10 min-w-0 flex-1 bg-transparent text-sm text-neutral-100 outline-none placeholder:text-neutral-500 disabled:opacity-50"
+          />
+          <EmojiPicker onSelect={addEmoji} disabled={disabled} />
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <ChatAuraFooter />
+          <button
+            type="submit"
+            disabled={disabled || !input.trim()}
+            className="rounded-md bg-emerald-500 px-4 py-1.5 text-sm font-bold text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
+          >
+            {t("chat.send")}
+          </button>
+        </div>
       </form>
     </section>
+  );
+}
+
+function CollapseIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M13 17l5-5-5-5M6 17l5-5-5-5" />
+    </svg>
   );
 }
 
