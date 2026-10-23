@@ -3,22 +3,65 @@
 import { useT } from "@/lib/i18n";
 
 // Paliers Aura basés sur le solde courant. `min` = solde minimal pour atteindre
-// le palier. Couleurs ≈ maquette (gris→violet→teal→ambre→bleu→rose).
+// le palier. Chaque emblème a une face claire (`light`) et une face sombre
+// (`dark`) pour l'effet facetté de la charte AURA BADGES.
 export type AuraTier = {
   index: number;
   key: string;
   min: number;
+  /** Couleur principale (texte, bordures). */
   color: string;
+  light: string;
+  dark: string;
   glow: string;
 };
 
 export const AURA_TIERS: AuraTier[] = [
-  { index: 0, key: "spark", min: 1, color: "#9ca3af", glow: "rgba(156,163,175,0.5)" },
-  { index: 1, key: "glow", min: 10, color: "#a855f7", glow: "rgba(168,85,247,0.5)" },
-  { index: 2, key: "radiant", min: 100, color: "#14b8a6", glow: "rgba(20,184,166,0.5)" },
-  { index: 3, key: "halo", min: 1000, color: "#f59e0b", glow: "rgba(245,158,11,0.5)" },
-  { index: 4, key: "nova", min: 5000, color: "#3b82f6", glow: "rgba(59,130,246,0.5)" },
-  { index: 5, key: "supreme", min: 10000, color: "#ec4899", glow: "rgba(236,72,153,0.55)" },
+  {
+    index: 0,
+    key: "spark",
+    min: 1,
+    color: "#a3a3a3",
+    light: "#b5b5b5",
+    dark: "#6b6b6b",
+    glow: "rgba(163,163,163,0.45)",
+  },
+  {
+    index: 1,
+    key: "glow",
+    min: 100,
+    color: "#a259f0",
+    light: "#a259f0",
+    dark: "#7c2fd6",
+    glow: "rgba(162,89,240,0.5)",
+  },
+  {
+    index: 2,
+    key: "radiant",
+    min: 1000,
+    color: "#0ccab5",
+    light: "#0ccab5",
+    dark: "#00a896",
+    glow: "rgba(12,202,181,0.5)",
+  },
+  {
+    index: 3,
+    key: "nova",
+    min: 5000,
+    color: "#1f7bf2",
+    light: "#7ab0ff",
+    dark: "#0a47c2",
+    glow: "rgba(31,123,242,0.55)",
+  },
+  {
+    index: 4,
+    key: "supreme",
+    min: 10000,
+    color: "#ff5c45",
+    light: "#ff5c45",
+    dark: "#f03018",
+    glow: "rgba(240,48,24,0.55)",
+  },
 ];
 
 /** Renvoie le palier atteint pour un solde, ou null si < premier seuil. */
@@ -35,69 +78,100 @@ export function nextAuraTier(balance: number): AuraTier | null {
   return AURA_TIERS.find((t) => balance < t.min) ?? null;
 }
 
-// Emblèmes par palier (inspirés de la charte). viewBox 48x48, centré en x=24,
-// dessiné en `currentColor` (couleur du palier).
-function Emblem({ tierKey }: { tierKey: string }) {
-  const stroke = {
-    fill: "none",
-    stroke: "currentColor",
-    strokeWidth: 3,
-    strokeLinecap: "round" as const,
-    strokeLinejoin: "round" as const,
-  };
-  switch (tierKey) {
+const ROT5 = [0, 72, 144, 216, 288];
+const ROT8 = [0, 45, 90, 135, 180, 225, 270, 315];
+const ROT12 = Array.from({ length: 12 }, (_, i) => i * 30);
+
+// Emblèmes facettés, viewBox 48x48 centré en (24, 24). Les classes `aura-*`
+// portent les animations en boucle (globals.css).
+function Emblem({ tier }: { tier: AuraTier }) {
+  const { light: L, dark: D } = tier;
+  switch (tier.key) {
     case "spark":
+      // Chevrons empilés.
       return (
-        <>
-          <polygon points="24,3 28,8 24,13 20,8" fill="currentColor" />
-          <path d="M13 17 L24 24 L35 17" {...stroke} />
-          <path d="M13 25 L24 32 L35 25" {...stroke} />
-          <circle cx="24" cy="41" r="3.2" fill="currentColor" />
-        </>
+        <g className="aura-float">
+          {[5, 17, 29].map((y, i) => (
+            <g key={y} opacity={1 - i * 0.12}>
+              <polygon points={`5,${y + 11} 24,${y} 24,${y + 7} 5,${y + 18}`} fill={L} />
+              <polygon points={`43,${y + 11} 24,${y} 24,${y + 7} 43,${y + 18}`} fill={D} />
+            </g>
+          ))}
+        </g>
       );
     case "glow":
+      // Grappe de 4 losanges.
       return (
-        <>
-          <polygon points="17,6 31,6 24,15" fill="currentColor" />
-          <circle cx="24" cy="22" r="6" {...stroke} />
-          <path d="M16 30 H32 L24 43 Z" fill="currentColor" />
-        </>
+        <g>
+          {[
+            [24, 11],
+            [11, 24],
+            [37, 24],
+            [24, 37],
+          ].map(([cx, cy], i) => (
+            <g
+              key={i}
+              className="aura-breathe"
+              style={{ animationDelay: `${i * 0.35}s` } as React.CSSProperties}
+            >
+              <polygon points={`${cx},${cy - 10} ${cx},${cy + 10} ${cx - 10},${cy}`} fill={L} />
+              <polygon points={`${cx},${cy - 10} ${cx},${cy + 10} ${cx + 10},${cy}`} fill={D} />
+            </g>
+          ))}
+        </g>
       );
     case "radiant":
+      // Moulinet pentagonal.
       return (
-        <>
-          <polygon points="24,3 30,9 24,15 18,9" fill="currentColor" />
-          <path d="M11 30 A13 13 0 0 1 37 30" {...stroke} />
-          <rect x="12" y="34" width="24" height="3.2" rx="1.6" fill="currentColor" />
-          <rect x="12" y="40" width="24" height="3.2" rx="1.6" fill="currentColor" />
-        </>
-      );
-    case "halo":
-      return (
-        <>
-          <polygon points="24,3 30,9 24,15 18,9" {...stroke} strokeWidth={2.5} />
-          <path d="M13 19 L24 26 L35 19" {...stroke} />
-          <path d="M13 27 L24 34 L35 27" {...stroke} />
-          <circle cx="24" cy="42" r="3.2" fill="currentColor" />
-        </>
+        <g className="aura-spin-slow">
+          {ROT5.map((r) => (
+            <g key={r} transform={`rotate(${r} 24 24)`}>
+              <polygon points="24,24 24,2 36,12" fill={L} />
+              <polygon points="24,24 36,12 33,24" fill={D} />
+            </g>
+          ))}
+          <circle cx="24" cy="24" r="3" fill={D} />
+        </g>
       );
     case "nova":
+      // Étoile géométrique à 8 branches.
       return (
-        <>
-          <circle cx="24" cy="9" r="4.5" fill="currentColor" />
-          <path d="M13 42 V24 L24 18 L35 24 V42" {...stroke} strokeWidth={4} />
-        </>
+        <g className="aura-shimmer">
+          {ROT8.map((r, i) => {
+            const len = i % 2 === 0 ? 23 : 15;
+            return (
+              <g key={r} transform={`rotate(${r} 24 24)`}>
+                <polygon points={`24,24 24,${24 - len} 20,20`} fill={i % 2 ? tier.color : L} />
+                <polygon points={`24,24 24,${24 - len} 28,20`} fill={D} />
+              </g>
+            );
+          })}
+        </g>
       );
     case "supreme":
+      // Losange central + rayons (soleil).
       return (
         <>
-          <path d="M12 6 L17 12 L24 5 L31 12 L36 6 L34 18 H14 Z" fill="currentColor" />
-          <polygon points="24,22 31,30 24,38 17,30" fill="currentColor" />
-          <circle cx="24" cy="43" r="3" fill="currentColor" />
+          <g className="aura-rays">
+            {ROT12.map((r, i) => (
+              <polygon
+                key={r}
+                transform={`rotate(${r} 24 24)`}
+                points={i % 2 ? "22.5,9 25.5,9 24,1.5" : "22,10 26,10 24,0.5"}
+                fill={i % 2 ? D : L}
+              />
+            ))}
+          </g>
+          <g className="aura-breathe">
+            <polygon points="24,10 24,24 14,24" fill={L} />
+            <polygon points="24,10 24,24 34,24" fill={D} />
+            <polygon points="24,38 24,24 14,24" fill={D} />
+            <polygon points="24,38 24,24 34,24" fill={L} />
+          </g>
         </>
       );
     default:
-      return <polygon points="24,6 30,24 24,42 18,24" fill="currentColor" />;
+      return <polygon points="24,6 30,24 24,42 18,24" fill={L} />;
   }
 }
 
@@ -105,10 +179,13 @@ export function AuraBadge({
   tier,
   size = 40,
   locked = false,
+  animated = true,
 }: {
   tier: AuraTier;
   size?: number;
   locked?: boolean;
+  /** Animation en boucle (désactivée dans les listes denses). */
+  animated?: boolean;
 }) {
   return (
     <svg
@@ -116,13 +193,13 @@ export function AuraBadge({
       height={size}
       viewBox="0 0 48 48"
       aria-hidden
+      className={`aura-badge shrink-0 ${animated && !locked ? "aura-animated" : ""}`}
       style={{
-        color: locked ? "#52525b" : tier.color,
-        opacity: locked ? 0.55 : 1,
-        filter: locked ? undefined : `drop-shadow(0 0 5px ${tier.glow})`,
+        filter: locked ? "grayscale(1)" : `drop-shadow(0 0 ${size > 30 ? 6 : 3}px ${tier.glow})`,
+        opacity: locked ? 0.35 : 1,
       }}
     >
-      <Emblem tierKey={tier.key} />
+      <Emblem tier={tier} />
     </svg>
   );
 }

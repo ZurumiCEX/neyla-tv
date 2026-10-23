@@ -755,9 +755,8 @@ const FR: Dict = {
   "aura.tier.spark": "Étincelle",
   "aura.tier.glow": "Lueur",
   "aura.tier.radiant": "Radiance",
-  "aura.tier.halo": "Halo",
   "aura.tier.nova": "Nova",
-  "aura.tier.supreme": "Aura suprême",
+  "aura.tier.supreme": "Suprême",
   "suivis.title": "Suivis",
   "suivis.tab.overview": "Vue d'ensemble",
   "suivis.tab.live": "En direct",
@@ -1031,6 +1030,12 @@ const FR: Dict = {
   "gift.submit": "Offrir",
   "gift.done": "Abonnement offert à @{name} ✓",
   "gift.error": "Impossible d'offrir l'abonnement.",
+  "aura.ladder.title": "Paliers Aura",
+  "aura.ladder.toNext": "Encore {n} Aura pour {tier}",
+  "aura.ladder.max": "Palier maximum atteint 🔥",
+  "wallet.history.balance": "Solde {n}",
+  "wallet.history.today": "Aujourd'hui",
+  "wallet.history.yesterday": "Hier",
 };
 
 const EN: Dict = {
@@ -1773,9 +1778,8 @@ const EN: Dict = {
   "aura.tier.spark": "Spark",
   "aura.tier.glow": "Glow",
   "aura.tier.radiant": "Radiance",
-  "aura.tier.halo": "Halo",
   "aura.tier.nova": "Nova",
-  "aura.tier.supreme": "Supreme Aura",
+  "aura.tier.supreme": "Supreme",
   "suivis.title": "Following",
   "suivis.tab.overview": "Overview",
   "suivis.tab.live": "Live",
@@ -2049,6 +2053,12 @@ const EN: Dict = {
   "gift.submit": "Gift",
   "gift.done": "Subscription gifted to @{name} ✓",
   "gift.error": "Couldn't gift the subscription.",
+  "aura.ladder.title": "Aura tiers",
+  "aura.ladder.toNext": "{n} more Aura to reach {tier}",
+  "aura.ladder.max": "Top tier reached 🔥",
+  "wallet.history.balance": "Balance {n}",
+  "wallet.history.today": "Today",
+  "wallet.history.yesterday": "Yesterday",
 };
 
 const PT: Dict = {
@@ -2791,9 +2801,8 @@ const PT: Dict = {
   "aura.tier.spark": "Faísca",
   "aura.tier.glow": "Brilho",
   "aura.tier.radiant": "Radiância",
-  "aura.tier.halo": "Halo",
   "aura.tier.nova": "Nova",
-  "aura.tier.supreme": "Aura suprema",
+  "aura.tier.supreme": "Suprema",
   "suivis.title": "Seguindo",
   "suivis.tab.overview": "Visão geral",
   "suivis.tab.live": "Ao vivo",
@@ -3067,6 +3076,12 @@ const PT: Dict = {
   "gift.submit": "Oferecer",
   "gift.done": "Subscrição oferecida a @{name} ✓",
   "gift.error": "Não foi possível oferecer a subscrição.",
+  "aura.ladder.title": "Níveis de Aura",
+  "aura.ladder.toNext": "Faltam {n} Aura para {tier}",
+  "aura.ladder.max": "Nível máximo alcançado 🔥",
+  "wallet.history.balance": "Saldo {n}",
+  "wallet.history.today": "Hoje",
+  "wallet.history.yesterday": "Ontem",
 };
 
 export const DICTS: Record<Locale, Dict> = { fr: FR, en: EN, pt: PT };
