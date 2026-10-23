@@ -130,6 +130,27 @@ messagerie **support/système** (pas de DM 1:1).
 
 ---
 
+## ✅ v3.8 — Bunny Stream, Instant, Aura fiabilisée (livré)
+
+- **Vidéo** : Bunny Stream unique fournisseur (live + VOD), synchronisation
+  live par polling, mode FAKE avec flux de démo → [ADR 010](docs/adr/010-bunny-stream.md).
+- **Instant** : vidéos courtes verticales (upload direct Bunny), fil tendance,
+  likes, onglet de publication streamer ; menu latéral Suivis / Instant.
+- **Aura** : retraits réservés à l'Aura gagnée (Wave / Orange Money, OTP
+  e-mail, frais de traitement 3 %), `PlatformRevenue`, remboursements et
+  litiges Stripe, abonnements au prix verrouillé, réconciliation des soldes.
+- **Comptes** : inscription 18+ (date de naissance), mot de passe confirmé
+  avec jauge de robustesse, mot de passe oublié, pages légales FR/EN/PT.
+- **Studio** : test de connexion, réglages OBS, widgets chat et objectif.
+- **UX** : pied de page refondu, i18n complétée, thème clair corrigé,
+  données de démonstration complètes.
+
+### À finaliser avant ouverture publique
+- Brancher les vraies clés Bunny (`verify_bunny_stream`) et vérifier le
+  format de réponse de l'API live.
+- Brancher Wave / Orange Money réels et repasser `PAYMENTS_ALLOW_FAKE=0`.
+- Faire valider les textes légaux (CGU, confidentialité) par un juriste.
+
 ## 📋 Prochaines étapes (post-MVP)
 
 ### Produit
