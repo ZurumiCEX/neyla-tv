@@ -32,23 +32,29 @@ def channel_tier(request: Request, slug: str) -> Response:  # noqa: ARG001
 @api_view(["GET", "PUT"])
 @permission_classes([IsAuthenticated])
 def my_tier(request: Request) -> Response:
-    channel, _ = Channel.objects.get_or_create(
-        user=request.user, defaults={"slug": request.user.username}
-    )
+    channel = Channel.objects.filter(user=request.user).first()
     if request.method == "GET":
-        tier = services.active_tier(channel)
+        tier = services.active_tier(channel) if channel else None
         return Response(SubTierSerializer(tier).data if tier else {"tier": None})
+    if channel is None or not channel.is_provisioned:
+        return Response(
+            {"detail": "Seuls les streamers approuvés peuvent proposer un abonnement."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
     serializer = TierWriteSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     data = serializer.validated_data
-    tier = services.set_tier(
-        channel,
-        data["price_aura"],
-        data["perks"],
-        data["is_active"],
-        badge_url=data.get("badge_url", ""),
-        stickers_urls=data.get("stickers_urls", []),
-    )
+    try:
+        tier = services.set_tier(
+            channel,
+            data["price_aura"],
+            data["perks"],
+            data["is_active"],
+            badge_url=data.get("badge_url", ""),
+            stickers_urls=data.get("stickers_urls", []),
+        )
+    except services.SubscriptionError as exc:
+        return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
     return Response(SubTierSerializer(tier).data, status=status.HTTP_200_OK)
 
 
@@ -57,7 +63,9 @@ def my_tier(request: Request) -> Response:
 def subscribe(request: Request) -> Response:
     slug = (request.data.get("channel_slug") or "").strip()
     try:
-        sub = services.subscribe(request.user, slug)
+        sub = services.subscribe(
+            request.user, slug, idempotency_key=request.headers.get("Idempotency-Key") or None
+        )
     except services.SubscriptionError as exc:
         return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
     except Exception as exc:  # InsufficientBalanceError, etc.
@@ -66,10 +74,7 @@ def subscribe(request: Request) -> Response:
         if isinstance(exc, PaymentError):
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         raise
-    return Response(
-        {"channel": sub.channel.slug, "current_period_end": sub.current_period_end},
-        status=status.HTTP_201_CREATED,
-    )
+    return Response(MySubscriptionSerializer(sub).data, status=status.HTTP_201_CREATED)
 
 
 @api_view(["GET"])
@@ -88,8 +93,21 @@ def my_subscriptions(request: Request) -> Response:
 @permission_classes([IsAuthenticated])
 def subscription_status(request: Request, slug: str) -> Response:
     channel = Channel.objects.filter(slug=slug.lower()).first()
-    subscribed = bool(channel and services.is_subscribed(request.user, channel))
-    return Response({"subscribed": subscribed})
+    sub = (
+        Subscription.objects.filter(subscriber=request.user, channel=channel).first()
+        if channel
+        else None
+    )
+    active = bool(sub and sub.is_active)
+    return Response(
+        {
+            "subscribed": active,
+            "current_period_end": sub.current_period_end if active else None,
+            "will_renew": bool(sub and sub.will_renew),
+            "cancel_at_period_end": bool(active and sub.cancel_at_period_end),
+            "price_paid": sub.price_paid if active else None,
+        }
+    )
 
 
 @api_view(["POST"])
@@ -133,5 +151,16 @@ def my_gifts(request: Request) -> Response:
 @api_view(["DELETE"])
 @permission_classes([IsAuthenticated])
 def unsubscribe(request: Request, slug: str) -> Response:
+    """Annule le renouvellement (l'accès reste ouvert jusqu'à la fin de période)."""
     services.cancel(request.user, slug)
     return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def resume(request: Request, slug: str) -> Response:
+    """Réactive le renouvellement automatique d'un abonnement annulé."""
+    updated = services.resume(request.user, slug)
+    if not updated:
+        return Response({"detail": "Aucun abonnement actif."}, status=status.HTTP_400_BAD_REQUEST)
+    return Response({"will_renew": True})

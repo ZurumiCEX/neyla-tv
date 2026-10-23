@@ -6,7 +6,7 @@ import pytest
 from django.utils import timezone
 
 from accounts.factories import UserFactory
-from channels_app.models import Channel
+from channels_app.testing import provisioned_channel
 from payments import services as pay
 from subscriptions import services
 from subscriptions.models import Subscription
@@ -15,7 +15,7 @@ pytestmark = pytest.mark.django_db
 
 
 def _streamer(price=100):
-    channel = Channel.objects.get(user=UserFactory())
+    channel = provisioned_channel(UserFactory())
     services.set_tier(channel, price_aura=price, perks=[])
     return channel
 

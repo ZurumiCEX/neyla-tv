@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { useT } from "@/lib/i18n";
 import { EmojiPicker } from "@/components/EmojiPicker";
 import { RoleBadge } from "@/components/RoleBadge";
 
@@ -30,13 +31,8 @@ function wsBase(): string {
   return "";
 }
 
-export function ChatPanel({
-  slug,
-  isLive,
-}: {
-  slug: string;
-  isLive: boolean;
-}) {
+export function ChatPanel({ slug, isLive }: { slug: string; isLive: boolean }) {
+  const t = useT();
   const { user, accessToken } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [system, setSystem] = useState<string | null>(null);
@@ -120,27 +116,23 @@ export function ChatPanel({
   }, []);
 
   const placeholder = useMemo(() => {
-    if (!canConnect) return "Chat indisponible (chaîne hors-ligne).";
-    if (!user) return "Connecte-toi pour discuter.";
-    return "Écris ton message…";
-  }, [canConnect, user]);
+    if (!canConnect) return t("chat.offline");
+    if (!user) return t("chat.loginToChat");
+    return t("chat.placeholder");
+  }, [canConnect, user, t]);
 
   return (
     <section className="flex h-[60vh] flex-col rounded-xl border border-neutral-800 bg-neutral-900/60">
       <header className="flex items-center justify-between border-b border-neutral-800 px-4 py-2 text-sm">
         <span className="font-semibold">Chat</span>
-        <span
-          className={`text-xs ${connected ? "text-emerald-300" : "text-neutral-500"}`}
-        >
-          {canConnect ? (connected ? "connecté" : "déconnecté") : "—"}
+        <span className={`text-xs ${connected ? "text-emerald-300" : "text-neutral-500"}`}>
+          {canConnect ? (connected ? t("chat.connected") : t("chat.disconnected")) : "—"}
         </span>
       </header>
 
       <div ref={listRef} className="flex-1 space-y-1 overflow-y-auto px-3 py-2 text-sm">
         {messages.length === 0 && (
-          <p className="py-8 text-center text-xs text-neutral-500">
-            Aucun message pour le moment.
-          </p>
+          <p className="py-8 text-center text-xs text-neutral-500">{t("chat.empty")}</p>
         )}
         {messages.map((m) => (
           <div key={m.id} className="group flex items-start gap-1 break-words">
@@ -149,7 +141,7 @@ export function ChatPanel({
               {m.user.is_subscriber && (
                 <span
                   className="mr-1 rounded bg-secondary/20 px-1 text-xs font-semibold text-secondary-light"
-                  title="Abonné"
+                  title={t("chat.subscriber")}
                 >
                   ★
                 </span>
@@ -165,7 +157,7 @@ export function ChatPanel({
                 {m.user.username !== user?.username && (
                   <>
                     <ModBtn
-                      title="Timeout 10 min"
+                      title={t("chat.mod.timeout")}
                       onClick={() => modCommand(`/timeout ${m.user.username} 10`)}
                     >
                       10m
@@ -177,7 +169,7 @@ export function ChatPanel({
                       SB
                     </ModBtn>
                     <ModBtn
-                      title="Bannir"
+                      title={t("chat.mod.ban")}
                       danger
                       onClick={() => {
                         if (window.confirm(`Bannir définitivement @${m.user.username} ?`)) {
@@ -189,7 +181,7 @@ export function ChatPanel({
                     </ModBtn>
                   </>
                 )}
-                <ModBtn title="Supprimer ce message" danger onClick={() => deleteMessage(m.id)}>
+                <ModBtn title={t("chat.mod.delete")} danger onClick={() => deleteMessage(m.id)}>
                   ✕
                 </ModBtn>
               </span>
@@ -225,7 +217,7 @@ export function ChatPanel({
           disabled={!canConnect || !user || !input.trim()}
           className="rounded-lg bg-emerald-500 px-3 py-1.5 text-sm font-semibold text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
         >
-          Envoyer
+          {t("chat.send")}
         </button>
       </form>
     </section>

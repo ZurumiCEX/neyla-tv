@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AreaChart } from "@/components/charts";
 import { useAuth } from "@/lib/auth-context";
 import { useT } from "@/lib/i18n";
@@ -30,11 +31,16 @@ function fmt(n: number): string {
 
 export default function RevenusPage() {
   const t = useT();
-  const { user, authFetch } = useAuth();
+  const router = useRouter();
+  const { user, loading, authFetch } = useAuth();
   const [period, setPeriod] = useState<Period>("day");
   const [data, setData] = useState<RevenueData | null>(null);
   const [busy, setBusy] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!loading && !user) router.replace("/login");
+  }, [loading, user, router]);
 
   useEffect(() => {
     if (!user) return;
@@ -94,11 +100,7 @@ export default function RevenusPage() {
       {data && (
         <section className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
           {(["day", "week", "month"] as Period[]).map((k) => (
-            <SummaryCard
-              key={k}
-              label={t(`revenue.summary.${k}`)}
-              value={fmt(data.summary[k])}
-            />
+            <SummaryCard key={k} label={t(`revenue.summary.${k}`)} value={fmt(data.summary[k])} />
           ))}
           <SummaryCard
             label={t("revenue.withdrawable")}
@@ -181,9 +183,7 @@ function SummaryCard({
   return (
     <div
       className={`rounded-xl border p-4 ${
-        accent
-          ? "border-emerald-500/30 bg-emerald-500/5"
-          : "border-neutral-800 bg-neutral-900"
+        accent ? "border-emerald-500/30 bg-emerald-500/5" : "border-neutral-800 bg-neutral-900"
       }`}
     >
       <p className="text-xs uppercase tracking-wide text-neutral-400">{label}</p>

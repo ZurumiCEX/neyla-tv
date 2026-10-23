@@ -92,15 +92,28 @@ envs:
   - key: DJANGO_EMAIL_BACKEND
     value: django.core.mail.backends.console.EmailBackend
     scope: RUN_TIME
-  - key: CLOUDFLARE_ACCOUNT_ID
+  - key: BUNNY_STREAM_LIBRARY_ID
     value: ""
     scope: RUN_TIME
-  - key: CLOUDFLARE_API_TOKEN
+  - key: BUNNY_STREAM_API_KEY
     value: ""
-    scope: RUN_TIME
-  - key: CLOUDFLARE_WEBHOOK_SECRET
-    value: change-me-webhook-secret
     type: SECRET
+    scope: RUN_TIME
+  - key: BUNNY_STREAM_CDN_HOSTNAME
+    value: ""
+    scope: RUN_TIME
+  - key: BUNNY_STREAM_WEBHOOK_KEY
+    value: change-me-webhook-key
+    type: SECRET
+    scope: RUN_TIME
+  - key: STREAM_STATUS_POLL_SECONDS
+    value: "20"
+    scope: RUN_TIME
+  # DÉMO : autorise les paiements simulés (fake / Wave / Orange Money sans clé).
+  # Repasser à "0" dès que de vrais moyens de paiement sont branchés, sinon
+  # n'importe qui obtient de l'Aura gratuite.
+  - key: PAYMENTS_ALLOW_FAKE
+    value: "1"
     scope: RUN_TIME
   - key: SENTRY_DSN
     value: ""

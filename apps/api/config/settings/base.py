@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "ops",
     "payments",
     "safety",
+    "shorts",
     "social",
     "streamers",
     "subscriptions",
@@ -122,7 +123,7 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {
         "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
-        "OPTIONS": {"min_length": 10},
+        "OPTIONS": {"min_length": 8},
     },
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
@@ -256,10 +257,19 @@ AURA_UNIT_PRICE_XOF = env("AURA_UNIT_PRICE_XOF", default="5")
 EUR_XOF_RATE = env("EUR_XOF_RATE", default="655.957")
 USD_XOF_RATE = env("USD_XOF_RATE", default="600")
 CREATOR_SHARE = env.float("CREATOR_SHARE", default=0.70)
-# Commission plateforme prélevée sur un retrait (part créateur = 1 - ce taux).
-WITHDRAWAL_FEE_PCT = env.float("WITHDRAWAL_FEE_PCT", default=0.30)
+# Frais de TRAITEMENT d'un retrait (coût mobile money), distincts de la
+# commission 30 % déjà prélevée sur les tips/abonnements : pas de double peine.
+WITHDRAWAL_PROCESSING_FEE_PCT = env.float("WITHDRAWAL_PROCESSING_FEE_PCT", default=0.03)
+# Retrait minimum (Aura) et tip minimum (Aura) : évite les micro-flux non rentables.
+WITHDRAWAL_MIN_AURA = env.int("WITHDRAWAL_MIN_AURA", default=1000)
+TIP_MIN_AURA = env.int("TIP_MIN_AURA", default=10)
+# Plafond de prix d'un palier d'abonnement (anti-abus).
+SUB_TIER_MAX_AURA = env.int("SUB_TIER_MAX_AURA", default=50_000)
 # fake (défaut, confirme tout de suite) | stripe | mobile_money | orange_money | wave
 PAYMENTS_PROVIDER = env("PAYMENTS_PROVIDER", default="fake")
+# Autorise les providers SIMULÉS (fake, Wave/OM sans clé) : vrai en dev, faux en
+# prod sauf démo assumée (sinon Aura gratuite pour tout le monde).
+PAYMENTS_ALLOW_FAKE = env.bool("PAYMENTS_ALLOW_FAKE", default=DEBUG)
 STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="")
 STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET", default="")
 # Mobile money (agrégateurs régionaux). Vides → repli FAKE (confirme en dev).
@@ -272,17 +282,21 @@ SAFETY_VISION_PROVIDER = env("SAFETY_VISION_PROVIDER", default="")
 # Mettre les images en file d'examen manuel quand aucun fournisseur de vision.
 SAFETY_REVIEW_UPLOADS = env.bool("SAFETY_REVIEW_UPLOADS", default=False)
 
-# --- Cloudflare Stream ---
-# Si CLOUDFLARE_API_TOKEN est vide, on bascule sur un client FAKE en dev/tests
-# qui retourne des URLs rtmps://fake.local pour développer hors-ligne.
-CLOUDFLARE_ACCOUNT_ID = env("CLOUDFLARE_ACCOUNT_ID", default="")
-CLOUDFLARE_API_TOKEN = env("CLOUDFLARE_API_TOKEN", default="")
-# Subdomain public (customer-XXXX.cloudflarestream.com) — utile pour l'iframe
-# embarqué Cloudflare. Optionnel : URLs HLS/RTMPS viennent directement de l'API.
-CLOUDFLARE_STREAM_SUBDOMAIN = env("CLOUDFLARE_STREAM_SUBDOMAIN", default="")
-CLOUDFLARE_WEBHOOK_SECRET = env("CLOUDFLARE_WEBHOOK_SECRET", default="dev-webhook-secret")
-# Tolérance de fraîcheur de la signature webhook (anti-rejeu).
-WEBHOOK_TIMESTAMP_TOLERANCE_SECONDS = 5 * 60
+# --- Bunny Stream (unique fournisseur vidéo : live + VOD « Instant ») ---
+# Si BUNNY_STREAM_API_KEY est vide, on bascule sur un client FAKE en dev/tests
+# (aucun appel réseau, flux HLS public de test pour la démo).
+# - LIBRARY_ID / API_KEY : Bunny → Stream → Video Library → API (AccessKey).
+# - CDN_HOSTNAME : vz-xxxxxxxx-xxx.b-cdn.net (lecture HLS + miniatures VOD).
+# - WEBHOOK_KEY : clé utilisée pour vérifier X-BunnyStream-Signature (la clé
+#   « Read-Only API Key » de la bibliothèque).
+BUNNY_STREAM_LIBRARY_ID = env("BUNNY_STREAM_LIBRARY_ID", default="")
+BUNNY_STREAM_API_KEY = env("BUNNY_STREAM_API_KEY", default="")
+BUNNY_STREAM_CDN_HOSTNAME = env("BUNNY_STREAM_CDN_HOSTNAME", default="")
+BUNNY_STREAM_WEBHOOK_KEY = env("BUNNY_STREAM_WEBHOOK_KEY", default="dev-webhook-key")
+# Surcharge optionnelle de l'URL d'ingest RTMP si l'API ne la renvoie pas.
+BUNNY_STREAM_RTMP_URL = env("BUNNY_STREAM_RTMP_URL", default="")
+# Fréquence de synchronisation live/offline (Celery beat, secondes).
+STREAM_STATUS_POLL_SECONDS = env.int("STREAM_STATUS_POLL_SECONDS", default=20)
 
 # --- Logs JSON simples ---
 LOGGING = {

@@ -24,6 +24,13 @@ def set_tier(
     badge_url: str = "",
     stickers_urls: list | None = None,
 ) -> SubTier:
+    """Crée/maj le palier. Le nouveau prix ne s'applique qu'aux NOUVEAUX abonnés
+    (les abonnés existants gardent `Subscription.price_paid`)."""
+    from django.conf import settings
+
+    max_price = int(getattr(settings, "SUB_TIER_MAX_AURA", 50_000))
+    if int(price_aura) > max_price:
+        raise SubscriptionError(f"Le prix d'un abonnement est plafonné à {max_price} Aura.")
     tier, _ = SubTier.objects.update_or_create(
         channel=channel,
         defaults={
@@ -45,11 +52,32 @@ def _channel(slug: str) -> Channel:
     channel = Channel.objects.select_related("user").filter(slug=slug.lower()).first()
     if channel is None:
         raise SubscriptionError("Chaîne introuvable.")
+    if not channel.is_provisioned:
+        raise SubscriptionError("Cette chaîne ne propose pas encore d'abonnement.")
     return channel
 
 
+def _next_period_end(existing: Subscription | None):
+    """Prolonge depuis la fin de période en cours (aucun jour payé n'est perdu)."""
+    now = timezone.now()
+    base = existing.current_period_end if existing and existing.is_active else now
+    return max(base, now) + timezone.timedelta(days=PERIOD_DAYS)
+
+
 @transaction.atomic
-def subscribe(user, channel_slug: str) -> Subscription:
+def subscribe(user, channel_slug: str, idempotency_key: str | None = None) -> Subscription:
+    """S'abonner (ou prolonger d'un mois) au prix actuel du palier.
+
+    Un abonné déjà actif qui se réabonne PROLONGE sa période depuis sa date de
+    fin (plus de remise à zéro) ; le renouvellement automatique est réactivé.
+    """
+    from payments.services import charge_subscription, recall, remember
+
+    previous = recall(user, "subscribe", idempotency_key)
+    if previous:
+        found = Subscription.objects.filter(pk=previous, subscriber=user).first()
+        if found is not None:
+            return found
     channel = _channel(channel_slug)
     if channel.user_id == user.id:
         raise SubscriptionError("Tu ne peux pas t'abonner à toi-même.")
@@ -57,49 +85,62 @@ def subscribe(user, channel_slug: str) -> Subscription:
     if tier is None:
         raise SubscriptionError("Aucun abonnement disponible sur cette chaîne.")
 
-    from payments.services import charge_subscription
-
-    charge_subscription(user, channel.user, tier.price_aura)
-
-    now = timezone.now()
+    existing = (
+        Subscription.objects.select_for_update().filter(subscriber=user, channel=channel).first()
+    )
+    period_end = _next_period_end(existing)
     sub, _ = Subscription.objects.update_or_create(
         subscriber=user,
         channel=channel,
         defaults={
             "tier": tier,
             "status": Subscription.Status.ACTIVE,
-            "started_at": now,
-            "current_period_end": now + timezone.timedelta(days=PERIOD_DAYS),
+            "started_at": (
+                existing.started_at if existing and existing.is_active else timezone.now()
+            ),
+            "current_period_end": period_end,
+            "price_paid": tier.price_aura,
+            "cancel_at_period_end": False,
+            "auto_renew": True,
+            "gifted_by": None,
         },
     )
-    _notify(channel.user, user)
-    from gamification.services import check_and_award
+    charge_subscription(user, channel.user, tier.price_aura, related=sub)
+    remember(user, "subscribe", idempotency_key, sub)
+    transaction.on_commit(lambda: _after_subscribe(channel, user))
+    return sub
 
-    check_and_award(user, "subscription")
 
+def _after_subscribe(channel: Channel, user) -> None:
     import contextlib
 
+    with contextlib.suppress(Exception):
+        _notify(channel.user, user)
+        from gamification.services import check_and_award
+
+        check_and_award(user, "subscription")
     with contextlib.suppress(Exception):
         from safety.anticheat import evaluate_self_deal, evaluate_subscription
 
         evaluate_subscription(user, channel)
         evaluate_self_deal(user, channel)
-    return sub
 
 
 @transaction.atomic
 def gift_subscription(gifter, channel_slug: str, recipient_username: str) -> Subscription:
-    """Offre un abonnement : débite l'offreur en Aura, abonne le destinataire.
+    """Offre un mois d'abonnement : débite l'offreur, abonne le destinataire.
 
-    Refuse : s'offrir à soi, offreur == créateur, destinataire = créateur,
-    destinataire introuvable, solde insuffisant (remonte ``PaymentError``).
+    Un abonnement offert ne se renouvelle PAS automatiquement (le destinataire
+    n'a rien choisi, et l'offreur ne doit pas être débité indéfiniment).
+    Si le destinataire est déjà abonné, sa période est prolongée d'un mois.
     """
     from accounts.models import User
+    from payments.services import charge_subscription
 
     channel = _channel(channel_slug)
     if channel.user_id == gifter.id:
         raise SubscriptionError("Tu ne peux pas offrir un abonnement à ta propre chaîne.")
-    recipient = User.objects.filter(username=(recipient_username or "").strip().lower()).first()
+    recipient = User.objects.filter(username__iexact=(recipient_username or "").strip()).first()
     if recipient is None:
         raise SubscriptionError("Destinataire introuvable.")
     if recipient.id == gifter.id:
@@ -110,11 +151,12 @@ def gift_subscription(gifter, channel_slug: str, recipient_username: str) -> Sub
     if tier is None:
         raise SubscriptionError("Aucun abonnement disponible sur cette chaîne.")
 
-    from payments.services import charge_subscription
-
-    charge_subscription(gifter, channel.user, tier.price_aura)
-
-    now = timezone.now()
+    existing = (
+        Subscription.objects.select_for_update()
+        .filter(subscriber=recipient, channel=channel)
+        .first()
+    )
+    keeps_own_renewal = bool(existing and existing.is_active and existing.auto_renew)
     sub, _ = Subscription.objects.update_or_create(
         subscriber=recipient,
         channel=channel,
@@ -122,12 +164,15 @@ def gift_subscription(gifter, channel_slug: str, recipient_username: str) -> Sub
             "tier": tier,
             "gifted_by": gifter,
             "status": Subscription.Status.ACTIVE,
-            "started_at": now,
-            "current_period_end": now + timezone.timedelta(days=PERIOD_DAYS),
+            "current_period_end": _next_period_end(existing),
+            "price_paid": existing.price_paid if keeps_own_renewal else tier.price_aura,
+            "auto_renew": keeps_own_renewal,
         },
     )
-    _notify(channel.user, recipient)
-    _notify_gift(recipient, gifter, channel)
+    charge_subscription(gifter, channel.user, tier.price_aura, related=sub)
+    transaction.on_commit(
+        lambda: (_notify(channel.user, recipient), _notify_gift(recipient, gifter, channel))
+    )
     return sub
 
 
@@ -148,10 +193,26 @@ def _notify_gift(recipient, gifter, channel) -> None:
 
 
 def cancel(user, channel_slug: str) -> int:
-    channel = _channel(channel_slug)
-    return Subscription.objects.filter(subscriber=user, channel=channel).update(
-        status=Subscription.Status.CANCELED
-    )
+    """Annule le renouvellement : l'accès reste ouvert jusqu'à la fin de la période."""
+    channel = Channel.objects.filter(slug=(channel_slug or "").lower()).first()
+    if channel is None:
+        return 0
+    return Subscription.objects.filter(
+        subscriber=user, channel=channel, status=Subscription.Status.ACTIVE
+    ).update(cancel_at_period_end=True)
+
+
+def resume(user, channel_slug: str) -> int:
+    """Réactive le renouvellement d'un abonnement annulé mais encore actif."""
+    channel = Channel.objects.filter(slug=(channel_slug or "").lower()).first()
+    if channel is None:
+        return 0
+    return Subscription.objects.filter(
+        subscriber=user,
+        channel=channel,
+        status=Subscription.Status.ACTIVE,
+        current_period_end__gt=timezone.now(),
+    ).update(cancel_at_period_end=False, auto_renew=True)
 
 
 def is_subscribed(user, channel: Channel) -> bool:
@@ -171,40 +232,59 @@ def subscriber_user_ids(channel: Channel) -> set[int]:
     )
 
 
-def process_due_subscriptions(now=None) -> dict:
-    """Renouvelle ou expire les abonnements actifs arrivés à échéance.
+def _renew_one(sub_id: int, now) -> str:
+    """Renouvelle/expire UN abonnement dans sa propre transaction (ligne verrouillée).
 
-    Renouvelle en débitant le wallet (palier toujours actif + solde suffisant),
-    sinon passe l'abonnement en EXPIRED. Conçu pour un beat task ou un cron ;
-    fonctionne aussi en exécution manuelle (repli sans worker).
+    `skip_locked` : deux exécutions concurrentes du batch ne traitent jamais la
+    même ligne → pas de double débit. Retourne "renewed" | "expired" | "skipped".
     """
     from payments.services import InsufficientBalanceError, PaymentError, charge_subscription
 
-    now = now or timezone.now()
-    renewed = 0
-    expired = 0
-    due = Subscription.objects.select_related("channel__user", "tier", "subscriber").filter(
-        status=Subscription.Status.ACTIVE, current_period_end__lte=now
-    )
-    for sub in due:
-        tier = sub.tier if (sub.tier and sub.tier.is_active) else active_tier(sub.channel)
-        if tier is None:
+    with transaction.atomic():
+        sub = (
+            Subscription.objects.select_for_update(skip_locked=True, of=("self",))
+            .select_related("channel__user", "tier", "subscriber")
+            .filter(pk=sub_id, status=Subscription.Status.ACTIVE, current_period_end__lte=now)
+            .first()
+        )
+        if sub is None:
+            return "skipped"
+        tier_alive = bool(sub.tier and sub.tier.is_active)
+        if sub.cancel_at_period_end or not sub.auto_renew or not tier_alive:
             sub.status = Subscription.Status.EXPIRED
             sub.save(update_fields=["status"])
-            expired += 1
-            continue
+            return "expired"
+        price = sub.price_paid or sub.tier.price_aura
         try:
-            charge_subscription(sub.subscriber, sub.channel.user, tier.price_aura)
+            with transaction.atomic():
+                charge_subscription(sub.subscriber, sub.channel.user, price, related=sub)
         except (InsufficientBalanceError, PaymentError):
             sub.status = Subscription.Status.EXPIRED
             sub.save(update_fields=["status"])
-            expired += 1
-            continue
-        sub.tier = tier
+            return "expired"
+        sub.price_paid = price
         sub.current_period_end = now + timezone.timedelta(days=PERIOD_DAYS)
-        sub.save(update_fields=["tier", "current_period_end"])
-        renewed += 1
-    return {"renewed": renewed, "expired": expired}
+        sub.save(update_fields=["price_paid", "current_period_end"])
+        return "renewed"
+
+
+def process_due_subscriptions(now=None) -> dict:
+    """Renouvelle (au prix verrouillé) ou expire les abonnements arrivés à échéance.
+
+    Conçu pour le beat quotidien ou un cron ; sûr en exécutions concurrentes.
+    """
+    now = now or timezone.now()
+    counts = {"renewed": 0, "expired": 0}
+    due_ids = list(
+        Subscription.objects.filter(
+            status=Subscription.Status.ACTIVE, current_period_end__lte=now
+        ).values_list("id", flat=True)
+    )
+    for sub_id in due_ids:
+        result = _renew_one(sub_id, now)
+        if result in counts:
+            counts[result] += 1
+    return counts
 
 
 def _notify(creator, subscriber) -> None:

@@ -51,7 +51,7 @@ export default function AdminTransactionsPage() {
     load();
   }, [load]);
 
-  async function resolvePayout(id: number, action: "paid" | "fail") {
+  async function resolvePayout(id: number, action: "processing" | "paid" | "fail") {
     try {
       await authFetch(`/api/admin/payouts/${id}/resolve`, {
         method: "POST",
@@ -127,24 +127,34 @@ export default function AdminTransactionsPage() {
                   })}
                 </td>
                 <td className="px-4 py-2.5">
-                  {r.type === "payout" && r.status === "requested" && (
-                    <span className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => resolvePayout(r.id, "paid")}
-                        className="rounded bg-emerald-500 px-2 py-1 text-xs font-semibold text-neutral-950 hover:bg-emerald-400"
-                      >
-                        {t("admin.tx.pay")}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => resolvePayout(r.id, "fail")}
-                        className="rounded bg-red-500/80 px-2 py-1 text-xs font-semibold text-neutral-950 hover:bg-red-400"
-                      >
-                        {t("admin.tx.reject")}
-                      </button>
-                    </span>
-                  )}
+                  {r.type === "payout" &&
+                    (r.status === "requested" || r.status === "processing") && (
+                      <span className="flex gap-2">
+                        {r.status === "requested" && (
+                          <button
+                            type="button"
+                            onClick={() => resolvePayout(r.id, "processing")}
+                            className="rounded border border-amber-500/60 px-2 py-1 text-xs font-semibold text-amber-300 hover:bg-amber-500/10"
+                          >
+                            {t("admin.tx.processing")}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => resolvePayout(r.id, "paid")}
+                          className="rounded bg-emerald-500 px-2 py-1 text-xs font-semibold text-neutral-950 hover:bg-emerald-400"
+                        >
+                          {t("admin.tx.pay")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => resolvePayout(r.id, "fail")}
+                          className="rounded bg-red-500/80 px-2 py-1 text-xs font-semibold text-neutral-950 hover:bg-red-400"
+                        >
+                          {t("admin.tx.reject")}
+                        </button>
+                      </span>
+                    )}
                 </td>
               </tr>
             ))}

@@ -7,7 +7,7 @@ from django.urls import reverse
 
 from accounts.factories import UserFactory
 from analytics.services import creator_revenue
-from channels_app.models import Channel
+from channels_app.testing import provisioned_channel
 from payments import services as pay
 from payments.models import LedgerEntry
 from subscriptions import services as subs_services
@@ -16,7 +16,7 @@ pytestmark = pytest.mark.django_db
 
 
 def _streamer_with_fan():
-    channel = Channel.objects.get(user=UserFactory())
+    channel = provisioned_channel(UserFactory())
     subs_services.set_tier(channel, price_aura=100, perks=["Badge"])
     fan = UserFactory()
     pay.create_purchase(fan, 1000)
@@ -54,7 +54,7 @@ def test_creator_revenue_aggregates_tips_subs_referral(auth_client_factory):
 
 def test_creator_revenue_supports_week_and_month_period():
     streamer = UserFactory()
-    Channel.objects.get(user=streamer)
+    provisioned_channel(streamer)
     pay.grant_aura(streamer, 30, LedgerEntry.Kind.REFERRAL, "ref:a")
     week = creator_revenue(streamer, period="week")
     month = creator_revenue(streamer, period="month")
@@ -66,7 +66,7 @@ def test_creator_revenue_supports_week_and_month_period():
 
 def test_creator_revenue_invalid_period_falls_back_to_day(auth_client_factory):
     user = UserFactory()
-    Channel.objects.get(user=user)
+    provisioned_channel(user)
     client = auth_client_factory(user)
     resp = client.get(reverse("analytics-me-revenue"), {"period": "bogus"})
     assert resp.status_code == 200

@@ -44,6 +44,7 @@ _APP_CATEGORY: dict[str, str] = {
     "invitations": "Audience & comptes",
     "channels_app": "Création & live",
     "catalog": "Création & live",
+    "shorts": "Création & live",
     "streamers": "Création & live",
     "payments": "Monétisation",
     "subscriptions": "Monétisation",

@@ -25,8 +25,8 @@ Chaque app est autonome : `models`, `views`, `serializers`, `services`,
   reset mot de passe, profil.
 - **Modèle** : `User` (email unique, username `^[a-z0-9_]{3,30}$`,
   `display_name`, `avatar_url`, `bio`, `email_verified_at`, `terms_accepted_at`,
-  `invited_by`). `AUTH_USER_MODEL`. L'inscription **exige** `terms_accepted=true`
-  (attestation 13 ans + CGU).
+  `invited_by`, `date_of_birth`). `AUTH_USER_MODEL`. L'inscription **exige** une date de
+  naissance (18 ans minimum), un mot de passe confirmé (≥ 8 caractères) et `terms_accepted=true`.
 - **Guides/tutoriels** : modèles `Guide` + `GuideStep` (contenu localisé FR/EN/PT,
   icône, ordre, publication) gérés en **back-office Django** (CRUD, étapes en
   inline) ; `GuideProgress` (clé `"<slug>:<step_id>"`) suit les acquis par
@@ -37,13 +37,14 @@ Chaque app est autonome : `models`, `views`, `serializers`, `services`,
 - → [ADR 002](adr/002-jwt-strategy.md)
 
 ### `channels_app` — chaînes & ingest vidéo
-- **Rôle** : chaîne d'un streamer, clé RTMPS, lecture HLS, intégration
-  Cloudflare Stream, webhook de statut live.
+- **Rôle** : chaîne d'un streamer, clé de stream RTMP, lecture HLS, intégration
+  **Bunny Stream** (live + VOD), synchronisation live/offline par polling.
 - **Modèle** : `Channel` (OneToOne `User`, `slug`, `title`, `category` FK→`Game`,
-  `live_input_uid`, `rtmps_url`, `rtmps_key`, `hls_playback_url`, `is_live`).
-- **À noter** : `cloudflare.py` (client réel + **client FAKE** si pas de token),
-  `webhooks.py` (vérif HMAC), `signals.py`, `tasks.py`.
-- → [ADR 003](adr/003-cloudflare-stream.md) · [ADR 004](adr/004-live-status-strategy.md)
+  `stream_id`, `ingest_url`, `stream_key`, `playback_url`, `stream_checked_at`, `is_live`).
+- **À noter** : `bunny.py` (client réel + **client FAKE** si pas de clé),
+  `tasks.sync_live_status` (polling Celery beat), `webhooks.py` (vérif HMAC
+  `X-BunnyStream-Signature`), `utils.is_streamer()` (test streamer unique).
+- → [ADR 010](adr/010-bunny-stream.md) · [ADR 004](adr/004-live-status-strategy.md)
 
 ### `chat` — chat temps réel
 - **Rôle** : WebSocket chat (Channels), historique, slow-mode, modération.
@@ -79,8 +80,10 @@ Chaque app est autonome : `models`, `views`, `serializers`, `services`,
   ledger enrichi (`currency`/`related_*`/`metadata`) ; `admin_views.py`
   (transactions unifiées, commissions, résolution payouts). **Business model
   unifié** : tip 30 % / abonnement 30 % (sur le créateur) ; achat 1 %
-  **streamer uniquement** (viewer = 0 %). Taux par défaut seedés via migration
-  `payments/0008_seed_default_fees` ; admin éditable.
+  **streamer uniquement** (viewer = 0 %) ; retrait = frais de traitement 3 %.
+  `PlatformRevenue` trace chaque commission ; seule l'Aura gagnée est retirable
+  (Wave / Orange Money, OTP e-mail) ; remboursements/litiges Stripe repris ;
+  `reconcile_wallets` contrôle la cohérence solde ↔ ledger.
 - **`audit`** : `AuditEvent` (`actor`, `action`, `target`, `meta`) + `record()`,
   appelé sur les actions sensibles (approbation, payout, changement de rôle…).
 - **`charity` (différenciation RSE)** : `Charity` (asso agréée), `CharityEvent`
@@ -97,6 +100,10 @@ Chaque app est autonome : `models`, `views`, `serializers`, `services`,
 - **`safety` (étendu)** : `captcha.py` (Cloudflare Turnstile, mode FAKE si pas
   de clé) + `is_disposable()` (blocklist domaines email jetables). Honeypot
   `website` au register + validation `is_disposable` sur l'email.
+- **`shorts` (« Instant »)** : `Short` (vidéo courte Bunny VOD, statut
+  uploading → processing → ready/failed, vues/likes, dépublication modération)
+  et `ShortLike`. Upload TUS direct navigateur → Bunny, publication par le
+  webhook Bunny, fil tendance public (popularité amortie par l'âge).
 - **`uploads`** : `services.upload_image()` vers **Cloudflare R2** (boto3, mode
   FAKE hors-ligne) ; endpoints avatar / bannière / vignette de jeu.
 - **`subscriptions`** : `SubTier` (palier prix Aura + `perks` texte +
@@ -140,14 +147,18 @@ Chaque app est autonome : `models`, `views`, `serializers`, `services`,
 | Route | Fichier | Rôle |
 |-------|---------|------|
 | `/` | `page.tsx` | Accueil : lives + santé des services |
-| `/login`, `/register` | `*/page.tsx` | Auth |
+| `/login`, `/register` | `*/page.tsx` | Auth (œil afficher/masquer, jauge de robustesse, confirmation, date de naissance 18+) |
+| `/forgot-password`, `/reset-password/[token]` | `page.tsx` | Mot de passe oublié / réinitialisation |
+| `/terms`, `/privacy`, `/cookies`, `/guidelines`, `/dmca`, `/about`, `/contact` | `page.tsx` | Pages légales et institutionnelles (FR/EN/PT, `lib/legal-content.ts`) |
 | `/verify-email/[token]` | `page.tsx` | Vérification email |
-| `/dashboard` | `page.tsx` | Espace streamer (clé RTMPS, chaîne) |
+| `/dashboard` | `page.tsx` | Espace streamer (clé de stream, chaîne) |
 | `/revenus` | `page.tsx` | Revenus consolidés du créateur (tips + abos + parrainage), période jour/semaine/mois |
 | `/abonnements` | `page.tsx` | Mes abonnements + cadeau d'abonnement (onglets Actifs/Offert) |
 | `/c/[slug]` | `page.tsx` | Page chaîne : player + chat + **bouton partager** |
 | `/categories/[slug]` | `page.tsx` | Lives d'une catégorie |
 | `/search` | `SearchView.tsx` | Recherche |
+| `/instant` | `page.tsx` | Fil « Instant » : vidéos courtes verticales populaires (défilement aimanté, lecture auto, like, partage, suivre) |
+| `/suivis` | `page.tsx` | Toutes les chaînes suivies (en direct d'abord, puis hors ligne), catégories, abonnements |
 | `/charity` | `page.tsx` | Charity Day en cours : total, leaderboard, formulaire de don |
 | `/calendrier` | `page.tsx` | Calendrier des événements (filtrable par kind) |
 | `/statut` | `page.tsx` | Page publique d'état (services + uptime + incidents) |
@@ -156,7 +167,9 @@ Chaque app est autonome : `models`, `views`, `serializers`, `services`,
 `HlsPlayer` (lecture HLS via hls.js), `ChatPanel` (WebSocket chat),
 `LiveBadge`, `LiveCard`, `FollowButton`, `Navbar`, `ProfileMenu`
 (menu utilisateur incl. **Revenus** [streamers] et **Abonnements**),
-`ShareButton` (partage live : copie de lien interne + X/Facebook/WhatsApp/
+`StreamToolkit` (dashboard Diffusion : test de connexion Bunny, réglages OBS
+par type de connexion, widgets OBS alertes / chat / objectif, édition de
+l'objectif), `ShortsManager` (upload Instant TUS), `ShareButton` (partage live : copie de lien interne + X/Facebook/WhatsApp/
 Telegram + Web Share API natif), `Footer` (4 colonnes incl. Légal + gros logo).
 
 ### Librairie — `src/lib/`
@@ -192,8 +205,9 @@ Telegram + Web Share API natif), `Footer` (4 colonnes incl. Légal + gros logo).
 Navigateur ──HTTP──▶ web (Next.js)         page SSR + assets
           ──HTTP──▶ api (DRF)              REST /api/*
           ──WSS───▶ api (Channels)         chat /ws/*
-OBS ──RTMPS──▶ Cloudflare Stream ──HLS──▶ Navigateur (HlsPlayer)
-Cloudflare ──webhook signé──▶ api          bascule is_live
+OBS ──RTMP──▶ Bunny Stream ──HLS (CDN)──▶ Navigateur (HlsPlayer)
+Celery beat ──polling état──▶ Bunny      bascule is_live
+Bunny ──webhook signé──▶ api             encodage vidéos « Instant »
 api ◀──▶ Postgres (durable) · Redis (chat éphémère, channel layer, Celery)
 Celery worker/beat ◀──▶ Redis              emails, tâches async
 ```

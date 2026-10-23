@@ -136,7 +136,7 @@ export function AnnouncementBar() {
                   onClick={dismissPopup}
                   className="rounded-lg bg-secondary px-4 py-2 text-sm font-semibold text-white hover:bg-secondary-light"
                 >
-                  {popupItem.cta_label || "Découvrir"}
+                  {popupItem.cta_label || t("ann.discover")}
                 </a>
               )}
               <button

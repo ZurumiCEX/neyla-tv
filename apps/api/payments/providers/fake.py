@@ -10,6 +10,9 @@ from .base import PaymentProvider
 class FakeProvider(PaymentProvider):
     name = "fake"
 
+    def is_simulated(self) -> bool:
+        return True
+
     def create_checkout(self, purchase) -> dict:  # noqa: ARG002
         return {
             "provider_ref": f"fake-{secrets.token_hex(8)}",

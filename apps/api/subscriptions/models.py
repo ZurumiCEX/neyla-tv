@@ -60,6 +60,13 @@ class Subscription(models.Model):
     )
     started_at = models.DateTimeField(default=timezone.now)
     current_period_end = models.DateTimeField()
+    # Prix verrouillé à la souscription : les renouvellements facturent CE prix,
+    # un changement de tarif du streamer ne vaut que pour les nouveaux abonnés.
+    price_paid = models.PositiveIntegerField(default=0)
+    # Annulation : l'accès reste ouvert jusqu'à la fin de la période payée.
+    cancel_at_period_end = models.BooleanField(default=False)
+    # Un abonnement offert ne se renouvelle pas (le destinataire n'a rien choisi).
+    auto_renew = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -74,3 +81,7 @@ class Subscription(models.Model):
     @property
     def is_active(self) -> bool:
         return self.status == self.Status.ACTIVE and self.current_period_end > timezone.now()
+
+    @property
+    def will_renew(self) -> bool:
+        return self.is_active and self.auto_renew and not self.cancel_at_period_end

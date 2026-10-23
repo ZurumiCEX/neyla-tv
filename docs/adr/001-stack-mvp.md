@@ -22,7 +22,7 @@ On fige la stack suivante :
 | Tâches async   | Celery + Celery Beat |
 | Cache / broker | Redis 7 (channel layer, Celery, cache) |
 | Base de données| PostgreSQL 16 |
-| Vidéo          | Cloudflare Stream (Live Inputs, ingestion RTMP, lecture HLS) |
+| Vidéo          | Bunny Stream (live RTMP → HLS + VOD « Instant ») — cf. ADR 010 |
 | Infra          | DigitalOcean Droplet Ubuntu 24, Docker Compose |
 | CDN / WAF      | Cloudflare (proxy orange, Pro) |
 | CI/CD          | GitHub Actions (lint + tests sur PR, deploy SSH en Phase 6) |
@@ -35,7 +35,7 @@ On fige la stack suivante :
 - **Négatives / dette** :
   - Pas de Kubernetes : si on doit scaler horizontalement, il faudra
     refactor l'infra (Phase post-MVP).
-  - Dépendance forte à Cloudflare Stream (vendor lock-in vidéo). Acceptable
+  - Dépendance forte au fournisseur vidéo (Cloudflare Stream, puis Bunny Stream — ADR 010). Acceptable
     pour le MVP.
   - Single Droplet = SPOF. On accepte le risque tant qu'on est en
     pré-product-market-fit.

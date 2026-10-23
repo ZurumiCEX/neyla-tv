@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
+import { canAccessConsole, consoleHref } from "@/lib/admin-link";
 import { useT } from "@/lib/i18n";
 import { RoleBadge } from "@/components/RoleBadge";
 
@@ -31,12 +32,7 @@ export function ProfileMenu() {
   if (!user) return null;
 
   const initial = (user.display_name || user.username || "?").charAt(0).toUpperCase();
-  const adminHref =
-    user.role === "moderator"
-      ? "/console/reports"
-      : user.role === "support"
-        ? "/console/messages"
-        : "/console/dashboard";
+  const adminHref = consoleHref(user);
 
   const items: { href: string; label: string }[] = [
     { href: "/ma-chaine", label: t("nav.myChannel") },
@@ -47,9 +43,7 @@ export function ProfileMenu() {
     ...(user.is_streamer ? [] : [{ href: "/become-streamer", label: t("nav.becomeStreamer") }]),
     { href: "/invite", label: t("nav.invite") },
     { href: "/settings", label: t("nav.settings") },
-    ...(["admin", "moderator", "support"].includes(user.role) || user.is_staff
-      ? [{ href: adminHref, label: t("nav.admin") }]
-      : []),
+    ...(canAccessConsole(user) ? [{ href: adminHref, label: t("nav.admin") }] : []),
   ];
 
   return (

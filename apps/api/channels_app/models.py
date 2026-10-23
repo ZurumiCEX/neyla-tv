@@ -1,4 +1,4 @@
-"""Modèle Channel : une chaîne par streamer, mappée à un Live Input Cloudflare."""
+"""Modèle Channel : une chaîne par streamer, mappée à un live stream Bunny Stream."""
 
 from __future__ import annotations
 
@@ -26,6 +26,15 @@ class Channel(models.Model):
     overlay_token = models.CharField(max_length=64, blank=True, db_index=True)
     # Ouvre/suspend la réception d'invitations de collaboration.
     collaborations_open = models.BooleanField(default=True)
+    # Objectif affiché par le widget OBS « barre d'objectif » (cible 0 = désactivé).
+    goal_title = models.CharField(max_length=80, blank=True)
+    goal_kind = models.CharField(
+        max_length=8,
+        choices=[("subs", "Nouveaux abonnés"), ("tips", "Aura reçue")],
+        default="subs",
+    )
+    goal_target = models.PositiveIntegerField(default=0)
+    goal_started_at = models.DateTimeField(null=True, blank=True)
     category = models.ForeignKey(
         "catalog.Game",
         null=True,
@@ -34,11 +43,13 @@ class Channel(models.Model):
         related_name="channels",
     )
 
-    # Cloudflare Stream Live Input.
-    live_input_uid = models.CharField(max_length=64, blank=True, db_index=True)
-    rtmps_url = models.CharField(max_length=200, blank=True)
-    rtmps_key = models.CharField(max_length=200, blank=True)
-    hls_playback_url = models.URLField(blank=True)
+    # Live stream du fournisseur vidéo (Bunny Stream).
+    stream_id = models.CharField(max_length=64, blank=True, db_index=True)
+    ingest_url = models.CharField(max_length=200, blank=True)
+    stream_key = models.CharField(max_length=200, blank=True)
+    playback_url = models.URLField(blank=True)
+    # Dernière vérification d'état auprès du fournisseur (polling).
+    stream_checked_at = models.DateTimeField(null=True, blank=True)
 
     is_live = models.BooleanField(default=False, db_index=True)
     last_live_started_at = models.DateTimeField(null=True, blank=True)
@@ -54,7 +65,7 @@ class Channel(models.Model):
 
     @property
     def is_provisioned(self) -> bool:
-        return bool(self.live_input_uid)
+        return bool(self.stream_id)
 
 
 class StreamSession(models.Model):

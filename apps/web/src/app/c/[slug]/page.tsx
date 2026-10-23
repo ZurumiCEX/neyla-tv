@@ -3,8 +3,8 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { ChatPanel } from "@/components/ChatPanel";
 import { FollowButton } from "@/components/FollowButton";
-import { HlsPlayer } from "@/components/HlsPlayer";
 import { LiveBadge } from "@/components/LiveBadge";
+import { LiveStage } from "@/components/LiveStage";
 import type { AchievementItem } from "@/components/AchievementIcon";
 import { AvatarBadge, ProfileAchievements } from "@/components/ProfileAchievements";
 import { ReportButton } from "@/components/ReportButton";
@@ -21,7 +21,7 @@ type PublicChannel = {
   thumbnail_url: string;
   banner_url: string;
   social_links: Record<string, string>;
-  hls_playback_url: string;
+  playback_url: string;
   is_live: boolean;
   last_live_started_at: string | null;
   streamer: { username: string; display_name: string; avatar_url: string; bio: string };
@@ -74,7 +74,12 @@ export default async function ChannelPage({ params }: { params: Promise<{ slug: 
       )}
       <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
         <div>
-          <HlsPlayer src={channel.hls_playback_url} poster={channel.thumbnail_url} />
+          <LiveStage
+            slug={channel.slug}
+            src={channel.playback_url}
+            poster={channel.thumbnail_url}
+            initialLive={channel.is_live}
+          />
           <div className="mt-4 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-4 sm:p-5">
             <header className="flex flex-wrap items-start justify-between gap-4">
               <div className="flex items-start gap-3">

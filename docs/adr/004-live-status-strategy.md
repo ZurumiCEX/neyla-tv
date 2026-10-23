@@ -35,7 +35,7 @@ de chat, qui a un compteur naturel par room).
   prochain poll. Pas de logique de reconnexion à écrire.
 
 ### Négatives / dette
-- Latence max ~5 s entre la connexion réelle au RTMPS et la bascule du
+- Latence max ~5 s entre la connexion réelle au RTMP et la bascule du
   badge. Acceptable au MVP (Twitch a aussi ~5-10 s de lag entre l'ingest
   et l'affichage du badge live).
 - Si on a > 100 000 viewers concurrents par chaîne, le poll commencera
@@ -58,3 +58,7 @@ de chat, qui a un compteur naturel par room).
 Channels par viewer pour le chat, on peut potentiellement piggyback le
 statut live dessus et économiser le poll. Mais ce n'est pas urgent, le
 poll cacheable scale très loin.
+
+> **Mise à jour (ADR 010)** : avec Bunny Stream, la bascule `is_live` n'est plus
+> déclenchée par un webhook mais par un **polling serveur** (`sync_live_status`,
+> Celery beat, `STREAM_STATUS_POLL_SECONDS`). Le polling client 5 s du badge est inchangé.

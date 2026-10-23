@@ -71,20 +71,21 @@ def _timed(check_fn):
     return {"ok": ok, "latency_ms": int((time.perf_counter() - start) * 1000)}
 
 
-def _check_cloudflare_stream() -> bool:
-    """Best-effort : OK si client FAKE (offline) ou clé API présente."""
-    token = getattr(settings, "CLOUDFLARE_API_TOKEN", "") or ""
-    if not token:
+def _check_bunny_stream() -> bool:
+    """Best-effort : OK si client FAKE (offline) ou API Bunny joignable avec la clé."""
+    api_key = getattr(settings, "BUNNY_STREAM_API_KEY", "") or ""
+    library = getattr(settings, "BUNNY_STREAM_LIBRARY_ID", "") or ""
+    if not api_key:
         return True  # mode FAKE → considéré « OK » (pas d'appel réseau).
     try:
         import urllib.request
 
-        req = urllib.request.Request(
-            "https://api.cloudflare.com/client/v4/user/tokens/verify",
-            headers={"Authorization": f"Bearer {token}"},
+        req = urllib.request.Request(  # noqa: S310 - URL https fixe (Bunny)
+            f"https://video.bunnycdn.com/library/{library}/videos?page=1&itemsPerPage=1",
+            headers={"AccessKey": api_key, "Accept": "application/json"},
         )
         with urllib.request.urlopen(req, timeout=3) as r:  # noqa: S310 - URL fixe
-            return 200 <= r.status < 500
+            return 200 <= r.status < 300
     except Exception:
         return False
 
@@ -98,7 +99,7 @@ def status_overview(_request) -> JsonResponse:
     services = {
         "database": _timed(_check_db),
         "redis": _timed(_check_redis),
-        "cloudflare_stream": _timed(_check_cloudflare_stream),
+        "bunny_stream": _timed(_check_bunny_stream),
         "api": {"ok": True, "latency_ms": 0},
     }
     all_ok = all(s["ok"] for s in services.values())

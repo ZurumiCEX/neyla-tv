@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useT } from "@/lib/i18n";
+import { useFormat } from "@/lib/use-format";
 
 export type GameSummary = {
   slug: string;
@@ -14,9 +15,10 @@ export type GameSummary = {
 
 export function GameCard({ game }: { game: GameSummary }) {
   const t = useT();
+  const { num } = useFormat();
   const subtitle =
     typeof game.viewers === "number" && game.viewers > 0
-      ? t("card.viewers", { n: game.viewers.toLocaleString("fr-FR") })
+      ? t("card.viewers", { n: num(game.viewers) })
       : t("home.liveShort", { count: game.live_count ?? 0 });
 
   return (

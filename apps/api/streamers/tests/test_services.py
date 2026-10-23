@@ -36,10 +36,10 @@ def test_approve_is_idempotent():
     admin = UserFactory(is_staff=True)
     services.approve_application(application, admin)
     channel = Channel.objects.get(user=user)
-    uid = channel.live_input_uid
+    uid = channel.stream_id
     services.approve_application(application, admin)
     channel.refresh_from_db()
-    assert channel.live_input_uid == uid
+    assert channel.stream_id == uid
 
 
 def test_daily_quota_blocks_excess_approvals(settings):

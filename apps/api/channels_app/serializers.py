@@ -1,4 +1,4 @@
-"""Serializers : la clé RTMPS n'est exposée que sur l'endpoint owner /me."""
+"""Serializers : la clé de stream n'est exposée que sur l'endpoint owner /me."""
 
 from __future__ import annotations
 
@@ -91,7 +91,7 @@ class PublicChannelSerializer(serializers.ModelSerializer):
             "banner_url",
             "social_links",
             "tags",
-            "hls_playback_url",
+            "playback_url",
             "is_live",
             "last_live_started_at",
             "streamer",
@@ -101,7 +101,7 @@ class PublicChannelSerializer(serializers.ModelSerializer):
 
 
 class MyChannelSerializer(serializers.ModelSerializer):
-    """Vue propriétaire : inclut rtmps_url et rtmps_key. JAMAIS exposer ailleurs."""
+    """Vue propriétaire : inclut ingest_url et stream_key. JAMAIS exposer ailleurs."""
 
     is_provisioned = serializers.BooleanField(read_only=True)
     category = GameSerializer(read_only=True)
@@ -122,6 +122,23 @@ class MyChannelSerializer(serializers.ModelSerializer):
     def validate_tags(self, value):
         return _clean_tags(value)
 
+    def validate_goal_target(self, value: int) -> int:
+        if value > 1_000_000:
+            raise serializers.ValidationError("Objectif trop élevé.")
+        return value
+
+    def update(self, instance, validated_data):
+        # Nouvel objectif (type ou cible modifiés) : la progression repart de zéro.
+        goal_changed = any(
+            k in validated_data and validated_data[k] != getattr(instance, k)
+            for k in ("goal_kind", "goal_target")
+        )
+        if goal_changed:
+            from django.utils import timezone
+
+            validated_data["goal_started_at"] = timezone.now()
+        return super().update(instance, validated_data)
+
     class Meta:
         model = Channel
         fields = (
@@ -133,9 +150,14 @@ class MyChannelSerializer(serializers.ModelSerializer):
             "tags",
             "overlay_token",
             "collaborations_open",
-            "rtmps_url",
-            "rtmps_key",
-            "hls_playback_url",
+            "goal_title",
+            "goal_kind",
+            "goal_target",
+            "goal_started_at",
+            "ingest_url",
+            "stream_key",
+            "playback_url",
+            "stream_checked_at",
             "is_live",
             "is_provisioned",
             "last_live_started_at",
@@ -145,9 +167,11 @@ class MyChannelSerializer(serializers.ModelSerializer):
         read_only_fields = (
             "slug",
             "overlay_token",
-            "rtmps_url",
-            "rtmps_key",
-            "hls_playback_url",
+            "goal_started_at",
+            "ingest_url",
+            "stream_key",
+            "playback_url",
+            "stream_checked_at",
             "is_live",
             "is_provisioned",
             "last_live_started_at",

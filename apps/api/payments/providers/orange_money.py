@@ -17,6 +17,9 @@ from .base import PaymentProvider
 class OrangeMoneyProvider(PaymentProvider):
     name = "orange_money"
 
+    def is_simulated(self) -> bool:
+        return not settings.ORANGE_MONEY_API_KEY
+
     def create_checkout(self, purchase) -> dict:
         if not settings.ORANGE_MONEY_API_KEY:
             # Dev/démo : pas de clé → on confirme tout de suite.

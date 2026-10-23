@@ -202,9 +202,17 @@ def overlay_test(request: Request) -> Response:
 @permission_classes([IsAuthenticated])
 @ratelimit(key="user", rate="60/h", method="POST", block=True)
 def set_live(request: Request) -> Response:
-    """Bascule live manuelle (repli/démo quand le webhook encodeur n'est pas branché)."""
+    """Bascule live manuelle (repli/démo quand le polling Bunny n'a pas encore vu le flux).
+
+    Réservée aux chaînes provisionnées (streamer approuvé) : sinon n'importe quel
+    compte pourrait notifier ses followers et ouvrir des sessions fictives.
+    """
     channel = _get_my_channel(request.user)
     going_live = bool(request.data.get("live", True))
+    if going_live and not channel.is_provisioned:
+        raise PermissionDenied(
+            "Chaîne non provisionnée : l'accès streamer doit d'abord être approuvé."
+        )
     if going_live:
         changed = mark_live(channel)
         if changed:
@@ -228,6 +236,84 @@ def rotate_key(request: Request) -> Response:  # noqa: ARG001
     rotate_stream_key(channel)
     channel.refresh_from_db()
     return Response(MyChannelSerializer(channel).data)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+@ratelimit(key="user", rate="30/m", method="GET", block=True)
+def stream_health(request: Request) -> Response:
+    """État du flux côté Bunny (« Tester la connexion » du dashboard)."""
+    from .bunny import BunnyStreamError, get_client
+    from .tasks import sync_channel_status
+
+    channel = _get_my_channel(request.user)
+    if not channel.is_provisioned:
+        raise PermissionDenied(
+            "Chaîne non provisionnée : l'accès streamer doit d'abord être approuvé."
+        )
+    client = get_client()
+    payload = {
+        "provider": "bunny",
+        "mode": "fake" if client.is_fake else "live",
+        "is_live": channel.is_live,
+        "reachable": True,
+        "checked_at": channel.stream_checked_at,
+    }
+    if not client.is_fake:
+        try:
+            state = sync_channel_status(channel, client)
+        except BunnyStreamError:
+            state = None
+        channel.refresh_from_db()
+        payload.update(
+            {
+                "reachable": state is not None,
+                "is_live": channel.is_live,
+                "checked_at": channel.stream_checked_at,
+            }
+        )
+    return Response(payload)
+
+
+def goal_progress(channel: Channel) -> int:
+    """Progression de l'objectif depuis son lancement (abonnés ou Aura reçue)."""
+    since = channel.goal_started_at or channel.created_at
+    if channel.goal_kind == "tips":
+        from django.db.models import Sum
+
+        from payments.models import Tip
+
+        return int(
+            Tip.objects.filter(to_channel=channel, created_at__gte=since).aggregate(
+                s=Sum("aura_amount")
+            )["s"]
+            or 0
+        )
+    from subscriptions.models import Subscription
+
+    return Subscription.objects.filter(channel=channel, started_at__gte=since).count()
+
+
+@api_view(["GET"])
+@authentication_classes([])
+@permission_classes([AllowAny])
+@ratelimit(key="ip", rate="120/m", method="GET", block=True)
+def overlay_info(request: Request, token: str) -> Response:  # noqa: ARG001
+    """Données des widgets OBS (chat, objectif) : authentifié par le jeton overlay."""
+    channel = Channel.objects.filter(overlay_token=token).first() if token else None
+    if channel is None:
+        raise NotFound("Overlay introuvable.")
+    goal = None
+    if channel.goal_target > 0:
+        goal = {
+            "title": channel.goal_title,
+            "kind": channel.goal_kind,
+            "target": channel.goal_target,
+            "current": goal_progress(channel),
+        }
+    response = Response({"slug": channel.slug, "is_live": channel.is_live, "goal": goal})
+    response["Cache-Control"] = "no-store"
+    return response
 
 
 @api_view(["GET"])

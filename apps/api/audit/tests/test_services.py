@@ -31,10 +31,15 @@ def test_approve_application_is_audited():
     assert AuditEvent.objects.filter(action="streamer.approve", actor=admin).exists()
 
 
-def test_payout_is_audited():
+def test_payout_is_audited(settings):
+    from channels_app.testing import provisioned_channel
     from payments import services as pay_services
 
+    settings.WITHDRAWAL_MIN_AURA = 10
     user = UserFactory()
-    pay_services.create_purchase(user, 100)
-    pay_services.request_payout(user, 50)
+    channel = provisioned_channel(user)
+    fan = UserFactory()
+    pay_services.create_purchase(fan, 100)
+    pay_services.send_tip(fan, channel.slug, 100)
+    pay_services.create_payout(user, 50)
     assert AuditEvent.objects.filter(action="payout.request", actor=user).exists()

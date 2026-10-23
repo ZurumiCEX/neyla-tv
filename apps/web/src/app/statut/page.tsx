@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { useT } from "@/lib/i18n";
+import { useFormat } from "@/lib/use-format";
 
 type ServiceStatus = { ok: boolean; latency_ms: number };
 type StatusResp = {
@@ -13,10 +14,11 @@ type StatusResp = {
   incidents: { id: number; title: string; body_md: string; status: string }[];
 };
 
-const SERVICE_ORDER = ["api", "database", "redis", "cloudflare_stream"];
+const SERVICE_ORDER = ["api", "database", "redis", "bunny_stream"];
 
 export default function StatusPage() {
   const t = useT();
+  const { time } = useFormat();
   const [data, setData] = useState<StatusResp | null>(null);
 
   useEffect(() => {
@@ -69,7 +71,7 @@ export default function StatusPage() {
         {data && (
           <p className="mt-2 text-xs text-neutral-400">
             {t("status.lastChecked", {
-              time: new Date(data.checked_at).toLocaleTimeString("fr-FR"),
+              time: time(data.checked_at),
             })}
           </p>
         )}
@@ -85,16 +87,12 @@ export default function StatusPage() {
                 className="flex items-center gap-3 rounded-xl border border-neutral-800 bg-neutral-900/60 p-4"
               >
                 <span
-                  className={`h-2.5 w-2.5 rounded-full ${
-                    s.ok ? "bg-emerald-400" : "bg-red-400"
-                  }`}
+                  className={`h-2.5 w-2.5 rounded-full ${s.ok ? "bg-emerald-400" : "bg-red-400"}`}
                 />
                 <span className="flex-1 text-sm font-medium text-neutral-200">
                   {t(`status.service.${k}`)}
                 </span>
-                <span className="font-mono text-xs text-neutral-500">
-                  {s.latency_ms} ms
-                </span>
+                <span className="font-mono text-xs text-neutral-500">{s.latency_ms} ms</span>
               </div>
             );
           })}
@@ -102,7 +100,8 @@ export default function StatusPage() {
 
       {data && data.uptime_pct_30d !== null && (
         <p className="mt-6 text-sm text-neutral-400">
-          {t("status.uptime30d")} : <span className="font-semibold text-neutral-100">{data.uptime_pct_30d}%</span>
+          {t("status.uptime30d")} :{" "}
+          <span className="font-semibold text-neutral-100">{data.uptime_pct_30d}%</span>
         </p>
       )}
     </main>

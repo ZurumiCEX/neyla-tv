@@ -37,7 +37,7 @@ def platform_overview() -> dict:
         "users_total": User.objects.count(),
         "dau": User.objects.filter(last_active_at__gte=now - timedelta(days=1)).count(),
         "mau": User.objects.filter(last_active_at__gte=now - timedelta(days=30)).count(),
-        "streamers_total": Channel.objects.exclude(live_input_uid="").count(),
+        "streamers_total": Channel.objects.exclude(stream_id="").count(),
         "live_now": Channel.objects.filter(is_live=True).count(),
         "streams_total": sessions.count(),
         "streams_7d": sessions.filter(started_at__gte=now - timedelta(days=7)).count(),
@@ -62,8 +62,7 @@ def my_analytics(user) -> dict:
 
 def _revenue_series(days: int) -> dict:
     """Séries quotidiennes de revenus (bucket Python, agnostique du SGBD)."""
-    from payments.models import Payout, Purchase, Tip
-    from subscriptions.models import Subscription
+    from payments.models import LedgerEntry, Payout, PlatformRevenue, Purchase, Tip
 
     now = timezone.now()
     since = now - timedelta(days=days - 1)
@@ -95,20 +94,29 @@ def _revenue_series(days: int) -> dict:
         if b:
             b["purchases_xof"] += int(p.fiat_amount)
         totals["purchases_xof"] += int(p.fiat_amount)
-    for t in Tip.objects.filter(created_at__gte=since):
+    for t in Tip.objects.filter(created_at__gte=since).only("created_at", "aura_amount"):
         b = bucket(t.created_at)
         if b:
             b["tips_aura"] += t.aura_amount
-            b["platform_commission_aura"] += t.platform_fee
         totals["tips_aura"] += t.aura_amount
-        totals["platform_commission_aura"] += t.platform_fee
-    for s in Subscription.objects.select_related("tier").filter(created_at__gte=since):
-        amount = s.tier.price_aura if s.tier else 0
-        b = bucket(s.created_at)
+    # Abonnements : chaque débit (souscription, cadeau, renouvellement) au prix payé.
+    for entry in LedgerEntry.objects.filter(
+        kind=LedgerEntry.Kind.SUB_PAID, created_at__gte=since
+    ).only("created_at", "amount"):
+        amount = -int(entry.amount)
+        b = bucket(entry.created_at)
         if b:
             b["subs_aura"] += amount
         totals["subs_aura"] += amount
-    for po in Payout.objects.filter(created_at__gte=since):
+    # Commissions : source unique PlatformRevenue (tips, abos, achats streamer, retraits).
+    for rev in PlatformRevenue.objects.filter(created_at__gte=since).only(
+        "created_at", "amount_aura"
+    ):
+        b = bucket(rev.created_at)
+        if b:
+            b["platform_commission_aura"] += rev.amount_aura
+        totals["platform_commission_aura"] += rev.amount_aura
+    for po in Payout.objects.filter(created_at__gte=since).exclude(status=Payout.Status.FAILED):
         b = bucket(po.created_at)
         if b:
             b["payouts_aura"] += po.aura_amount

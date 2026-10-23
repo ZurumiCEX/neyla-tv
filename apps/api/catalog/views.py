@@ -88,9 +88,7 @@ def discover_live(request: Request) -> Response:
 @permission_classes([AllowAny])
 def discover_categories(request: Request) -> Response:
     limit, offset = _paginate(request)
-    qs = Game.objects.annotate(
-        live_count=Count("channels", filter=Q(channels__is_live=True))
-    )
+    qs = Game.objects.annotate(live_count=Count("channels", filter=Q(channels__is_live=True)))
     group = (request.query_params.get("group") or "").strip().lower()
     if group in dict(Game.Group.choices):
         qs = qs.filter(group=group)

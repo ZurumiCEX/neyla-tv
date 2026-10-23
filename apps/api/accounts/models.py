@@ -50,6 +50,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     social_links = models.JSONField(default=dict, blank=True)
     email_verified_at = models.DateTimeField(null=True, blank=True)
     terms_accepted_at = models.DateTimeField(null=True, blank=True)
+    # Date de naissance déclarée à l'inscription (plateforme réservée aux 18 ans
+    # et plus). Nulle pour les comptes antérieurs à cette règle.
+    date_of_birth = models.DateField(null=True, blank=True)
 
     role = models.CharField(max_length=12, choices=Role.choices, default=Role.USER, db_index=True)
     is_staff = models.BooleanField(default=False)

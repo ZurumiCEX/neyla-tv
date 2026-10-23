@@ -1,11 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { GameCard, type GameSummary } from "@/components/GameCard";
 import { LiveCard, type LiveChannel } from "@/components/LiveCard";
 import { useAuth } from "@/lib/auth-context";
+import { onFollowsChanged } from "@/lib/follow-events";
 import { useT } from "@/lib/i18n";
+
+type FollowedChannel = LiveChannel & { last_live_started_at?: string | null };
 
 type MySub = {
   channel: LiveChannel;
@@ -19,9 +23,15 @@ export default function SuivisPage() {
   const router = useRouter();
   const t = useT();
   const { user, loading, authFetch } = useAuth();
-  const [follows, setFollows] = useState<LiveChannel[] | null>(null);
+  const [follows, setFollows] = useState<FollowedChannel[] | null>(null);
   const [subs, setSubs] = useState<MySub[] | null>(null);
   const [tab, setTab] = useState<Tab>("overview");
+
+  const loadFollows = useCallback(() => {
+    authFetch<{ results: FollowedChannel[] }>("/api/follows/me")
+      .then((d) => setFollows(d.results))
+      .catch(() => setFollows((prev) => prev ?? []));
+  }, [authFetch]);
 
   useEffect(() => {
     if (loading) return;
@@ -29,15 +39,30 @@ export default function SuivisPage() {
       router.replace("/login");
       return;
     }
-    authFetch<{ results: LiveChannel[] }>("/api/follows/me")
-      .then((d) => setFollows(d.results))
-      .catch(() => setFollows([]));
+    loadFollows();
     authFetch<{ results: MySub[] }>("/api/subscriptions/me")
       .then((d) => setSubs(d.results))
       .catch(() => setSubs([]));
-  }, [loading, user, authFetch, router]);
+    // Les chaînes suivies passent live/hors ligne : rafraîchissement régulier.
+    const off = onFollowsChanged(loadFollows);
+    const id = setInterval(loadFollows, 60_000);
+    return () => {
+      off();
+      clearInterval(id);
+    };
+  }, [loading, user, authFetch, router, loadFollows]);
 
   const live = useMemo(() => (follows ?? []).filter((c) => c.is_live), [follows]);
+  // Toutes les chaînes suivies : en direct d'abord, puis les plus récemment actives.
+  const allChannels = useMemo(
+    () =>
+      [...(follows ?? [])].sort((a, b) => {
+        if (a.is_live !== b.is_live) return Number(b.is_live) - Number(a.is_live);
+        return (b.last_live_started_at ?? "").localeCompare(a.last_live_started_at ?? "");
+      }),
+    [follows],
+  );
+  const offline = useMemo(() => allChannels.filter((c) => !c.is_live), [allChannels]);
 
   const categories = useMemo<GameSummary[]>(() => {
     const map = new Map<string, GameSummary>();
@@ -103,6 +128,16 @@ export default function SuivisPage() {
               ))}
             </Grid>
           </Section>
+          {offline.length > 0 && (
+            <section>
+              <h2 className="mb-4 text-lg font-bold">{t("suivis.offline")}</h2>
+              <Grid>
+                {offline.map((c) => (
+                  <LiveCard key={c.slug} channel={c} />
+                ))}
+              </Grid>
+            </section>
+          )}
           {categories.length > 0 && (
             <section>
               <h2 className="mb-4 text-lg font-bold">{t("suivis.tab.categories")}</h2>
@@ -129,7 +164,7 @@ export default function SuivisPage() {
 
       {tab === "categories" &&
         (categories.length === 0 ? (
-          <Empty text={t("suivis.emptyFollows")} />
+          <Empty text={t("suivis.emptyCategories")} />
         ) : (
           <CatGrid>
             {categories.map((g) => (
@@ -143,12 +178,19 @@ export default function SuivisPage() {
           <Empty text={t("suivis.emptyFollows")} />
         ) : (
           <Grid>
-            {follows.map((c) => (
+            {allChannels.map((c) => (
               <LiveCard key={c.slug} channel={c} />
             ))}
           </Grid>
         ))}
 
+      {tab === "subs" && (
+        <p className="mb-4 text-sm text-neutral-400">
+          <Link href="/abonnements" className="text-emerald-300 underline">
+            {t("suivis.manageSubs")}
+          </Link>
+        </p>
+      )}
       {tab === "subs" &&
         (subs === null ? (
           <Empty text={t("common.loading")} />
@@ -159,9 +201,7 @@ export default function SuivisPage() {
             {subs.map((s) => (
               <div key={s.channel.slug}>
                 <LiveCard channel={s.channel} />
-                {s.tier_name && (
-                  <p className="mt-1 text-xs text-secondary-light">{s.tier_name}</p>
-                )}
+                {s.tier_name && <p className="mt-1 text-xs text-secondary-light">{s.tier_name}</p>}
               </div>
             ))}
           </Grid>

@@ -28,7 +28,7 @@ HTTP sont préfixées par `/api/`. L'admin Django est servi sous `/admin/`.
 |---------|--------|------|-------------|
 | `GET` | `/api/livez` | — | Liveness simple (process up). Aucune dépendance. |
 | `GET` | `/api/healthz` | — | Ping DB + Redis. `200 {status, db, redis}` ou `503 {degraded,…}`. |
-| `GET` | `/api/status` | — | État détaillé pour la page publique `/statut` : `services: {api, database, redis, cloudflare_stream}` avec `{ok, latency_ms}` chacun, `checked_at`, `uptime_pct_30d`, `incidents`. |
+| `GET` | `/api/status` | — | État détaillé pour la page publique `/statut` : `services: {api, database, redis, bunny_stream}` avec `{ok, latency_ms}` chacun, `checked_at`, `uptime_pct_30d`, `incidents`. |
 
 ---
 
@@ -69,7 +69,7 @@ Les `CharityEvent` sont automatiquement miroir dans `PlatformEvent` (signal).
 
 | Méthode | Chemin | Auth | Rate-limit | Description |
 |---------|--------|------|-----------|-------------|
-| `POST` | `/api/auth/register` | — | 5 / 5 min / IP | Crée un compte `{email, username, password, invite?, terms_accepted}`. `terms_accepted=true` est **obligatoire** (attestation 13 ans + CGU). |
+| `POST` | `/api/auth/register` | — | 5 / 5 min / IP | Crée un compte `{email, username, password, password_confirm, date_of_birth (AAAA-MM-JJ), invite?, terms_accepted}`. **18 ans minimum** (vérifié sur `date_of_birth`), mot de passe ≥ 8 caractères (non similaire à l'email/pseudo, non courant), confirmation identique, `terms_accepted=true`. Erreurs : `{detail: <premier message>, errors: {champ: [...]}}`. |
 | `POST` | `/api/auth/login` | — | 10 / 5 min / IP | `{email, password}` → `{access, user}` + cookie refresh. |
 | `POST` | `/api/auth/refresh` | cookie | — | Rafraîchit l'access token depuis le cookie (ou `{refresh}`). |
 | `POST` | `/api/auth/logout` | cookie | — | Blackliste le refresh, efface le cookie. `204`. |
@@ -89,14 +89,18 @@ is_email_verified, date_joined`.
 
 | Méthode | Chemin | Auth | Rate-limit | Description |
 |---------|--------|------|-----------|-------------|
-| `GET` | `/api/channels/me` | JWT | — | Ma chaîne, **avec credentials RTMPS** (si provisionnée) + `follower_count`, `viewers`. |
-| `PATCH` | `/api/channels/me` | JWT | — | Met à jour `{title?, thumbnail_url?, banner_url?, social_links?, category_slug?}`. `social_links` : clés ∈ {twitter, youtube, instagram, tiktok, discord, website}. |
+| `GET` | `/api/channels/me` | JWT | — | Ma chaîne, **avec identifiants de stream** (`ingest_url`, `stream_key`, si provisionnée) + `follower_count`, `viewers`. |
+| `PATCH` | `/api/channels/me` | JWT | — | Met à jour `{title?, thumbnail_url?, banner_url?, social_links?, category_slug?, goal_title?, goal_kind?, goal_target?}` (changer l'objectif remet sa progression à zéro). `social_links` : clés ∈ {twitter, youtube, instagram, tiktok, discord, website}. |
 | `GET` | `/api/channels/me/sessions` | JWT | `limit` (≤100, déf 50) | Historique des diffusions : `started_at`, `ended_at`, `duration_seconds`, `peak_viewers`, `category`. |
 | `POST` | `/api/channels/me/key/rotate` | JWT | 5 / j / user | Régénère la clé de stream. **403** si chaîne non provisionnée. |
 | `GET` | `/api/channels/<slug>` | — | — | Chaîne publique (sans secrets) : streamer (+ bio), bannière, réseaux sociaux, catégorie, HLS, statut. |
 | `GET` | `/api/channels/<slug>/status` | — | cache 5 s | `{is_live, last_live_started_at, viewers}` (poll du badge LIVE). |
 
-> ⚠️ `rtmps_key` n'est **jamais** exposée dans la vue publique, uniquement
+| `POST` | `/api/channels/me/live` | JWT | 60 / h / user | Bascule live manuelle (repli du polling). **403** si chaîne non provisionnée. |
+| `GET` | `/api/overlay/<token>` | jeton overlay | 120 / min / IP | Données des widgets OBS : `{slug, is_live, goal: {title, kind: subs\|tips, target, current} \| null}`. |
+| `GET` | `/api/channels/me/stream-health` | JWT | 30 / min | État du flux côté Bunny (`provider`, `mode`, `is_live`, `reachable`, `checked_at`). **403** si non provisionnée. |
+
+> ⚠️ `stream_key` n'est **jamais** exposée dans la vue publique, uniquement
 > dans `/api/channels/me`.
 
 ---
@@ -126,7 +130,7 @@ is_email_verified, date_joined`.
 ## Streamer (candidature) — `/api/streamer/`
 
 L'inscription est ouverte à tous, mais **streamer est gaté** : candidature →
-validation admin (panel) → provisioning Cloudflare à l'approbation. Quota
+validation admin (panel) → provisioning Bunny Stream à l'approbation. Quota
 quotidien d'approbations configurable (`STREAMER_DAILY_APPROVAL_QUOTA`, défaut 100).
 
 **Creator Application System** : la candidature est un formulaire détaillé
@@ -262,23 +266,70 @@ passent par un grand livre (`LedgerEntry`) atomique.
 
 | Flux | Commission | Sur qui ? | Quand |
 |------|------------|-----------|-------|
-| **Tip** | 30 % | Sur le créateur (split à la réception) | À chaque tip |
-| **Abonnement** | 30 % | Sur le créateur (split au prélèvement) | À chaque période payée |
+| **Tip** | 30 % | Sur le créateur (split à la réception) | À chaque tip (min. `TIP_MIN_AURA` = 10) |
+| **Abonnement** | 30 % | Sur le créateur (split au prélèvement) | À chaque période payée (prix verrouillé) |
 | **Achat d'Aura** | 1 % | **Streamer uniquement** (viewer = 0 %) | À la confirmation de l'achat |
+| **Retrait** | 3 % (frais de traitement) | Sur le montant retiré | Comptabilisé quand le retrait est **payé** |
 
-Les taux sont stockés dans `FeeRule` (admin-éditables) et seedés au déploiement
-(migration `payments/0008_seed_default_fees`). Un viewer n'est jamais prélevé.
+Les taux sont stockés dans `FeeRule` (**une seule règle active par produit**,
+admin-éditables) et seedés au déploiement (migration `payments/0008_seed_default_fees`).
+Chaque commission est tracée dans **`PlatformRevenue`** (même transaction que le flux).
+
+**Règles de sécurité** :
+- seule l'Aura **gagnée** (tips + abonnements reçus) est retirable ; l'Aura achetée
+  ou offerte (parrainage) ne se convertit jamais en argent ;
+- seules les chaînes **approuvées** (provisionnées) reçoivent tips et abonnements ;
+- providers **simulés** (fake, Wave/Orange Money sans clé) refusés hors dev, sauf
+  `PAYMENTS_ALLOW_FAKE=1` (démo assumée) ;
+- clés `Idempotency-Key` scopées **par utilisateur** (achat, tip, abonnement) ;
+- remboursement / litige Stripe → reprise de l'Aura ; si déjà dépensée, gel des
+  retraits (`Wallet.payout_hold`) + `RiskEvent` « chargeback » ;
+- `python manage.py reconcile_wallets` vérifie solde = somme du ledger.
 
 | Méthode | Chemin | Auth | Description |
 |---------|--------|------|-------------|
-| `GET` | `/api/payments/wallet` | JWT | `{aura_balance, balance:{xof,eur,usd}, unit_price_xof, recent:[ledger…]}`. |
-| `POST` | `/api/payments/purchase` | JWT | `{credits}` → achat. FAKE = crédité tout de suite ; Stripe → `{checkout_url}`. |
+| `GET` | `/api/payments/wallet` | JWT | `{aura_balance, unit_price_xof, payout_hold, recent:[ledger…]}`. |
+| `POST` | `/api/payments/purchase` | JWT | `{credits, method}` → achat. Simulé = crédité tout de suite ; Stripe → `{checkout_url}`. |
+| `GET` | `/api/payments/purchases/<id>` | JWT | Statut d'un achat (suivi du retour Stripe `?paid=1&purchase=<id>`). |
 | `POST` | `/api/payments/tip` | JWT | `{channel_slug, aura_amount, message?}` → débit envoyeur, crédit créateur (70 %). |
-| `POST` | `/api/payments/payout` | JWT | `{aura_amount}` → demande de retrait (débit + `Payout`). |
-| `POST` | `/api/payments/webhook/<provider>` | signature provider | Confirme un achat (idempotent) → crédite le wallet. |
+| `GET` | `/api/payments/withdrawal/eligibility` | JWT | `{is_streamer, withdrawable, fee_pct, min_aura, payout_hold}`. |
+| `POST` | `/api/payments/withdrawal/quote` | JWT | `{aura_amount}` → `{fee_aura, net_aura, net_fiat}` (calcul identique au retrait réel). |
+| `POST` | `/api/payments/withdrawal/start` | JWT | `{aura_amount, destination_provider: wave\|orange_money, destination_phone}` → OTP par **e-mail**. |
+| `POST` | `/api/payments/withdrawal/confirm` | JWT | `{code}` → crée le `Payout` (Aura brute mise en réserve). |
+| `GET` | `/api/payments/payouts` | JWT | Historique de mes retraits. |
+| `POST` | `/api/payments/webhook/<provider>` | signature provider | `paid` → crédit (une seule fois), `refunded`/`disputed` → reprise. **404** si provider inconnu. |
+| `POST` | `/api/admin/payouts/<id>/resolve` | admin | `{action: processing\|paid\|fail}` ; `fail` recrédite (`payout_reversal`). |
+
+> L'ancien `POST /api/payments/payout` (retrait sans contrôle) est **supprimé**.
 
 Réglages : `AURA_UNIT_PRICE_XOF`, `EUR_XOF_RATE`, `USD_XOF_RATE`, `CREATOR_SHARE`, `PAYMENTS_PROVIDER`,
-`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`.
+`PAYMENTS_ALLOW_FAKE`, `WITHDRAWAL_PROCESSING_FEE_PCT`, `WITHDRAWAL_MIN_AURA`, `TIP_MIN_AURA`,
+`SUB_TIER_MAX_AURA`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`.
+
+**Abonnements** : le prix est **verrouillé** à la souscription (`price_paid`) ; un
+réabonnement prolonge la période en cours ; l'annulation coupe le renouvellement
+mais garde l'accès jusqu'à la fin du mois payé (`POST …/resume` pour réactiver) ;
+un abonnement offert ne se renouvelle pas.
+
+---
+
+## Instant (vidéos courtes) — `/api/shorts/`
+
+Vidéos verticales ≤ 60 s publiées par les streamers approuvés, hébergées sur
+**Bunny Stream** (VOD). Upload **direct navigateur → Bunny** (TUS signé), puis le
+webhook Bunny (`/api/webhooks/bunny/stream`, statut 3 = prête, 5 = échec) publie
+la vidéo. En mode FAKE, la vidéo est publiée tout de suite avec un clip de démo.
+
+| Méthode | Chemin | Auth | Description |
+|---------|--------|------|-------------|
+| `GET` | `/api/shorts/trending?limit&offset` | — | Fil public classé par popularité amortie par l'âge (`(vues + 5·likes + 1) / (âge_h + 2)^1.5`), suivis ou non. `liked` si connecté. |
+| `GET` | `/api/shorts/<id>` | — | Détail d'une vidéo visible. |
+| `POST` | `/api/shorts/<id>/view` | — (240/h/IP) | +1 vue, dédoublonnée 6 h par spectateur (Redis). |
+| `POST`/`DELETE` | `/api/shorts/<id>/like` | JWT | Aimer / ne plus aimer (idempotent) → `{liked, like_count}`. |
+| `GET` | `/api/channels/<slug>/shorts` | — | Vidéos Instant d'une chaîne. |
+| `GET`/`POST` | `/api/shorts/me` | JWT streamer | Mes vidéos (tous statuts) / démarrer un upload `{title}` → `{short, upload: {mode: "tus", endpoint, library_id, video_id, expires, signature} \| {mode: "fake"}}`. Max 5 envois en cours. |
+| `POST` | `/api/shorts/me/<id>/uploaded` | JWT | Fin de l'envoi TUS → statut « encodage ». |
+| `DELETE` | `/api/shorts/me/<id>` | JWT | Supprime la vidéo (et le fichier Bunny). |
 
 ---
 
@@ -299,11 +350,11 @@ si non configuré → URL `fake.local`).
 
 | Méthode | Chemin | Sécurité | Description |
 |---------|--------|----------|-------------|
-| `POST` | `/api/webhooks/cloudflare/stream` | HMAC-SHA256 | Événements Cloudflare Stream (`live_input.connected/disconnected`) → bascule `is_live`. |
+| `POST` | `/api/webhooks/bunny/stream` | HMAC-SHA256 | Événements Bunny Stream : statut d'encodage des vidéos « Instant » (`VideoGuid`, `Status` 3 = prête, 5 = échec) ; événements live éventuels (`LiveStreamId`, `State`) → bascule `is_live`. |
 
-**Signature** : en-tête `Webhook-Signature: time=<unix>,sig1=<hmac_sha256>`,
-vérifiée avec `CLOUDFLARE_WEBHOOK_SECRET`. Tolérance de fraîcheur
-`WEBHOOK_TIMESTAMP_TOLERANCE_SECONDS` (300 s par défaut) → anti-rejeu.
+**Signature** : en-tête `X-BunnyStream-Signature` = HMAC-SHA256 hex du corps
+brut, clé `BUNNY_STREAM_WEBHOOK_KEY`. L'état live est par ailleurs synchronisé
+par polling (Celery beat `sync_live_status`, cf. [ADR 010](adr/010-bunny-stream.md)).
 
 ---
 
@@ -325,7 +376,7 @@ vérifiée avec `CLOUDFLARE_WEBHOOK_SECRET`. Tolérance de fraîcheur
 ├── discover/{live,categories,categories/<slug>,search}   GET
 ├── follows/{me,<username>,<username>/status}
 ├── c/<slug>/chat/history            GET
-└── webhooks/cloudflare/stream       POST
+└── webhooks/bunny/stream            POST
 
 WebSocket
 └── ws/c/<slug>/chat                 (?token=<JWT>)
@@ -338,10 +389,11 @@ WebSocket
 
 ```
 /api/
-├── auth/register                    POST  (+ champs `invite` optionnel, `terms_accepted` requis)
+├── auth/register                    POST  (+ `password_confirm`, `date_of_birth` 18+, `terms_accepted`, `invite` optionnel)
 ├── uploads/{avatar,banner,game/<slug>}      POST  (multipart → Cloudflare R2)
 ├── payments/
-│   ├── wallet · purchase · tip · payout
+│   ├── wallet · purchase · purchases/<id> · tip · payouts
+│   ├── withdrawal/{eligibility,quote,start,confirm}
 │   └── history                      GET   (ledger paginé)
 ├── channels/<slug>/tier             GET   (palier public)
 ├── streamer/tier                    GET, PUT
@@ -350,7 +402,8 @@ WebSocket
 ├── subscriptions/gift               POST  (offrir un abo : `{channel_slug, recipient}`)
 ├── subscriptions/gifted             GET   (abos que j'ai offerts)
 ├── subscriptions/<slug>/status      GET
-├── subscriptions/<slug>             DELETE
+├── subscriptions/<slug>/resume      POST  (réactive le renouvellement)
+├── subscriptions/<slug>             DELETE (annule le renouvellement, accès conservé)
 ├── analytics/me/revenue             GET   (revenus créateur jour/semaine/mois)
 ├── achievements                     GET   (mon catalogue + débloqués, champs name/criteria/icon/icon_url)
 ├── achievements/<username>          GET   (public — succès débloqués d'un profil + total)

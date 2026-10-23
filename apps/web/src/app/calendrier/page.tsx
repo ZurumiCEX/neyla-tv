@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { apiFetch } from "@/lib/api";
 import { useT } from "@/lib/i18n";
+import { useFormat } from "@/lib/use-format";
 
 type PlatformEvent = {
   slug: string;
@@ -26,6 +27,7 @@ const KIND_COLORS: Record<string, string> = {
 
 export default function CalendrierPage() {
   const t = useT();
+  const { tag } = useFormat();
   const [events, setEvents] = useState<PlatformEvent[]>([]);
   const [kind, setKind] = useState<string>("");
   const [busy, setBusy] = useState(true);
@@ -74,16 +76,27 @@ export default function CalendrierPage() {
               >
                 <span
                   className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-lg"
-                  style={{ background: `${KIND_COLORS[e.kind] ?? "#666"}33`, color: KIND_COLORS[e.kind] }}
+                  style={{
+                    background: `${KIND_COLORS[e.kind] ?? "#666"}33`,
+                    color: KIND_COLORS[e.kind],
+                  }}
                   aria-hidden
                 >
-                  {{ charity: "❤", tournament: "🏆", premiere: "🎬", announcement: "📣", maintenance: "⚙" }[e.kind]}
+                  {
+                    {
+                      charity: "❤",
+                      tournament: "🏆",
+                      premiere: "🎬",
+                      announcement: "📣",
+                      maintenance: "⚙",
+                    }[e.kind]
+                  }
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold text-neutral-100">{e.title}</p>
                   <p className="text-xs text-neutral-500">
                     {t(`events.kind.${e.kind}`)} ·{" "}
-                    {new Date(e.starts_at).toLocaleString("fr-FR", {
+                    {new Date(e.starts_at).toLocaleString(tag, {
                       dateStyle: "medium",
                       timeStyle: "short",
                     })}

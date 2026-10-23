@@ -3,10 +3,14 @@
 Le checkout utilise le SDK Stripe ; la vérification du webhook est faite à la
 main (HMAC-SHA256, schéma `Stripe-Signature`) — sans dépendance réseau, donc
 testable hors-ligne et robuste même si le SDK évolue.
+
+⚠️ Le FCFA (XOF/XAF) est une devise **sans décimale** chez Stripe : le montant
+s'envoie tel quel (500 FCFA → 500), pas ×100.
 """
 
 from __future__ import annotations
 
+import decimal
 import hashlib
 import hmac
 import json
@@ -21,6 +25,36 @@ logger = logging.getLogger(__name__)
 
 # Tolérance anti-rejeu sur l'horodatage de la signature (secondes).
 SIGNATURE_TOLERANCE_S = 300
+
+# Devises sans subdivision chez Stripe (extrait pertinent pour la zone FCFA).
+ZERO_DECIMAL_CURRENCIES = frozenset(
+    {
+        "xof",
+        "xaf",
+        "bif",
+        "clp",
+        "djf",
+        "gnf",
+        "jpy",
+        "kmf",
+        "krw",
+        "mga",
+        "pyg",
+        "rwf",
+        "ugx",
+        "vnd",
+        "vuv",
+        "xpf",
+    }
+)
+
+
+def stripe_amount(amount: decimal.Decimal | int | str, currency: str) -> int:
+    """Montant en plus petite unité Stripe pour la devise donnée."""
+    value = decimal.Decimal(str(amount))
+    if currency.lower() in ZERO_DECIMAL_CURRENCIES:
+        return int(value.quantize(decimal.Decimal("1")))
+    return int((value * 100).quantize(decimal.Decimal("1")))
 
 
 class StripeProvider(PaymentProvider):
@@ -37,13 +71,13 @@ class StripeProvider(PaymentProvider):
                     "price_data": {
                         "currency": purchase.currency.lower(),
                         "product_data": {"name": f"{purchase.credits} Aura"},
-                        "unit_amount": int(purchase.fiat_amount * 100),
+                        "unit_amount": stripe_amount(purchase.fiat_amount, purchase.currency),
                     },
                     "quantity": 1,
                 }
             ],
-            success_url=f"{settings.FRONTEND_URL}/wallet?paid=1",
-            cancel_url=f"{settings.FRONTEND_URL}/wallet?canceled=1",
+            success_url=f"{settings.FRONTEND_URL}/wallet?paid=1&purchase={purchase.id}",
+            cancel_url=f"{settings.FRONTEND_URL}/wallet?canceled=1&purchase={purchase.id}",
             metadata={"purchase_id": str(purchase.id)},
         )
         return {"provider_ref": session.id, "checkout_url": session.url, "auto_confirm": False}
@@ -62,11 +96,25 @@ class StripeProvider(PaymentProvider):
             event = json.loads(body.decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError):
             return None
-        if event.get("type") == "checkout.session.completed":
-            obj = (event.get("data") or {}).get("object") or {}
+        etype = event.get("type")
+        obj = (event.get("data") or {}).get("object") or {}
+        if etype == "checkout.session.completed":
+            if obj.get("payment_status") not in (None, "paid"):
+                # Paiement asynchrone non encore encaissé : on attend.
+                return {"event": "ignored"}
             meta = obj.get("metadata") or {}
-            return {"purchase_id": meta.get("purchase_id")}
-        return None
+            return {
+                "event": "paid",
+                "purchase_id": meta.get("purchase_id"),
+                "payment_ref": obj.get("payment_intent") or "",
+                "amount": obj.get("amount_total"),
+                "currency": (obj.get("currency") or "").lower(),
+            }
+        if etype == "charge.refunded":
+            return {"event": "refunded", "payment_ref": obj.get("payment_intent") or ""}
+        if etype == "charge.dispute.created":
+            return {"event": "disputed", "payment_ref": obj.get("payment_intent") or ""}
+        return {"event": "ignored"}
 
     @staticmethod
     def _verify_signature(payload: bytes, sig_header: str, secret: str) -> bool:

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { useT } from "@/lib/i18n";
+import { useFormat } from "@/lib/use-format";
 import { CopyButton } from "@/components/CopyButton";
 
 type Invite = {
@@ -27,6 +28,7 @@ type InvitesResp = { results: Invite[]; successful_invites: number; referral: Re
 export default function InvitePage() {
   const router = useRouter();
   const t = useT();
+  const { num } = useFormat();
   const { user, loading, authFetch } = useAuth();
   const [data, setData] = useState<InvitesResp | null>(null);
   const [maxUses, setMaxUses] = useState("1");
@@ -82,7 +84,7 @@ export default function InvitePage() {
         <div className="rounded-2xl border border-secondary/40 bg-secondary/10 p-4">
           <p className="text-xs uppercase tracking-wider text-neutral-500">{t("ref.earned")}</p>
           <p className="mt-1 text-2xl font-bold text-secondary-light">
-            {ref.aura_earned.toLocaleString("fr-FR")} <span className="text-sm">Aura</span>
+            {num(ref.aura_earned)} <span className="text-sm">Aura</span>
           </p>
         </div>
       </div>
@@ -174,9 +176,7 @@ export default function InvitePage() {
           );
         })}
       </ul>
-      {data.results.length === 0 && (
-        <p className="text-sm text-neutral-500">{t("invite.empty")}</p>
-      )}
+      {data.results.length === 0 && <p className="text-sm text-neutral-500">{t("invite.empty")}</p>}
     </main>
   );
 }

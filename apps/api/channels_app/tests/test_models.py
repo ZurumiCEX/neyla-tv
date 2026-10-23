@@ -17,15 +17,15 @@ def test_channel_created_on_user_signup():
 
 
 def test_channel_not_provisioned_at_signup():
-    """Le provisionnement Cloudflare est déclenché à l'approbation streamer,
+    """Le provisionnement Bunny Stream est déclenché à l'approbation streamer,
     pas à l'inscription : une Channel fraîche est créée NON provisionnée."""
     user = UserFactory(username="streamer2")
     channel = Channel.objects.get(user=user)
     assert not channel.is_provisioned
-    assert channel.live_input_uid == ""
-    assert channel.rtmps_url == ""
-    assert channel.rtmps_key == ""
-    assert channel.hls_playback_url == ""
+    assert channel.stream_id == ""
+    assert channel.ingest_url == ""
+    assert channel.stream_key == ""
+    assert channel.playback_url == ""
 
 
 def test_no_duplicate_channel_on_user_update():

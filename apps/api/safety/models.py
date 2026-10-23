@@ -17,6 +17,7 @@ class RiskEvent(models.Model):
         VIEW_INFLATION = "view_inflation", "Gonflage de vues"
         SUB_ABUSE = "sub_abuse", "Abus d'abonnement"
         CHAT_BOT = "chat_bot", "Bot de chat"
+        CHARGEBACK = "chargeback", "Rétrofacturation / litige"
 
     class Severity(models.IntegerChoices):
         LOW = 1, "Faible"

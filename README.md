@@ -4,12 +4,12 @@
 
 **Plateforme de streaming jeux vidéo — type Twitch / Kick.**
 
-REST + WebSocket, ingest RTMPS → HLS, chat temps réel, découverte & social.
+REST + WebSocket, ingest RTMP → HLS (Bunny Stream), chat temps réel, découverte & social.
 
 [![CI](https://github.com/ZurumiCEX/neyla-tv/actions/workflows/ci.yml/badge.svg)](https://github.com/ZurumiCEX/neyla-tv/actions/workflows/ci.yml)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Roadmap](https://img.shields.io/badge/roadmap-MVP%20%E2%9C%93-success)](ROADMAP.md)
-[![ADR](https://img.shields.io/badge/decisions-8%20ADR-informational)](docs/adr/)
+[![ADR](https://img.shields.io/badge/decisions-10%20ADR-informational)](docs/adr/)
 
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
 ![Django](https://img.shields.io/badge/Django-5.1-092E20?logo=django&logoColor=white)
@@ -33,7 +33,7 @@ REST + WebSocket, ingest RTMPS → HLS, chat temps réel, découverte & social.
 ## ✨ Fonctionnalités
 
 - 🔐 **Comptes & JWT** — inscription, login (access court + refresh cookie HttpOnly), vérif email, reset mot de passe.
-- 📡 **Ingest vidéo** — clé RTMPS par chaîne, lecture HLS, Cloudflare Stream (+ **mode FAKE** hors-ligne).
+- 📡 **Ingest vidéo** — clé RTMP par chaîne, lecture HLS, Bunny Stream (+ **mode FAKE** hors-ligne).
 - 🔴 **Statut live** — badge LIVE quasi temps réel + webhook Cloudflare signé (HMAC, anti-rejeu).
 - 💬 **Chat temps réel** — WebSocket (Channels + Redis), slow-mode, modération (`/ban`, `/timeout`, `/slowmode`).
 - 🔎 **Découverte & social** — lives, catégories, recherche, follow / unfollow.
@@ -48,7 +48,7 @@ Navigateur ─HTTP─▶│  web (Next.js 15)   ──/──                   
            ─WSS──▶│  api (Channels)     ──/ws──   ◀────▶│── Redis 7 (chat, layer, │
                   │  worker · beat (Celery)             │              Celery)    │
                   └──────────────────────────────────────────────────────────────┘
-OBS ─RTMPS─▶ Cloudflare Stream ─HLS─▶ Navigateur     Cloudflare ─webhook signé─▶ api
+OBS ─RTMP─▶ Bunny Stream ─HLS─▶ Navigateur     Celery beat ─polling─▶ Bunny
 ```
 
 Stack figée dans [`docs/adr/001-stack-mvp.md`](docs/adr/001-stack-mvp.md).
@@ -167,12 +167,14 @@ Postgres → Spaces. Détails : [`docs/adr/007-prod-deployment.md`](docs/adr/007
 
 1. [Stack MVP](docs/adr/001-stack-mvp.md)
 2. [Stratégie JWT](docs/adr/002-jwt-strategy.md)
-3. [Cloudflare Stream (+ mode FAKE)](docs/adr/003-cloudflare-stream.md)
+3. [Cloudflare Stream (remplacé par l'ADR 010)](docs/adr/003-cloudflare-stream.md)
 4. [Statut live (poll HTTP)](docs/adr/004-live-status-strategy.md)
 5. [Architecture chat](docs/adr/005-chat-architecture.md)
 6. [Découverte & social](docs/adr/006-discovery-and-social.md)
 7. [Déploiement Droplet](docs/adr/007-prod-deployment.md)
 8. [Déploiement App Platform](docs/adr/008-app-platform.md)
+9. [Réactivation du worker](docs/adr/009-worker-reenablement.md)
+10. [Bunny Stream, fournisseur vidéo unique](docs/adr/010-bunny-stream.md)
 
 </details>
 

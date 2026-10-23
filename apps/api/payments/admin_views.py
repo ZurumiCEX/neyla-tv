@@ -62,7 +62,7 @@ def resolve_payout(request: Request, pk: int) -> Response:
         return Response({"detail": "Retrait introuvable."}, status=status.HTTP_404_NOT_FOUND)
     action = (request.data.get("action") or "").strip()
     try:
-        services.resolve_payout(request.user, payout, action)
+        payout = services.resolve_payout(request.user, payout, action)
     except services.PaymentError as exc:
         return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
     return Response({"status": payout.status})

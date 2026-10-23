@@ -4,14 +4,7 @@
 // (cf. messages.ts). Locale persistée en localStorage (+ cookie pour cohérence
 // avec le rendu serveur). Pas de préfixe d'URL.
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 import { DICTS, LOCALES, type Locale, translate, type TParams } from "./messages";
 
@@ -50,6 +43,11 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem("locale", l);
     document.cookie = `locale=${l};path=/;max-age=31536000`;
   }, []);
+
+  // <html lang> suit la langue choisie (lecteurs d'écran, césure, SEO).
+  useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
 
   const t = useCallback(
     (key: string, params?: TParams) => translate(locale, key, params),

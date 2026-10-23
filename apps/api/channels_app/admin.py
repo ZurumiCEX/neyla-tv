@@ -67,10 +67,11 @@ class ChannelAdmin(admin.ModelAdmin):
     inlines = (StreamSessionInline,)
     readonly_fields = (
         "activity_summary",
-        "live_input_uid",
-        "rtmps_url",
-        "rtmps_key",
-        "hls_playback_url",
+        "stream_id",
+        "ingest_url",
+        "stream_key",
+        "playback_url",
+        "stream_checked_at",
         "created_at",
         "updated_at",
     )

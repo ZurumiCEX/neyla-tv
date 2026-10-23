@@ -49,3 +49,26 @@ html[data-theme="light"] .hover\:bg-neutral-800:hover,
 html[data-theme="light"] .hover\:bg-neutral-900:hover {
   background-color: #e5e7eb !important;
 }
+
+/* --- Compléments du thème clair --------------------------------------- */
+
+html[data-theme="light"] .text-neutral-600 { color: #6b7280 !important; }
+html[data-theme="light"] .bg-neutral-700 { background-color: #d1d5db !important; }
+html[data-theme="light"] [class*="bg-neutral-800\/"] { background-color: rgba(229, 231, 235, 0.8) !important; }
+html[data-theme="light"] [class*="border-neutral-800\/"],
+html[data-theme="light"] [class*="border-neutral-700\/"] { border-color: #e5e7eb !important; }
+html[data-theme="light"] .hover\:text-neutral-100:hover,
+html[data-theme="light"] .hover\:text-neutral-200:hover { color: #111827 !important; }
+html[data-theme="light"] .hover\:bg-neutral-700:hover { background-color: #d1d5db !important; }
+
+/* Doré lisible sur fond clair (le doré clair n'a pas assez de contraste). */
+html[data-theme="light"] .text-emerald-300,
+html[data-theme="light"] .text-emerald-400,
+html[data-theme="light"] .text-secondary-light,
+html[data-theme="light"] .text-amber-300 { color: #8a6700 !important; }
+html[data-theme="light"] .text-red-300 { color: #b91c1c !important; }
+html[data-theme="light"] .text-blue-300 { color: #1d4ed8 !important; }
+
+/* Les surcouches posées sur une vidéo / image gardent un texte clair. */
+html[data-theme="light"] .bg-black .text-neutral-300,
+html[data-theme="light"] [class*="from-black"] .text-neutral-300 { color: #e5e7eb !important; }

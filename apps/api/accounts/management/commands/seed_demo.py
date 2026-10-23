@@ -5,7 +5,7 @@
     python manage.py seed_demo --streamers 8 --viewers 30
 
 Idempotent : ré-exécutable sans doublon (clé = email @demo.neyla.tv / slug jeu).
-Tout est synchrone et hors-ligne (Cloudflare/paiements en mode FAKE).
+Tout est synchrone et hors-ligne (Bunny Stream/paiements en mode FAKE).
 Identifiants de connexion : <email démo> / DemoPass2026!
 """
 
@@ -28,25 +28,79 @@ STAFF = [
     ("moderator", "moderator", "Modo Démo"),
     ("support", "support", "Support Démo"),
 ]
+# (slug, nom, macro-catégorie) — couvre les 5 groupes de « Parcourir ».
 GAMES = [
-    ("just-chatting", "Just Chatting"),
-    ("valorant", "VALORANT"),
-    ("league-of-legends", "League of Legends"),
-    ("gta-v", "Grand Theft Auto V"),
-    ("minecraft", "Minecraft"),
-    ("fc-25", "EA Sports FC 25"),
-    ("elden-ring", "Elden Ring"),
-    ("counter-strike-2", "Counter-Strike 2"),
-    ("fortnite", "Fortnite"),
-    ("call-of-duty", "Call of Duty"),
-    ("dota-2", "Dota 2"),
-    ("street-fighter-6", "Street Fighter 6"),
-    ("the-finals", "THE FINALS"),
-    ("apex-legends", "Apex Legends"),
-    ("rocket-league", "Rocket League"),
-    ("world-of-warcraft", "World of Warcraft"),
+    ("just-chatting", "Just Chatting", "chatting"),
+    ("debats-actus", "Débats & Actus", "chatting"),
+    ("valorant", "VALORANT", "games"),
+    ("league-of-legends", "League of Legends", "games"),
+    ("fc-25", "EA Sports FC 25", "games"),
+    ("elden-ring", "Elden Ring", "games"),
+    ("minecraft", "Minecraft", "games"),
+    ("gta-v", "Grand Theft Auto V", "games"),
+    ("counter-strike-2", "Counter-Strike 2", "games"),
+    ("fortnite", "Fortnite", "games"),
+    ("call-of-duty", "Call of Duty", "games"),
+    ("dota-2", "Dota 2", "games"),
+    ("street-fighter-6", "Street Fighter 6", "games"),
+    ("apex-legends", "Apex Legends", "games"),
+    ("voyages", "Voyages & Découvertes", "irl"),
+    ("cuisine", "Cuisine africaine", "irl"),
+    ("sport-fitness", "Sport & Fitness", "irl"),
+    ("mode-beaute", "Mode & Beauté", "irl"),
+    ("musique-live", "Musique live", "music"),
+    ("dj-sets", "DJ Sets", "music"),
+    ("afrobeats", "Afrobeats & Coupé-décalé", "music"),
+    ("art-dessin", "Art & Dessin", "creative"),
+    ("design-graphique", "Design graphique", "creative"),
+    ("programmation", "Programmation", "creative"),
+]
+# Clips publics (CC0) servant de vidéos « Instant » de démonstration.
+SHORT_CLIPS = [
+    "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
+    "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/friday.mp4",
+]
+SHORT_TITLES = [
+    "Clutch 1v4 incroyable 🔥",
+    "Recette du thiéboudienne en 60 s",
+    "Le drop le plus fou de la soirée",
+    "Speedpaint d'un masque Dan",
+    "Ce but en FC 25… 😱",
+    "Balade au marché Sandaga",
+    "Freestyle afrobeats en live",
+    "Astuce Minecraft que personne ne connaît",
+    "Débat : le meilleur jollof ?",
+    "Mon setup stream à petit budget",
 ]
 BANNED = ["arnaque", "spam-link", "insulte1"]
+CHARITIES = [
+    (
+        "education-numerique",
+        "Éducation Numérique Afrique",
+        "SN",
+        "Soutien à l'accès au numérique dans les écoles ouest-africaines.",
+    ),
+    (
+        "sante-mentale-jeunes",
+        "Santé Mentale des Jeunes",
+        "CI",
+        "Programmes d'écoute et de prévention pour la jeunesse.",
+    ),
+    (
+        "environnement-sahel",
+        "Environnement Sahel",
+        "BF",
+        "Reforestation et lutte contre la désertification.",
+    ),
+]
+# Titre de live selon la macro-catégorie.
+TITLES = {
+    "games": "{name} — run du soir 🎮",
+    "chatting": "{name} : on refait le monde 💬",
+    "irl": "{name} en direct de Dakar 🌍",
+    "music": "{name} — session live 🎧",
+    "creative": "{name} : on crée ensemble 🎨",
+}
 # Images de démo : service de placeholder déterministe (rendu réaliste).
 IMG = "https://picsum.photos/seed"
 
@@ -82,6 +136,9 @@ class Command(BaseCommand):
         self._banned_words(admin)
         self._reports(streamers)
         self._charity(streamers, viewers)
+        self._shorts(streamers, viewers)
+        self._monetization_scenarios(streamers, viewers)
+        self._announcements_events()
         self.stdout.write(
             self.style.SUCCESS(
                 f"Seed OK : {len(streamers)} streamers, {len(viewers)} viewers. "
@@ -133,8 +190,23 @@ class Command(BaseCommand):
         return user
 
     def _flush(self):
+        """Purge TOUTES les données démo (pas seulement les comptes)."""
+        from announcements.models import SiteAnnouncement
+        from catalog.models import Game
+        from charity.models import Charity, CharityDisbursement, CharityEvent, PlatformEvent
+
         n, _ = User.objects.filter(email__endswith=DOMAIN).delete()
-        self.stdout.write(f"[flush] {n} objets démo supprimés.")
+        demo_events = CharityEvent.objects.filter(slug__startswith="charity-day-")
+        CharityDisbursement.objects.filter(event__in=demo_events).delete()
+        for event in demo_events:
+            event.donations.all().delete()
+        demo_events.delete()  # le signal supprime aussi les PlatformEvent miroirs
+        PlatformEvent.objects.filter(slug__startswith="demo-").delete()
+        SiteAnnouncement.objects.filter(title__startswith="[Démo]").delete()
+        Charity.objects.filter(slug__in=[c[0] for c in CHARITIES], donations__isnull=True).delete()
+        # Catégories démo non utilisées par une chaîne réelle.
+        Game.objects.filter(slug__in=[g[0] for g in GAMES], channels__isnull=True).delete()
+        self.stdout.write(f"[flush] {n} objets démo supprimés (comptes, événements, catégories).")
 
     def _staff(self):
         staff = {}
@@ -147,36 +219,36 @@ class Command(BaseCommand):
         return staff
 
     def _fees(self):
+        """Règles par défaut, seulement si le produit n'en a aucune active
+        (n'écrase jamais un taux modifié par l'admin, pas de doublon)."""
         from payments.models import FeeRule
 
-        FeeRule.objects.get_or_create(
-            product=FeeRule.Product.TIP,
-            mode=FeeRule.Mode.PERCENTAGE,
-            value=30,
-            defaults={"is_active": True},
-        )
-        FeeRule.objects.get_or_create(
-            product=FeeRule.Product.SUBSCRIPTION,
-            mode=FeeRule.Mode.PERCENTAGE,
-            value=30,
-            defaults={"is_active": True},
-        )
-        FeeRule.objects.get_or_create(
-            product=FeeRule.Product.PURCHASE,
-            mode=FeeRule.Mode.PERCENTAGE,
-            value=1,
-            defaults={"is_active": True},
-        )
+        for product, value in (
+            (FeeRule.Product.TIP, 30),
+            (FeeRule.Product.SUBSCRIPTION, 30),
+            (FeeRule.Product.PURCHASE, 1),
+        ):
+            if not FeeRule.objects.filter(product=product, is_active=True).exists():
+                FeeRule.objects.create(
+                    product=product, mode=FeeRule.Mode.PERCENTAGE, value=value, is_active=True
+                )
 
     def _games(self):
         from catalog.models import Game
 
         out = []
-        for slug, name in GAMES:
+        for slug, name, group in GAMES:
             g, _ = Game.objects.get_or_create(
                 slug=slug,
-                defaults={"name": name, "box_art_url": f"{IMG}/{slug}-box/320/440"},
+                defaults={
+                    "name": name,
+                    "group": group,
+                    "box_art_url": f"{IMG}/{slug}-box/320/440",
+                },
             )
+            if g.group != group:
+                g.group = group
+                g.save(update_fields=["group"])
             out.append(g)
         return out
 
@@ -185,6 +257,16 @@ class Command(BaseCommand):
         from streamers import services as streamer_services
         from streamers.services import AlreadyStreamerError
         from subscriptions import services as sub_services
+
+        # Tourniquet par macro-catégorie : chaque groupe a des chaînes en direct.
+        by_group: dict[str, list] = {}
+        for g in games:
+            by_group.setdefault(g.group, []).append(g)
+        rotation = []
+        while any(by_group.values()):
+            for group in list(by_group):
+                if by_group[group]:
+                    rotation.append(by_group[group].pop(0))
 
         streamers = []
         for i in range(count):
@@ -196,9 +278,14 @@ class Command(BaseCommand):
             except AlreadyStreamerError:
                 pass
             # Répartit les streamers sur toutes les catégories (couverture large).
-            game = games[i % len(games)]
+            game = rotation[i % len(rotation)]
             channel = Channel.objects.get(user=user)
-            channel.title = f"{game.name} — run du soir 🎮"
+            # Anciennes URLs factices (avant Bunny) : flux HLS de démo lisible.
+            if "fake.local" in channel.playback_url:
+                from channels_app.bunny import FAKE_HLS_URL
+
+                channel.playback_url = FAKE_HLS_URL
+            channel.title = TITLES.get(game.group, "{name} — live 🎮").format(name=game.name)
             channel.category = game
             channel.thumbnail_url = f"{IMG}/{handle}-th/640/360"
             channel.banner_url = f"{IMG}/{handle}-bn/1200/300"
@@ -306,18 +393,27 @@ class Command(BaseCommand):
                     follow_user(viewer, channel.slug)
                 except Exception:  # noqa: BLE001
                     pass
-            if pay.get_wallet(viewer).aura_balance < 100:
-                pay.create_purchase(viewer, 500)
+            # Les 10 premiers ont de quoi donner au Charity Day et offrir des abos.
+            target_balance = 2500 if i < 10 else 500
+            balance = pay.get_wallet(viewer).aura_balance
+            if balance < target_balance:
+                pay.create_purchase(viewer, target_balance - balance)
             target = random.choice(streamers)[1]
             try:
                 pay.send_tip(viewer, target.slug, random.choice([10, 20, 50]), "Bravo !")
             except PaymentError:
                 pass
-        # un payout depuis un streamer ayant reçu des tips
+        # un retrait (Wave) depuis un streamer ayant reçu des tips
         try:
             _user, channel = streamers[0]
-            if pay.get_wallet(channel.user).aura_balance >= 5:
-                pay.request_payout(channel.user, 5)
+            amount = pay.withdrawable_balance(channel.user)
+            if amount >= pay.withdrawal_min_aura():
+                pay.create_payout(
+                    channel.user,
+                    amount,
+                    destination_provider="wave",
+                    destination_phone="+221770000001",
+                )
         except Exception:  # noqa: BLE001
             pass
         return viewers
@@ -401,28 +497,8 @@ class Command(BaseCommand):
         from charity import services as charity_services
         from charity.models import Charity, CharityEvent
 
-        causes = [
-            (
-                "education-numerique",
-                "Éducation Numérique Afrique",
-                "SN",
-                "Soutien à l'accès au numérique dans les écoles ouest-africaines.",
-            ),
-            (
-                "sante-mentale-jeunes",
-                "Santé Mentale des Jeunes",
-                "CI",
-                "Programmes d'écoute et de prévention pour la jeunesse.",
-            ),
-            (
-                "environnement-sahel",
-                "Environnement Sahel",
-                "BF",
-                "Reforestation et lutte contre la désertification.",
-            ),
-        ]
         charities = []
-        for slug, name, country, desc in causes:
+        for slug, name, country, desc in CHARITIES:
             c, _ = Charity.objects.get_or_create(
                 slug=slug,
                 defaults={
@@ -444,7 +520,7 @@ class Command(BaseCommand):
                 "description_md": (
                     "**1 jour par mois, on stream pour une cause.**\n\n"
                     "Choisis ton association, fais ton don en Aura. "
-                    "100% des dons sont reversés."
+                    "Les montants reversés sont publiés ci-dessous, reçu à l'appui."
                 ),
                 "starts_at": now - timezone.timedelta(days=1),
                 "ends_at": now + timezone.timedelta(days=6),
@@ -476,7 +552,6 @@ class Command(BaseCommand):
             return
         import contextlib
 
-        donors = viewers[:8] + [s for _u, _c in [(None, None)] for s in []]
         donors = viewers[:8] + [u for u, _ch in streamers[:2]]
         amounts = [50, 25, 200, 75, 500, 30, 1200, 80, 300, 90]
         for donor, amount in zip(donors, amounts, strict=False):
@@ -490,3 +565,150 @@ class Command(BaseCommand):
                     message="bravo !",
                     is_anonymous=(amount > 1000),
                 )
+
+    def _shorts(self, streamers, viewers):
+        """~30 vidéos « Instant » prêtes, avec vues et likes réalistes."""
+        from shorts.models import Short, ShortLike
+
+        if not streamers:
+            return
+        now = timezone.now()
+        created = 0
+        for i in range(30):
+            user, channel = streamers[i % len(streamers)]
+            guid = f"demo-short-{channel.slug}-{i}"
+            short, was_created = Short.objects.get_or_create(
+                video_guid=guid,
+                defaults={
+                    "channel": channel,
+                    "title": SHORT_TITLES[i % len(SHORT_TITLES)],
+                    "status": Short.Status.READY,
+                    "playback_url": SHORT_CLIPS[i % len(SHORT_CLIPS)],
+                    "thumbnail_url": f"{IMG}/short-{i}/360/640",
+                    "duration_s": random.randint(8, 58),
+                    "view_count": random.randint(50, 25_000),
+                    "published_at": now - timezone.timedelta(hours=random.randint(1, 240)),
+                },
+            )
+            if was_created:
+                created += 1
+                for fan in random.sample(viewers, min(len(viewers), random.randint(0, 12))):
+                    ShortLike.objects.get_or_create(user=fan, short=short)
+                short.like_count = short.likes.count() + random.randint(0, 400)
+                short.save(update_fields=["like_count"])
+        self.stdout.write(f"[instant] {created} vidéos courtes créées.")
+
+    def _monetization_scenarios(self, streamers, viewers):
+        """Cas réalistes : abonnements offerts, renouvellement, achat en attente,
+        retrait Wave en cours, versement Charity Day."""
+        import contextlib
+
+        from charity.models import CharityDisbursement, CharityEvent
+        from payments import services as pay
+        from payments.models import Payout, Purchase
+        from subscriptions import services as sub_services
+        from subscriptions.models import Subscription
+
+        if len(streamers) < 2 or len(viewers) < 4:
+            return
+        # Abonnements offerts (sans renouvellement automatique).
+        for gifter, recipient in ((viewers[0], viewers[1]), (viewers[2], viewers[3])):
+            with contextlib.suppress(Exception):
+                sub_services.gift_subscription(gifter, streamers[1][1].slug, recipient.username)
+
+        # Un renouvellement mensuel au prix verrouillé.
+        due = (
+            Subscription.objects.filter(status=Subscription.Status.ACTIVE, auto_renew=True)
+            .exclude(subscriber__in=[viewers[1], viewers[3]])
+            .first()
+        )
+        if due is not None:
+            Subscription.objects.filter(pk=due.pk).update(current_period_end=timezone.now())
+            sub_services.process_due_subscriptions()
+
+        # Achat carte en attente de confirmation (retour Stripe non reçu).
+        if not Purchase.objects.filter(user=viewers[4 % len(viewers)], status="pending").exists():
+            Purchase.objects.create(
+                user=viewers[4 % len(viewers)],
+                credits=1000,
+                fiat_amount=pay._fiat_for(1000),
+                provider="stripe",
+                provider_ref="cs_demo_pending",
+            )
+
+        # Un mécène tippe généreusement streamer1, qui retire sur Wave
+        # (retrait « en cours de versement ») ; streamer3 achète de l'Aura (1 %).
+        admin = User.objects.filter(email=f"admin{DOMAIN}").first()
+        star, star_channel = streamers[0]
+        if not Payout.objects.filter(user=star).exists():
+            patron = viewers[5 % len(viewers)]
+            with contextlib.suppress(Exception):
+                pay.create_purchase(patron, 2500)
+                pay.send_tip(patron, star_channel.slug, 2000, "Pour la nouvelle webcam !")
+            amount = pay.withdrawable_balance(star)
+            if amount >= pay.withdrawal_min_aura():
+                with contextlib.suppress(Exception):
+                    payout = pay.create_payout(
+                        star,
+                        amount,
+                        destination_provider="wave",
+                        destination_phone="+221771234567",
+                    )
+                    if admin is not None:
+                        pay.resolve_payout(admin, payout, "processing")
+            with contextlib.suppress(Exception):
+                pay.create_purchase(streamers[2][0], 1000)
+
+        # Premier versement à une association (transparence Charity Day).
+        event = (
+            CharityEvent.objects.filter(slug__startswith="charity-day-")
+            .order_by("starts_at")
+            .first()
+        )
+        if event is not None and not event.disbursements.exists():
+            charity = event.beneficiaries.first()
+            if charity is not None and event.total_aura_cached:
+                aura = event.total_aura_cached // 2
+                CharityDisbursement.objects.create(
+                    event=event,
+                    charity=charity,
+                    aura_amount=aura,
+                    fiat_amount_xof=int(pay._fiat_for(aura)),
+                    reference="VIR-DEMO-0001",
+                    paid_at=timezone.localdate(),
+                )
+
+    def _announcements_events(self):
+        from announcements.models import SiteAnnouncement
+        from charity.models import PlatformEvent
+
+        now = timezone.now()
+        SiteAnnouncement.objects.get_or_create(
+            title="[Démo] Bienvenue sur Neyla TV",
+            defaults={
+                "body": "Découvre les vidéos Instant et soutiens tes streamers en Aura !",
+                "level": SiteAnnouncement.Level.INFO,
+                "display_mode": SiteAnnouncement.DisplayMode.TICKER,
+                "ends_at": now + timezone.timedelta(days=30),
+                "cta_label": "Voir Instant",
+                "cta_url": "https://neyla.tv/instant",
+            },
+        )
+        for slug, title, kind, delta_days in (
+            ("demo-tournoi-fc25", "Tournoi FC 25 — Coupe de Dakar", "tournament", 3),
+            ("demo-premiere-docu", "Première : « Créateurs du Sahel »", "premiere", 7),
+        ):
+            PlatformEvent.objects.get_or_create(
+                slug=slug,
+                defaults={
+                    "title": title,
+                    "kind": kind,
+                    "description_md": "Événement de démonstration.",
+                    "cover_url": f"{IMG}/{slug}/1200/300",
+                    "link_url": "https://neyla.tv/calendrier",
+                    "starts_at": now + timezone.timedelta(days=delta_days),
+                    "ends_at": now + timezone.timedelta(days=delta_days, hours=3),
+                    "is_published": True,
+                    "featured": True,
+                },
+            )

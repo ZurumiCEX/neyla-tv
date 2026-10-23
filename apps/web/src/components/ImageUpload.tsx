@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { useT } from "@/lib/i18n";
 
 export function ImageUpload({
   label,
@@ -14,6 +15,7 @@ export function ImageUpload({
   uploadPath: string;
   onUploaded: (url: string) => void;
 }) {
+  const t = useT();
   const { authUpload } = useAuth();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [busy, setBusy] = useState(false);
@@ -31,7 +33,7 @@ export function ImageUpload({
       onUploaded(res.url);
     } catch (err) {
       const ex = err as { data?: { errors?: { file?: string }; detail?: string } };
-      setError(ex.data?.errors?.file ?? ex.data?.detail ?? "Échec de l'upload.");
+      setError(ex.data?.errors?.file ?? ex.data?.detail ?? t("upload.error"));
     } finally {
       setBusy(false);
       if (inputRef.current) inputRef.current.value = "";

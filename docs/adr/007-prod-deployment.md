@@ -86,7 +86,7 @@ backups, un peu d'observabilité. Sans exploser le budget MVP (< 30 USD/mois).
   Limite `log-driver: json-file` + `max-size` à configurer en
   `daemon.json` au provisionnement (à inclure dans le runbook).
 - **Backups uniquement Postgres** : Redis (chat messages éphémères) et
-  les Live Inputs Cloudflare (gérés côté CF) ne sont pas backupés. C'est
+  les live streams et vidéos Bunny Stream (gérés côté Bunny) ne sont pas backupés. C'est
   voulu.
 
 ## Alternatives écartées

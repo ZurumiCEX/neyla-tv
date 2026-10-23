@@ -3,7 +3,7 @@ from __future__ import annotations
 from django.contrib import admin
 from django.utils.html import format_html
 
-from .models import Charity, CharityDonation, CharityEvent, PlatformEvent
+from .models import Charity, CharityDisbursement, CharityDonation, CharityEvent, PlatformEvent
 
 
 @admin.register(Charity)
@@ -92,3 +92,13 @@ class PlatformEventAdmin(admin.ModelAdmin):
     search_fields = ("title", "slug", "description_md")
     date_hierarchy = "starts_at"
     prepopulated_fields = {"slug": ("title",)}
+
+
+@admin.register(CharityDisbursement)
+class CharityDisbursementAdmin(admin.ModelAdmin):
+    """Versements réels aux associations (affichés publiquement sur /charity)."""
+
+    list_display = ("event", "charity", "aura_amount", "fiat_amount_xof", "reference", "paid_at")
+    list_filter = ("event", "charity", "paid_at")
+    search_fields = ("reference", "charity__name", "event__title")
+    date_hierarchy = "paid_at"

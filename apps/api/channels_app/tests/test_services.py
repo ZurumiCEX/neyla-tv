@@ -21,7 +21,7 @@ def test_new_user_channel_is_not_provisioned():
     """L'inscription crée une chaîne mais NE provisionne PAS (gating streamer)."""
     user = UserFactory()
     channel = Channel.objects.get(user=user)
-    assert channel.live_input_uid == ""
+    assert channel.stream_id == ""
     assert not channel.is_provisioned
 
 
@@ -29,22 +29,22 @@ def test_provision_is_idempotent():
     user = UserFactory()
     channel = Channel.objects.get(user=user)
     provision_channel(channel)
-    first_uid = channel.live_input_uid
+    first_uid = channel.stream_id
     assert first_uid  # provisionné
     provision_channel(channel)
-    assert channel.live_input_uid == first_uid
+    assert channel.stream_id == first_uid
 
 
 def test_rotate_key_changes_credentials():
     user = UserFactory()
     channel = Channel.objects.get(user=user)
     provision_channel(channel)
-    old_uid = channel.live_input_uid
-    old_key = channel.rtmps_key
+    old_uid = channel.stream_id
+    old_key = channel.stream_key
     rotate_stream_key(channel)
     channel.refresh_from_db()
-    assert channel.live_input_uid != old_uid
-    assert channel.rtmps_key != old_key
+    assert channel.stream_id != old_uid
+    assert channel.stream_key != old_key
 
 
 def test_mark_live_toggles_and_sets_timestamp():

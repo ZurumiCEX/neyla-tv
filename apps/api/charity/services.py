@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from django.db import transaction
-from django.db.models import Count, Sum
+from django.db.models import Count, F, Sum
 from django.utils import timezone
 
 from .models import Charity, CharityDonation, CharityEvent
@@ -47,7 +47,7 @@ def donate(
     Refuse : événement non publié / fermé, montant < floor, association inactive.
     """
     from payments.models import LedgerEntry
-    from payments.services import _apply, get_wallet
+    from payments.services import _apply, _lock_wallets
 
     event = CharityEvent.objects.select_for_update().filter(slug=event_slug.lower()).first()
     if event is None:
@@ -65,7 +65,9 @@ def donate(
     if aura_amount < event.floor_aura:
         raise CharityError(f"Le don minimum pour cet événement est de {event.floor_aura} Aura.")
 
-    wallet = get_wallet(user)
+    # Wallet verrouillé : un don concurrent d'un tip/retrait ne peut plus
+    # écraser le débit de l'autre (lost update).
+    wallet = _lock_wallets(user)[user.pk]
     _apply(
         wallet,
         -aura_amount,
@@ -85,7 +87,7 @@ def donate(
 
     # Mise à jour atomique du total caché (évite un recompte à chaque lecture).
     CharityEvent.objects.filter(pk=event.pk).update(
-        total_aura_cached=event.total_aura_cached + aura_amount
+        total_aura_cached=F("total_aura_cached") + aura_amount
     )
     return donation
 
@@ -113,19 +115,35 @@ def aggregates(event: CharityEvent, top: int = 10) -> dict:
                 "created_at": d.created_at,
             }
         )
+    disbursed = event.disbursements.aggregate(aura=Sum("aura_amount"), xof=Sum("fiat_amount_xof"))
+    total = int(summary["total"] or 0)
+    disbursed_aura = int(disbursed["aura"] or 0)
     return {
-        "total": int(summary["total"] or 0),
+        "total": total,
         "donor_count": int(summary["donor_count"] or 0),
         "by_charity": by_charity,
         "top_donors": leaderboard,
+        "disbursed_aura": disbursed_aura,
+        "disbursed_xof": int(disbursed["xof"] or 0),
+        "pending_aura": max(0, total - disbursed_aura),
+        "disbursements": [
+            {
+                "charity": d.charity.name,
+                "fiat_amount_xof": d.fiat_amount_xof,
+                "reference": d.reference,
+                "paid_at": d.paid_at,
+                "proof_url": d.proof_url,
+            }
+            for d in event.disbursements.select_related("charity")[:20]
+        ],
     }
 
 
 def _is_streamer(user) -> bool:
     """Marque visuelle dans le leaderboard (badge streamer)."""
-    from channels_app.models import Channel
+    from channels_app.utils import is_streamer
 
-    return Channel.objects.filter(user_id=user.id).exclude(live_input_uid="").exists()
+    return is_streamer(user)
 
 
 def streamer_compliance(user, event: CharityEvent) -> dict:

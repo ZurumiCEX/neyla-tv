@@ -38,10 +38,20 @@ class MySubscriptionSerializer(serializers.ModelSerializer):
     channel = serializers.SerializerMethodField()
     tier_name = serializers.SerializerMethodField()
     gifted_by = serializers.SerializerMethodField()
+    will_renew = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = Subscription
-        fields = ("channel", "tier_name", "status", "current_period_end", "gifted_by")
+        fields = (
+            "channel",
+            "tier_name",
+            "status",
+            "current_period_end",
+            "price_paid",
+            "cancel_at_period_end",
+            "will_renew",
+            "gifted_by",
+        )
         read_only_fields = fields
 
     def get_channel(self, obj):

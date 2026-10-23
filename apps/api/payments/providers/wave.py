@@ -16,6 +16,9 @@ from .base import PaymentProvider
 class WaveProvider(PaymentProvider):
     name = "wave"
 
+    def is_simulated(self) -> bool:
+        return not settings.WAVE_API_KEY
+
     def create_checkout(self, purchase) -> dict:
         if not settings.WAVE_API_KEY:
             return {

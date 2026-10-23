@@ -12,6 +12,8 @@ import { ChatPanel } from "@/components/ChatPanel";
 import { CollaborationManager } from "@/components/CollaborationManager";
 import { CopyButton } from "@/components/CopyButton";
 import { HlsPlayer } from "@/components/HlsPlayer";
+import { ShortsManager } from "@/components/ShortsManager";
+import { StreamToolkit } from "@/components/StreamToolkit";
 import { LiveBadge } from "@/components/LiveBadge";
 
 type TFn = (key: string, params?: Record<string, string | number>) => string;
@@ -22,9 +24,10 @@ type MyChannel = {
   slug: string;
   title: string;
   thumbnail_url: string;
-  rtmps_url: string;
-  rtmps_key: string;
-  hls_playback_url: string;
+  ingest_url: string;
+  stream_key: string;
+  playback_url: string;
+  stream_checked_at: string | null;
   is_live: boolean;
   is_provisioned: boolean;
   last_live_started_at: string | null;
@@ -32,6 +35,9 @@ type MyChannel = {
   tags: string[];
   overlay_token: string;
   collaborations_open: boolean;
+  goal_title: string;
+  goal_kind: "subs" | "tips";
+  goal_target: number;
   follower_count?: number;
   viewers?: number;
 };
@@ -74,6 +80,7 @@ type Tab =
   | "community"
   | "monetization"
   | "collaboration"
+  | "shorts"
   | "broadcast";
 
 function formatDuration(seconds: number | null, t: TFn): string {
@@ -267,6 +274,7 @@ export default function DashboardPage() {
   }
 
   async function rotate() {
+    if (!window.confirm(t("dash.rotateConfirm"))) return;
     setRotating(true);
     try {
       const data = await authFetch<MyChannel>("/api/channels/me/key/rotate", { method: "POST" });
@@ -321,6 +329,7 @@ export default function DashboardPage() {
     { id: "community", label: t("dash.tab.community") },
     { id: "monetization", label: t("dash.tab.monetization") },
     { id: "collaboration", label: t("dash.tab.collaboration") },
+    { id: "shorts", label: t("dash.tab.shorts") },
     { id: "broadcast", label: t("dash.tab.broadcast") },
   ];
 
@@ -417,9 +426,10 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_400px]">
               <section className="space-y-4">
                 <div className="overflow-hidden rounded-2xl border border-neutral-800 bg-black">
-                  {channel.is_provisioned && channel.hls_playback_url ? (
+                  {channel.is_provisioned && channel.playback_url ? (
                     <HlsPlayer
-                      src={channel.hls_playback_url}
+                      src={channel.playback_url}
+                      isLive={channel.is_live}
                       poster={channel.thumbnail_url}
                       className="aspect-video w-full"
                     />
@@ -537,7 +547,9 @@ export default function DashboardPage() {
                               ? t("dash.act.tip", { n: e.amount ?? 0 })
                               : t(`dash.act.${e.type}`)}
                           </span>
-                          {e.message ? <span className="text-neutral-500"> · {e.message}</span> : null}
+                          {e.message ? (
+                            <span className="text-neutral-500"> · {e.message}</span>
+                          ) : null}
                         </span>
                         <span className="shrink-0 text-xs text-neutral-600">
                           {new Date(e.created_at).toLocaleDateString("fr-FR", {
@@ -645,7 +657,9 @@ export default function DashboardPage() {
                   >
                     {tierSaving ? t("common.saving") : t("dash.subSave")}
                   </button>
-                  {tierSaved && <span className="text-sm text-secondary-light">{t("common.saved")}</span>}
+                  {tierSaved && (
+                    <span className="text-sm text-secondary-light">{t("common.saved")}</span>
+                  )}
                 </div>
               </section>
 
@@ -702,6 +716,16 @@ export default function DashboardPage() {
             </div>
           )}
 
+          {/* INSTANT */}
+          {tab === "shorts" &&
+            (channel.is_provisioned ? (
+              <ShortsManager />
+            ) : (
+              <p className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5 text-sm text-amber-300">
+                {t("shortsMgr.gated")}
+              </p>
+            ))}
+
           {/* DIFFUSION */}
           {tab === "broadcast" &&
             (channel.is_provisioned ? (
@@ -709,22 +733,22 @@ export default function DashboardPage() {
                 <Field label={t("dash.status")}>
                   <span className="text-emerald-300">{t("dash.approved")}</span>
                 </Field>
-                <Field label={t("dash.rtmpsServer")}>
+                <Field label={t("dash.rtmpServer")}>
                   <div className="flex items-center gap-2">
-                    <code className="break-all text-emerald-300">{channel.rtmps_url || "—"}</code>
-                    {channel.rtmps_url && <CopyButton value={channel.rtmps_url} />}
+                    <code className="break-all text-emerald-300">{channel.ingest_url || "—"}</code>
+                    {channel.ingest_url && <CopyButton value={channel.ingest_url} />}
                   </div>
                 </Field>
                 <Field label={t("dash.streamKey")}>
                   <div className="flex items-center gap-2">
                     <code className="break-all text-emerald-300">
-                      {channel.rtmps_key
+                      {channel.stream_key
                         ? revealKey
-                          ? channel.rtmps_key
-                          : "•".repeat(Math.min(channel.rtmps_key.length, 40))
+                          ? channel.stream_key
+                          : "•".repeat(Math.min(channel.stream_key.length, 40))
                         : "—"}
                     </code>
-                    {channel.rtmps_key && (
+                    {channel.stream_key && (
                       <>
                         <button
                           type="button"
@@ -733,13 +757,13 @@ export default function DashboardPage() {
                         >
                           {revealKey ? t("dash.hide") : t("dash.show")}
                         </button>
-                        <CopyButton value={channel.rtmps_key} />
+                        <CopyButton value={channel.stream_key} />
                       </>
                     )}
                   </div>
                 </Field>
                 <Field label={t("dash.hlsUrl")}>
-                  <code className="break-all text-neutral-300">{channel.hls_playback_url || "—"}</code>
+                  <code className="break-all text-neutral-300">{channel.playback_url || "—"}</code>
                 </Field>
                 <div className="rounded-xl border border-neutral-800 bg-neutral-900/40 p-4 text-sm text-neutral-300">
                   <p className="mb-2 font-semibold text-neutral-100">{t("dash.obsTitle")}</p>
@@ -809,6 +833,17 @@ export default function DashboardPage() {
                     </button>
                   </div>
                 </div>
+
+                <StreamToolkit
+                  overlayToken={channel.overlay_token}
+                  origin={origin}
+                  goal={{
+                    goal_title: channel.goal_title ?? "",
+                    goal_kind: channel.goal_kind ?? "subs",
+                    goal_target: channel.goal_target ?? 0,
+                  }}
+                  onGoalSaved={() => undefined}
+                />
               </section>
             ) : (
               <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">

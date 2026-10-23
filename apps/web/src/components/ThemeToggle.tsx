@@ -14,10 +14,10 @@ export function ThemeToggle() {
   const t = useT();
   const [theme, setTheme] = useState<Theme>("dark");
 
+  // Le script de <head> a déjà appliqué le thème (stocké, sinon préférence
+  // système) : on se contente de refléter l'état réel du document.
   useEffect(() => {
-    const stored = (localStorage.getItem(STORAGE_KEY) as Theme | null) ?? "dark";
-    setTheme(stored);
-    applyTheme(stored);
+    setTheme(document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark");
   }, []);
 
   function toggle() {

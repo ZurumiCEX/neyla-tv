@@ -7,7 +7,16 @@ from django.template.response import TemplateResponse
 
 from config.admin_widgets import stat_grid
 
-from .models import FeeRule, LedgerEntry, Payout, PayoutOtp, Purchase, Tip, Wallet
+from .models import (
+    FeeRule,
+    LedgerEntry,
+    Payout,
+    PayoutOtp,
+    PlatformRevenue,
+    Purchase,
+    Tip,
+    Wallet,
+)
 
 
 class AuraAdjustmentForm(forms.Form):
@@ -155,13 +164,39 @@ class TipAdmin(admin.ModelAdmin):
 
 @admin.register(Payout)
 class PayoutAdmin(admin.ModelAdmin):
-    list_display = ("user", "aura_amount", "fiat_amount", "status", "created_at")
-    list_filter = ("status", "created_at")
-    search_fields = ("user__username",)
+    list_display = (
+        "user",
+        "aura_amount",
+        "fee_aura",
+        "fiat_amount",
+        "destination_provider",
+        "destination_phone",
+        "status",
+        "created_at",
+    )
+    list_filter = ("status", "destination_provider", "created_at")
+    search_fields = ("user__username", "destination_phone")
     date_hierarchy = "created_at"
     list_select_related = ("user",)
     list_per_page = 50
-    actions = ("mark_paid", "mark_failed")
+    readonly_fields = (
+        "user",
+        "aura_amount",
+        "fee_aura",
+        "fiat_amount",
+        "currency",
+        "destination_provider",
+        "destination_phone",
+        "status",
+        "idempotency_key",
+        "created_at",
+        "resolved_at",
+    )
+    actions = ("mark_processing", "mark_paid", "mark_failed")
+
+    @admin.action(description="Marquer « versement en cours »")
+    def mark_processing(self, request, queryset):
+        self._resolve(request, queryset, "processing")
 
     @admin.action(description="Marquer comme payé")
     def mark_paid(self, request, queryset):
@@ -186,8 +221,36 @@ class PayoutAdmin(admin.ModelAdmin):
 
 @admin.register(PayoutOtp)
 class PayoutOtpAdmin(admin.ModelAdmin):
-    list_display = ("user", "aura_amount", "consumed", "created_at", "expires_at")
+    list_display = (
+        "user",
+        "aura_amount",
+        "destination_provider",
+        "consumed",
+        "created_at",
+        "expires_at",
+    )
     list_filter = ("consumed", "created_at")
     search_fields = ("user__username",)
     date_hierarchy = "created_at"
     readonly_fields = ("user", "aura_amount", "code_hash", "created_at", "expires_at")
+
+
+@admin.register(PlatformRevenue)
+class PlatformRevenueAdmin(admin.ModelAdmin):
+    """Commissions perçues (lecture seule : écrites par les services de paiement)."""
+
+    list_display = ("source", "amount_aura", "user", "related_type", "related_id", "created_at")
+    list_filter = ("source", "created_at")
+    search_fields = ("user__username",)
+    date_hierarchy = "created_at"
+    list_select_related = ("user",)
+    list_per_page = 100
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False

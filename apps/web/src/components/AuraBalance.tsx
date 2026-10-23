@@ -1,22 +1,30 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { useT } from "@/lib/i18n";
+import { useFormat } from "@/lib/use-format";
+import { onWalletChanged } from "@/lib/wallet-events";
 import { AuraBadge, auraTier } from "@/components/AuraBadge";
 
 export function AuraBalance() {
   const { user, loading, authFetch } = useAuth();
   const t = useT();
+  const { num } = useFormat();
   const [balance, setBalance] = useState<number | null>(null);
 
-  useEffect(() => {
-    if (loading || !user) return;
+  const refresh = useCallback(() => {
     authFetch<{ aura_balance: number }>("/api/payments/wallet")
       .then((d) => setBalance(d.aura_balance))
       .catch(() => setBalance(null));
-  }, [loading, user, authFetch]);
+  }, [authFetch]);
+
+  useEffect(() => {
+    if (loading || !user) return;
+    refresh();
+    return onWalletChanged(refresh);
+  }, [loading, user, refresh]);
 
   const tier = balance !== null ? auraTier(balance) : null;
 
@@ -29,7 +37,7 @@ export function AuraBalance() {
     >
       {tier ? <AuraBadge tier={tier} size={18} /> : <AuraIcon />}
       <span className="text-xs font-semibold tabular-nums">
-        {balance === null ? t("nav.aura") : balance.toLocaleString("fr-FR")}
+        {balance === null ? t("nav.aura") : num(balance)}
       </span>
     </Link>
   );
