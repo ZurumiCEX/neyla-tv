@@ -26,6 +26,15 @@ class Channel(models.Model):
     overlay_token = models.CharField(max_length=64, blank=True, db_index=True)
     # Ouvre/suspend la réception d'invitations de collaboration.
     collaborations_open = models.BooleanField(default=True)
+    # Objectif affiché par le widget OBS « barre d'objectif » (cible 0 = désactivé).
+    goal_title = models.CharField(max_length=80, blank=True)
+    goal_kind = models.CharField(
+        max_length=8,
+        choices=[("subs", "Nouveaux abonnés"), ("tips", "Aura reçue")],
+        default="subs",
+    )
+    goal_target = models.PositiveIntegerField(default=0)
+    goal_started_at = models.DateTimeField(null=True, blank=True)
     category = models.ForeignKey(
         "catalog.Game",
         null=True,

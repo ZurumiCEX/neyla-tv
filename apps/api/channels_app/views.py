@@ -275,6 +275,47 @@ def stream_health(request: Request) -> Response:
     return Response(payload)
 
 
+def goal_progress(channel: Channel) -> int:
+    """Progression de l'objectif depuis son lancement (abonnés ou Aura reçue)."""
+    since = channel.goal_started_at or channel.created_at
+    if channel.goal_kind == "tips":
+        from django.db.models import Sum
+
+        from payments.models import Tip
+
+        return int(
+            Tip.objects.filter(to_channel=channel, created_at__gte=since).aggregate(
+                s=Sum("aura_amount")
+            )["s"]
+            or 0
+        )
+    from subscriptions.models import Subscription
+
+    return Subscription.objects.filter(channel=channel, started_at__gte=since).count()
+
+
+@api_view(["GET"])
+@authentication_classes([])
+@permission_classes([AllowAny])
+@ratelimit(key="ip", rate="120/m", method="GET", block=True)
+def overlay_info(request: Request, token: str) -> Response:  # noqa: ARG001
+    """Données des widgets OBS (chat, objectif) : authentifié par le jeton overlay."""
+    channel = Channel.objects.filter(overlay_token=token).first() if token else None
+    if channel is None:
+        raise NotFound("Overlay introuvable.")
+    goal = None
+    if channel.goal_target > 0:
+        goal = {
+            "title": channel.goal_title,
+            "kind": channel.goal_kind,
+            "target": channel.goal_target,
+            "current": goal_progress(channel),
+        }
+    response = Response({"slug": channel.slug, "is_live": channel.is_live, "goal": goal})
+    response["Cache-Control"] = "no-store"
+    return response
+
+
 @api_view(["GET"])
 @authentication_classes([])
 @permission_classes([AllowAny])

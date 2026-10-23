@@ -76,3 +76,37 @@ def test_stream_health_requires_provisioning(auth_client_factory):
     data = client.get(reverse("channel-stream-health")).json()
     assert data["provider"] == "bunny"
     assert data["mode"] == "fake"
+
+
+def test_overlay_info_exposes_goal_progress(auth_client_factory, api_client):
+    from payments import services as pay
+
+    streamer = UserFactory()
+    channel = Channel.objects.get(user=streamer)
+    provision_channel(channel)
+    client = auth_client_factory(streamer)
+    data = client.get(reverse("channel-me")).json()
+    token = data["overlay_token"]
+    patched = client.patch(
+        reverse("channel-me"),
+        {"goal_title": "Nouvelle webcam", "goal_kind": "tips", "goal_target": 500},
+        format="json",
+    )
+    assert patched.status_code == 200
+    assert patched.json()["goal_started_at"] is not None
+
+    fan = UserFactory()
+    pay.create_purchase(fan, 200)
+    pay.send_tip(fan, channel.slug, 120)
+    info = api_client.get(reverse("overlay-info", kwargs={"token": token})).json()
+    assert info["slug"] == channel.slug
+    assert info["goal"] == {
+        "title": "Nouvelle webcam",
+        "kind": "tips",
+        "target": 500,
+        "current": 120,
+    }
+
+
+def test_overlay_info_unknown_token_404(api_client):
+    assert api_client.get(reverse("overlay-info", kwargs={"token": "nope"})).status_code == 404

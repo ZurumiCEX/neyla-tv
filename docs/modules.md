@@ -167,7 +167,9 @@ Chaque app est autonome : `models`, `views`, `serializers`, `services`,
 `HlsPlayer` (lecture HLS via hls.js), `ChatPanel` (WebSocket chat),
 `LiveBadge`, `LiveCard`, `FollowButton`, `Navbar`, `ProfileMenu`
 (menu utilisateur incl. **Revenus** [streamers] et **Abonnements**),
-`ShareButton` (partage live : copie de lien interne + X/Facebook/WhatsApp/
+`StreamToolkit` (dashboard Diffusion : test de connexion Bunny, réglages OBS
+par type de connexion, widgets OBS alertes / chat / objectif, édition de
+l'objectif), `ShortsManager` (upload Instant TUS), `ShareButton` (partage live : copie de lien interne + X/Facebook/WhatsApp/
 Telegram + Web Share API natif), `Footer` (4 colonnes incl. Légal + gros logo).
 
 ### Librairie — `src/lib/`

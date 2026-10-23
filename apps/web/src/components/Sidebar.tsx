@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { canAccessConsole, consoleHref } from "@/lib/admin-link";
 import { onFollowsChanged } from "@/lib/follow-events";
 import { useT } from "@/lib/i18n";
 import { useFormat } from "@/lib/use-format";
@@ -122,23 +123,17 @@ export function Sidebar() {
     },
   ];
 
-  const adminHref =
-    user?.role === "moderator"
-      ? "/console/reports"
-      : user?.role === "support"
-        ? "/console/messages"
-        : "/console/dashboard";
-  const admin: NavItemDef[] =
-    user && (["admin", "moderator", "support"].includes(user.role) || user.is_staff)
-      ? [
-          {
-            href: adminHref,
-            label: t("nav.admin"),
-            icon: <Icon path={ICONS.shield} />,
-            active: is("/console"),
-          },
-        ]
-      : [];
+  const adminHref = consoleHref(user);
+  const admin: NavItemDef[] = canAccessConsole(user)
+    ? [
+        {
+          href: adminHref,
+          label: t("nav.admin"),
+          icon: <Icon path={ICONS.shield} />,
+          active: is("/console"),
+        },
+      ]
+    : [];
 
   const sections: { label: string; items: NavItemDef[] }[] = [
     { label: t("side.section.menu"), items: menu },

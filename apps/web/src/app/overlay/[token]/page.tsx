@@ -4,6 +4,8 @@ import { use, useEffect, useRef, useState } from "react";
 import { DonationTierBadge } from "@/components/DonationTierBadge";
 import { donationTier } from "@/lib/donation-tiers";
 import { fmt } from "@/lib/format";
+import { useT } from "@/lib/i18n";
+import { useTransparentBody, wsBase } from "@/lib/overlay";
 
 type Alert = {
   kind: "follow" | "tip" | "subscribe" | "test";
@@ -12,17 +14,6 @@ type Alert = {
   ts: number;
 };
 
-const PUBLIC_API = process.env.NEXT_PUBLIC_API_URL ?? "";
-
-function wsBase(): string {
-  if (PUBLIC_API) return PUBLIC_API.replace(/^http/, "ws");
-  if (typeof window !== "undefined") {
-    const proto = window.location.protocol === "https:" ? "wss" : "ws";
-    return `${proto}://${window.location.host}`;
-  }
-  return "";
-}
-
 const ACCENTS: Record<Alert["kind"], string> = {
   follow: "#FFC81E",
   tip: "#3b82f6",
@@ -30,33 +21,29 @@ const ACCENTS: Record<Alert["kind"], string> = {
   test: "#f59e0b",
 };
 
-function headline(a: Alert): string {
+type TFn = (key: string, params?: Record<string, string | number>) => string;
+
+function headline(a: Alert, t: TFn): string {
   switch (a.kind) {
     case "tip":
-      return `${a.actor} a envoyé ${fmt(a.amount ?? 0)} Aura !`;
+      return t("overlay.tip", { actor: a.actor, n: fmt(a.amount ?? 0) });
     case "subscribe":
-      return `${a.actor} vient de s'abonner !`;
+      return t("overlay.subscribe", { actor: a.actor });
     case "test":
-      return `Alerte de test — ${a.actor}`;
+      return t("overlay.test", { actor: a.actor });
     default:
-      return `${a.actor} te suit !`;
+      return t("overlay.follow", { actor: a.actor });
   }
 }
 
 export default function OverlayPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
+  const t = useT();
   const [current, setCurrent] = useState<Alert | null>(null);
   const queue = useRef<Alert[]>([]);
   const showing = useRef(false);
 
-  // Fond transparent pour la capture OBS.
-  useEffect(() => {
-    const prev = document.body.style.background;
-    document.body.style.background = "transparent";
-    return () => {
-      document.body.style.background = prev;
-    };
-  }, []);
+  useTransparentBody();
 
   useEffect(() => {
     function next() {
@@ -108,14 +95,10 @@ export default function OverlayPage({ params }: { params: Promise<{ token: strin
             {current.kind === "tip"
               ? tipTier
                 ? tipTier.name
-                : "Tip"
-              : current.kind === "subscribe"
-                ? "Nouvel abonné"
-                : current.kind === "test"
-                  ? "Test"
-                  : "Nouveau follower"}
+                : t("overlay.label.tip")
+              : t(`overlay.label.${current.kind}`)}
           </p>
-          <p className="mt-1 text-2xl font-extrabold text-white">{headline(current)}</p>
+          <p className="mt-1 text-2xl font-extrabold text-white">{headline(current, t)}</p>
         </div>
       )}
       <style>{`@keyframes overlayIn{from{opacity:0;transform:translateY(-20px) scale(0.95)}to{opacity:1;transform:none}}`}</style>

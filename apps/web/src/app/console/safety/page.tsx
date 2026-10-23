@@ -27,10 +27,10 @@ type ContentFlag = {
 };
 type Overview = { open_risk_events: number; pending_flags: number; auto_blocked: number };
 
-const SEVERITY: Record<number, { label: string; cls: string }> = {
-  1: { label: "Faible", cls: "border-neutral-600 text-neutral-300" },
-  2: { label: "Moyen", cls: "border-amber-500/40 text-amber-300" },
-  3: { label: "Élevé", cls: "border-red-500/40 text-red-300" },
+const SEVERITY: Record<number, { key: string; cls: string }> = {
+  1: { key: "admin.severity.low", cls: "border-neutral-600 text-neutral-300" },
+  2: { key: "admin.severity.medium", cls: "border-amber-500/40 text-amber-300" },
+  3: { key: "admin.severity.high", cls: "border-red-500/40 text-red-300" },
 };
 
 export default function AdminSafetyPage() {
@@ -43,7 +43,9 @@ export default function AdminSafetyPage() {
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(() => {
-    authFetch<Overview>("/api/admin/safety/overview").then(setOverview).catch(() => undefined);
+    authFetch<Overview>("/api/admin/safety/overview")
+      .then(setOverview)
+      .catch(() => undefined);
     authFetch<{ results: ContentFlag[] }>("/api/admin/safety/flags")
       .then((d) => setFlags(d.results))
       .catch(() => setFlags([]));
@@ -209,7 +211,7 @@ export default function AdminSafetyPage() {
                           SEVERITY[r.severity]?.cls ?? ""
                         }`}
                       >
-                        {SEVERITY[r.severity]?.label ?? r.severity}
+                        {SEVERITY[r.severity] ? t(SEVERITY[r.severity].key) : r.severity}
                       </span>
                     </td>
                     <td className="px-4 py-2.5 font-mono text-xs text-neutral-500">

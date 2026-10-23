@@ -13,6 +13,7 @@ import { CollaborationManager } from "@/components/CollaborationManager";
 import { CopyButton } from "@/components/CopyButton";
 import { HlsPlayer } from "@/components/HlsPlayer";
 import { ShortsManager } from "@/components/ShortsManager";
+import { StreamToolkit } from "@/components/StreamToolkit";
 import { LiveBadge } from "@/components/LiveBadge";
 
 type TFn = (key: string, params?: Record<string, string | number>) => string;
@@ -34,6 +35,9 @@ type MyChannel = {
   tags: string[];
   overlay_token: string;
   collaborations_open: boolean;
+  goal_title: string;
+  goal_kind: "subs" | "tips";
+  goal_target: number;
   follower_count?: number;
   viewers?: number;
 };
@@ -543,7 +547,9 @@ export default function DashboardPage() {
                               ? t("dash.act.tip", { n: e.amount ?? 0 })
                               : t(`dash.act.${e.type}`)}
                           </span>
-                          {e.message ? <span className="text-neutral-500"> · {e.message}</span> : null}
+                          {e.message ? (
+                            <span className="text-neutral-500"> · {e.message}</span>
+                          ) : null}
                         </span>
                         <span className="shrink-0 text-xs text-neutral-600">
                           {new Date(e.created_at).toLocaleDateString("fr-FR", {
@@ -651,7 +657,9 @@ export default function DashboardPage() {
                   >
                     {tierSaving ? t("common.saving") : t("dash.subSave")}
                   </button>
-                  {tierSaved && <span className="text-sm text-secondary-light">{t("common.saved")}</span>}
+                  {tierSaved && (
+                    <span className="text-sm text-secondary-light">{t("common.saved")}</span>
+                  )}
                 </div>
               </section>
 
@@ -825,6 +833,17 @@ export default function DashboardPage() {
                     </button>
                   </div>
                 </div>
+
+                <StreamToolkit
+                  overlayToken={channel.overlay_token}
+                  origin={origin}
+                  goal={{
+                    goal_title: channel.goal_title ?? "",
+                    goal_kind: channel.goal_kind ?? "subs",
+                    goal_target: channel.goal_target ?? 0,
+                  }}
+                  onGoalSaved={() => undefined}
+                />
               </section>
             ) : (
               <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">

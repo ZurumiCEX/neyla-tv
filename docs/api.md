@@ -90,13 +90,14 @@ is_email_verified, date_joined`.
 | Méthode | Chemin | Auth | Rate-limit | Description |
 |---------|--------|------|-----------|-------------|
 | `GET` | `/api/channels/me` | JWT | — | Ma chaîne, **avec identifiants de stream** (`ingest_url`, `stream_key`, si provisionnée) + `follower_count`, `viewers`. |
-| `PATCH` | `/api/channels/me` | JWT | — | Met à jour `{title?, thumbnail_url?, banner_url?, social_links?, category_slug?}`. `social_links` : clés ∈ {twitter, youtube, instagram, tiktok, discord, website}. |
+| `PATCH` | `/api/channels/me` | JWT | — | Met à jour `{title?, thumbnail_url?, banner_url?, social_links?, category_slug?, goal_title?, goal_kind?, goal_target?}` (changer l'objectif remet sa progression à zéro). `social_links` : clés ∈ {twitter, youtube, instagram, tiktok, discord, website}. |
 | `GET` | `/api/channels/me/sessions` | JWT | `limit` (≤100, déf 50) | Historique des diffusions : `started_at`, `ended_at`, `duration_seconds`, `peak_viewers`, `category`. |
 | `POST` | `/api/channels/me/key/rotate` | JWT | 5 / j / user | Régénère la clé de stream. **403** si chaîne non provisionnée. |
 | `GET` | `/api/channels/<slug>` | — | — | Chaîne publique (sans secrets) : streamer (+ bio), bannière, réseaux sociaux, catégorie, HLS, statut. |
 | `GET` | `/api/channels/<slug>/status` | — | cache 5 s | `{is_live, last_live_started_at, viewers}` (poll du badge LIVE). |
 
 | `POST` | `/api/channels/me/live` | JWT | 60 / h / user | Bascule live manuelle (repli du polling). **403** si chaîne non provisionnée. |
+| `GET` | `/api/overlay/<token>` | jeton overlay | 120 / min / IP | Données des widgets OBS : `{slug, is_live, goal: {title, kind: subs\|tips, target, current} \| null}`. |
 | `GET` | `/api/channels/me/stream-health` | JWT | 30 / min | État du flux côté Bunny (`provider`, `mode`, `is_live`, `reachable`, `checked_at`). **403** si non provisionnée. |
 
 > ⚠️ `stream_key` n'est **jamais** exposée dans la vue publique, uniquement

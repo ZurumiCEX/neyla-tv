@@ -122,6 +122,23 @@ class MyChannelSerializer(serializers.ModelSerializer):
     def validate_tags(self, value):
         return _clean_tags(value)
 
+    def validate_goal_target(self, value: int) -> int:
+        if value > 1_000_000:
+            raise serializers.ValidationError("Objectif trop élevé.")
+        return value
+
+    def update(self, instance, validated_data):
+        # Nouvel objectif (type ou cible modifiés) : la progression repart de zéro.
+        goal_changed = any(
+            k in validated_data and validated_data[k] != getattr(instance, k)
+            for k in ("goal_kind", "goal_target")
+        )
+        if goal_changed:
+            from django.utils import timezone
+
+            validated_data["goal_started_at"] = timezone.now()
+        return super().update(instance, validated_data)
+
     class Meta:
         model = Channel
         fields = (
@@ -133,6 +150,10 @@ class MyChannelSerializer(serializers.ModelSerializer):
             "tags",
             "overlay_token",
             "collaborations_open",
+            "goal_title",
+            "goal_kind",
+            "goal_target",
+            "goal_started_at",
             "ingest_url",
             "stream_key",
             "playback_url",
@@ -146,6 +167,7 @@ class MyChannelSerializer(serializers.ModelSerializer):
         read_only_fields = (
             "slug",
             "overlay_token",
+            "goal_started_at",
             "ingest_url",
             "stream_key",
             "playback_url",

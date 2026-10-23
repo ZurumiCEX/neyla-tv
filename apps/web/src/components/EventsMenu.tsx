@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { apiFetch } from "@/lib/api";
 import { useT } from "@/lib/i18n";
+import { useFormat } from "@/lib/use-format";
 
 type PlatformEvent = {
   slug: string;
@@ -18,6 +19,7 @@ type PlatformEvent = {
 
 export function EventsMenu() {
   const t = useT();
+  const { tag } = useFormat();
   const [open, setOpen] = useState(false);
   const [events, setEvents] = useState<PlatformEvent[]>([]);
   const ref = useRef<HTMLDivElement | null>(null);
@@ -92,7 +94,7 @@ export function EventsMenu() {
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm text-neutral-100">{e.title}</span>
                     <span className="block truncate text-xs text-neutral-500">
-                      {t(`events.kind.${e.kind}`)} · {formatRelative(e.starts_at)}
+                      {t(`events.kind.${e.kind}`)} · {formatRelative(e.starts_at, tag, t)}
                     </span>
                   </span>
                   {e.is_ongoing && (
@@ -141,12 +143,16 @@ function kindIcon(kind: string): string {
   );
 }
 
-function formatRelative(iso: string): string {
+function formatRelative(
+  iso: string,
+  tag: string,
+  t: (k: string, p?: Record<string, string | number>) => string,
+): string {
   const d = new Date(iso);
   const now = Date.now();
   const diff = d.getTime() - now;
   const days = Math.round(diff / 86400000);
-  if (Math.abs(days) < 1) return d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-  if (days >= 0 && days < 7) return `dans ${days} j`;
-  return d.toLocaleDateString("fr-FR");
+  if (Math.abs(days) < 1) return d.toLocaleTimeString(tag, { hour: "2-digit", minute: "2-digit" });
+  if (days >= 0 && days < 7) return t("events.inDays", { n: days });
+  return d.toLocaleDateString(tag);
 }

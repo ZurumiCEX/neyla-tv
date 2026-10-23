@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useT } from "@/lib/i18n";
+import { useFormat } from "@/lib/use-format";
 
 export type LiveChannel = {
   slug: string;
@@ -16,6 +17,7 @@ export type LiveChannel = {
 
 export function LiveCard({ channel }: { channel: LiveChannel }) {
   const t = useT();
+  const { num } = useFormat();
   const display = channel.streamer.display_name || `@${channel.slug}`;
   const initial = display.replace(/^@/, "").charAt(0).toUpperCase();
 
@@ -46,7 +48,7 @@ export function LiveCard({ channel }: { channel: LiveChannel }) {
         {typeof channel.viewers === "number" && (
           <span className="absolute bottom-2 left-2 flex items-center gap-1 rounded bg-black/70 px-1.5 py-0.5 text-xs text-neutral-100">
             <span className="h-2 w-2 rounded-[1px] bg-secondary" />
-            {t("card.viewers", { n: channel.viewers.toLocaleString("fr-FR") })}
+            {t("card.viewers", { n: num(channel.viewers) })}
           </span>
         )}
       </Link>

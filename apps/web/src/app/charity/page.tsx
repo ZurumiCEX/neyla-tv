@@ -6,6 +6,7 @@ import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useT } from "@/lib/i18n";
 import { fmt, fmtAura } from "@/lib/format";
+import { useFormat } from "@/lib/use-format";
 import { notifyWalletChanged } from "@/lib/wallet-events";
 
 type Charity = {
@@ -150,11 +151,12 @@ function CharityEventView({
   isAuthed: boolean;
 }) {
   const t = useT();
+  const { date } = useFormat();
   const dateLabel = useMemo(() => {
     return event.is_open
-      ? t("charity.endsOn", { date: new Date(event.ends_at).toLocaleDateString("fr-FR") })
-      : t("charity.startsOn", { date: new Date(event.starts_at).toLocaleDateString("fr-FR") });
-  }, [event, t]);
+      ? t("charity.endsOn", { date: date(event.ends_at) })
+      : t("charity.startsOn", { date: date(event.starts_at) });
+  }, [event, t, date]);
 
   return (
     <>

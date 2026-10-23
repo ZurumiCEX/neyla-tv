@@ -2,13 +2,9 @@
 
 import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { useT } from "@/lib/i18n";
 
-const REASONS: [string, string][] = [
-  ["spam", "Spam"],
-  ["harassment", "Harcèlement"],
-  ["hate", "Haine / discrimination"],
-  ["other", "Autre"],
-];
+const REASONS = ["spam", "harassment", "hate", "other"] as const;
 
 export function ReportButton({
   channelSlug,
@@ -17,6 +13,7 @@ export function ReportButton({
   channelSlug: string;
   targetUsername: string;
 }) {
+  const t = useT();
   const { user, authFetch } = useAuth();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("spam");
@@ -25,7 +22,7 @@ export function ReportButton({
   const [error, setError] = useState<string | null>(null);
 
   if (!user) return null;
-  if (done) return <span className="text-xs text-neutral-500">Signalé ✓</span>;
+  if (done) return <span className="text-xs text-neutral-500">{t("report.done")}</span>;
 
   async function submit() {
     setError(null);
@@ -42,7 +39,7 @@ export function ReportButton({
       setDone(true);
       setOpen(false);
     } catch {
-      setError("Échec du signalement.");
+      setError(t("report.error"));
     }
   }
 
@@ -53,7 +50,7 @@ export function ReportButton({
         onClick={() => setOpen((o) => !o)}
         className="rounded-md border border-neutral-700 px-2 py-1 text-xs text-neutral-400 hover:border-neutral-500 hover:text-neutral-200"
       >
-        Signaler
+        {t("report.button")}
       </button>
       {open && (
         <div className="absolute right-0 z-50 mt-2 w-64 space-y-2 rounded-xl border border-neutral-800 bg-neutral-900 p-3 shadow-xl">
@@ -62,16 +59,16 @@ export function ReportButton({
             onChange={(e) => setReason(e.target.value)}
             className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm text-neutral-100 outline-none focus:border-secondary-light"
           >
-            {REASONS.map(([v, l]) => (
+            {REASONS.map((v) => (
               <option key={v} value={v}>
-                {l}
+                {t(`report.reason.${v}`)}
               </option>
             ))}
           </select>
           <textarea
             value={details}
             onChange={(e) => setDetails(e.target.value)}
-            placeholder="Détails (optionnel)"
+            placeholder={t("report.details")}
             rows={2}
             maxLength={1000}
             className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm text-neutral-100 outline-none focus:border-secondary-light"
@@ -82,7 +79,7 @@ export function ReportButton({
             onClick={submit}
             className="w-full rounded-lg bg-red-500/90 px-3 py-1.5 text-sm font-semibold text-neutral-950 hover:bg-red-400"
           >
-            Envoyer le signalement
+            {t("report.submit")}
           </button>
         </div>
       )}

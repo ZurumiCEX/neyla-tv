@@ -7,18 +7,20 @@ import { AppShell } from "@/components/AppShell";
 
 export const metadata: Metadata = {
   title: "Neyla TV",
-  description: "Plateforme de streaming jeux vidéo (MVP)",
+  description:
+    "Neyla TV — streaming en direct et vidéos Instant pour les créateurs d'Afrique de l'Ouest francophone. Soutiens tes streamers en Aura.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr">
+    // Le script de <head> ajuste data-theme / lang avant hydratation.
+    <html lang="fr" suppressHydrationWarning>
       <head>
         {/* Évite le FOUC : applique le thème stocké avant l'hydratation React. */}
         <script
           dangerouslySetInnerHTML={{
             __html:
-              "try{var t=localStorage.getItem('neyla:theme');document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');}catch(_){document.documentElement.setAttribute('data-theme','dark');}",
+              "try{var t=localStorage.getItem('neyla:theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'}document.documentElement.setAttribute('data-theme',t);var l=localStorage.getItem('locale');if(l)document.documentElement.lang=l;}catch(_){document.documentElement.setAttribute('data-theme','dark');}",
           }}
         />
       </head>

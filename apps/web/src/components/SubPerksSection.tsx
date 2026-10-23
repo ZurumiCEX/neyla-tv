@@ -105,6 +105,7 @@ export function SubPerksSection({
 }
 
 function BadgePreview({ url }: { url: string }) {
+  const t = useT();
   if (url && /^https?:\/\//.test(url)) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
@@ -118,7 +119,7 @@ function BadgePreview({ url }: { url: string }) {
   // Badge par défaut : étoile dorée sur disque violet (charte).
   return (
     <span
-      title="Badge par défaut"
+      title={t("perks.defaultBadge")}
       className="flex h-14 w-14 items-center justify-center rounded-lg border border-neutral-800 bg-secondary/30"
     >
       <svg viewBox="0 0 24 24" width="32" height="32" aria-hidden>
@@ -143,6 +144,7 @@ const DEFAULT_STICKERS: { key: string }[] = [
 ];
 
 function DefaultSticker({ kind }: { kind: string }) {
+  const t = useT();
   const map: Record<string, string> = {
     heart: "❤️",
     fire: "🔥",
@@ -153,7 +155,7 @@ function DefaultSticker({ kind }: { kind: string }) {
   };
   return (
     <span
-      title="Sticker par défaut"
+      title={t("perks.defaultSticker")}
       className="flex h-12 w-12 items-center justify-center rounded-lg border border-neutral-800 bg-neutral-900 text-2xl"
       aria-hidden
     >
