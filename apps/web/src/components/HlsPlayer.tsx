@@ -118,7 +118,11 @@ export function HlsPlayer({
       >
         {poster && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={poster} alt="" className="absolute inset-0 h-full w-full object-cover opacity-25" />
+          <img
+            src={poster}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover opacity-25"
+          />
         )}
         <div className="relative px-6">
           <p className="text-lg font-semibold text-neutral-100">{t("player.offline")}</p>

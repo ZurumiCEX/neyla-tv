@@ -141,3 +141,27 @@ class CharityDonation(models.Model):
 
     def __str__(self) -> str:  # pragma: no cover
         return f"{self.donor_id}->{self.charity_id}:{self.aura_amount}"
+
+
+class CharityDisbursement(models.Model):
+    """Versement réel d'une association pour un événement (preuve de reversement).
+
+    Les dons sont collectés en Aura ; l'admin enregistre ici chaque virement
+    effectué (montant FCFA, référence bancaire / mobile money) pour que la page
+    publique affiche « versé » vs « en attente » en toute transparence.
+    """
+
+    event = models.ForeignKey(CharityEvent, on_delete=models.PROTECT, related_name="disbursements")
+    charity = models.ForeignKey(Charity, on_delete=models.PROTECT, related_name="disbursements")
+    aura_amount = models.PositiveIntegerField(help_text="Aura couverts par ce versement.")
+    fiat_amount_xof = models.PositiveIntegerField(help_text="Montant versé en FCFA.")
+    reference = models.CharField(max_length=120, help_text="Référence du virement / reçu.")
+    paid_at = models.DateField()
+    proof_url = models.URLField(blank=True, help_text="Reçu ou attestation (optionnel).")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-paid_at", "-created_at"]
+
+    def __str__(self) -> str:  # pragma: no cover
+        return f"versement:{self.charity_id}:{self.fiat_amount_xof} XOF"

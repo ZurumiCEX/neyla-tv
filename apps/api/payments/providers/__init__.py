@@ -40,8 +40,17 @@ def get_provider_name() -> str:
     return name if name in _REGISTRY else "fake"
 
 
+def is_known_provider(name: str) -> bool:
+    return name in _REGISTRY
+
+
 def get_provider(name: str | None = None) -> PaymentProvider:
     return _REGISTRY[name or get_provider_name()]()
+
+
+def simulated_payments_allowed() -> bool:
+    """Les providers simulés ne sont autorisés qu'en dev ou démo explicite."""
+    return bool(getattr(settings, "PAYMENTS_ALLOW_FAKE", False))
 
 
 __all__ = [
@@ -49,5 +58,7 @@ __all__ = [
     "PaymentProvider",
     "get_provider",
     "get_provider_name",
+    "is_known_provider",
     "method_to_provider",
+    "simulated_payments_allowed",
 ]

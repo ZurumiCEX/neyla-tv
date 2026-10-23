@@ -313,11 +313,17 @@ class Command(BaseCommand):
                 pay.send_tip(viewer, target.slug, random.choice([10, 20, 50]), "Bravo !")
             except PaymentError:
                 pass
-        # un payout depuis un streamer ayant reçu des tips
+        # un retrait (Wave) depuis un streamer ayant reçu des tips
         try:
             _user, channel = streamers[0]
-            if pay.get_wallet(channel.user).aura_balance >= 5:
-                pay.request_payout(channel.user, 5)
+            amount = pay.withdrawable_balance(channel.user)
+            if amount >= pay.withdrawal_min_aura():
+                pay.create_payout(
+                    channel.user,
+                    amount,
+                    destination_provider="wave",
+                    destination_phone="+221770000001",
+                )
         except Exception:  # noqa: BLE001
             pass
         return viewers

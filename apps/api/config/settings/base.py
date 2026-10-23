@@ -256,10 +256,19 @@ AURA_UNIT_PRICE_XOF = env("AURA_UNIT_PRICE_XOF", default="5")
 EUR_XOF_RATE = env("EUR_XOF_RATE", default="655.957")
 USD_XOF_RATE = env("USD_XOF_RATE", default="600")
 CREATOR_SHARE = env.float("CREATOR_SHARE", default=0.70)
-# Commission plateforme prélevée sur un retrait (part créateur = 1 - ce taux).
-WITHDRAWAL_FEE_PCT = env.float("WITHDRAWAL_FEE_PCT", default=0.30)
+# Frais de TRAITEMENT d'un retrait (coût mobile money), distincts de la
+# commission 30 % déjà prélevée sur les tips/abonnements : pas de double peine.
+WITHDRAWAL_PROCESSING_FEE_PCT = env.float("WITHDRAWAL_PROCESSING_FEE_PCT", default=0.03)
+# Retrait minimum (Aura) et tip minimum (Aura) : évite les micro-flux non rentables.
+WITHDRAWAL_MIN_AURA = env.int("WITHDRAWAL_MIN_AURA", default=1000)
+TIP_MIN_AURA = env.int("TIP_MIN_AURA", default=10)
+# Plafond de prix d'un palier d'abonnement (anti-abus).
+SUB_TIER_MAX_AURA = env.int("SUB_TIER_MAX_AURA", default=50_000)
 # fake (défaut, confirme tout de suite) | stripe | mobile_money | orange_money | wave
 PAYMENTS_PROVIDER = env("PAYMENTS_PROVIDER", default="fake")
+# Autorise les providers SIMULÉS (fake, Wave/OM sans clé) : vrai en dev, faux en
+# prod sauf démo assumée (sinon Aura gratuite pour tout le monde).
+PAYMENTS_ALLOW_FAKE = env.bool("PAYMENTS_ALLOW_FAKE", default=DEBUG)
 STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="")
 STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET", default="")
 # Mobile money (agrégateurs régionaux). Vides → repli FAKE (confirme en dev).

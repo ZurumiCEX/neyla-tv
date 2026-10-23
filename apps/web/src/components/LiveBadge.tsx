@@ -3,13 +3,7 @@
 import { useT } from "@/lib/i18n";
 import { useLiveStatus } from "@/lib/use-live-status";
 
-export function LiveBadge({
-  slug,
-  initial,
-}: {
-  slug: string;
-  initial: { is_live: boolean };
-}) {
+export function LiveBadge({ slug, initial }: { slug: string; initial: { is_live: boolean } }) {
   const t = useT();
   const { isLive } = useLiveStatus(slug, initial.is_live);
 

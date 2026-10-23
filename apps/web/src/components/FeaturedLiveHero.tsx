@@ -30,7 +30,9 @@ export function FeaturedLiveHero({ lives }: { lives: LiveChannel[] }) {
   if (count === 0) {
     return (
       <section className="mb-10 overflow-hidden rounded-2xl border border-secondary/30 bg-gradient-to-br from-secondary/15 via-neutral-900 to-neutral-950 p-8 sm:p-12">
-        <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">{t("home.heroTitle")}</h1>
+        <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
+          {t("home.heroTitle")}
+        </h1>
         <p className="mt-3 max-w-xl text-neutral-300">{t("home.heroSubtitle")}</p>
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
@@ -104,7 +106,11 @@ export function FeaturedLiveHero({ lives }: { lives: LiveChannel[] }) {
             >
               {c.thumbnail_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={c.thumbnail_url} alt="" className="h-12 w-20 shrink-0 rounded object-cover" />
+                <img
+                  src={c.thumbnail_url}
+                  alt=""
+                  className="h-12 w-20 shrink-0 rounded object-cover"
+                />
               ) : (
                 <span className="h-12 w-20 shrink-0 rounded bg-neutral-800" />
               )}

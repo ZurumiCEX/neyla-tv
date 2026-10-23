@@ -10,5 +10,6 @@ urlpatterns = [
     path("subscriptions/gifted", views.my_gifts, name="subscription-mine-gifts"),
     path("subscriptions/me", views.my_subscriptions, name="subscription-mine"),
     path("subscriptions/<slug:slug>/status", views.subscription_status, name="subscription-status"),
+    path("subscriptions/<slug:slug>/resume", views.resume, name="subscription-resume"),
     path("subscriptions/<slug:slug>", views.unsubscribe, name="subscription-cancel"),
 ]

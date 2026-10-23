@@ -265,23 +265,50 @@ passent par un grand livre (`LedgerEntry`) atomique.
 
 | Flux | Commission | Sur qui ? | Quand |
 |------|------------|-----------|-------|
-| **Tip** | 30 % | Sur le créateur (split à la réception) | À chaque tip |
-| **Abonnement** | 30 % | Sur le créateur (split au prélèvement) | À chaque période payée |
+| **Tip** | 30 % | Sur le créateur (split à la réception) | À chaque tip (min. `TIP_MIN_AURA` = 10) |
+| **Abonnement** | 30 % | Sur le créateur (split au prélèvement) | À chaque période payée (prix verrouillé) |
 | **Achat d'Aura** | 1 % | **Streamer uniquement** (viewer = 0 %) | À la confirmation de l'achat |
+| **Retrait** | 3 % (frais de traitement) | Sur le montant retiré | Comptabilisé quand le retrait est **payé** |
 
-Les taux sont stockés dans `FeeRule` (admin-éditables) et seedés au déploiement
-(migration `payments/0008_seed_default_fees`). Un viewer n'est jamais prélevé.
+Les taux sont stockés dans `FeeRule` (**une seule règle active par produit**,
+admin-éditables) et seedés au déploiement (migration `payments/0008_seed_default_fees`).
+Chaque commission est tracée dans **`PlatformRevenue`** (même transaction que le flux).
+
+**Règles de sécurité** :
+- seule l'Aura **gagnée** (tips + abonnements reçus) est retirable ; l'Aura achetée
+  ou offerte (parrainage) ne se convertit jamais en argent ;
+- seules les chaînes **approuvées** (provisionnées) reçoivent tips et abonnements ;
+- providers **simulés** (fake, Wave/Orange Money sans clé) refusés hors dev, sauf
+  `PAYMENTS_ALLOW_FAKE=1` (démo assumée) ;
+- clés `Idempotency-Key` scopées **par utilisateur** (achat, tip, abonnement) ;
+- remboursement / litige Stripe → reprise de l'Aura ; si déjà dépensée, gel des
+  retraits (`Wallet.payout_hold`) + `RiskEvent` « chargeback » ;
+- `python manage.py reconcile_wallets` vérifie solde = somme du ledger.
 
 | Méthode | Chemin | Auth | Description |
 |---------|--------|------|-------------|
-| `GET` | `/api/payments/wallet` | JWT | `{aura_balance, balance:{xof,eur,usd}, unit_price_xof, recent:[ledger…]}`. |
-| `POST` | `/api/payments/purchase` | JWT | `{credits}` → achat. FAKE = crédité tout de suite ; Stripe → `{checkout_url}`. |
+| `GET` | `/api/payments/wallet` | JWT | `{aura_balance, unit_price_xof, payout_hold, recent:[ledger…]}`. |
+| `POST` | `/api/payments/purchase` | JWT | `{credits, method}` → achat. Simulé = crédité tout de suite ; Stripe → `{checkout_url}`. |
+| `GET` | `/api/payments/purchases/<id>` | JWT | Statut d'un achat (suivi du retour Stripe `?paid=1&purchase=<id>`). |
 | `POST` | `/api/payments/tip` | JWT | `{channel_slug, aura_amount, message?}` → débit envoyeur, crédit créateur (70 %). |
-| `POST` | `/api/payments/payout` | JWT | `{aura_amount}` → demande de retrait (débit + `Payout`). |
-| `POST` | `/api/payments/webhook/<provider>` | signature provider | Confirme un achat (idempotent) → crédite le wallet. |
+| `GET` | `/api/payments/withdrawal/eligibility` | JWT | `{is_streamer, withdrawable, fee_pct, min_aura, payout_hold}`. |
+| `POST` | `/api/payments/withdrawal/quote` | JWT | `{aura_amount}` → `{fee_aura, net_aura, net_fiat}` (calcul identique au retrait réel). |
+| `POST` | `/api/payments/withdrawal/start` | JWT | `{aura_amount, destination_provider: wave\|orange_money, destination_phone}` → OTP par **e-mail**. |
+| `POST` | `/api/payments/withdrawal/confirm` | JWT | `{code}` → crée le `Payout` (Aura brute mise en réserve). |
+| `GET` | `/api/payments/payouts` | JWT | Historique de mes retraits. |
+| `POST` | `/api/payments/webhook/<provider>` | signature provider | `paid` → crédit (une seule fois), `refunded`/`disputed` → reprise. **404** si provider inconnu. |
+| `POST` | `/api/admin/payouts/<id>/resolve` | admin | `{action: processing\|paid\|fail}` ; `fail` recrédite (`payout_reversal`). |
+
+> L'ancien `POST /api/payments/payout` (retrait sans contrôle) est **supprimé**.
 
 Réglages : `AURA_UNIT_PRICE_XOF`, `EUR_XOF_RATE`, `USD_XOF_RATE`, `CREATOR_SHARE`, `PAYMENTS_PROVIDER`,
-`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`.
+`PAYMENTS_ALLOW_FAKE`, `WITHDRAWAL_PROCESSING_FEE_PCT`, `WITHDRAWAL_MIN_AURA`, `TIP_MIN_AURA`,
+`SUB_TIER_MAX_AURA`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`.
+
+**Abonnements** : le prix est **verrouillé** à la souscription (`price_paid`) ; un
+réabonnement prolonge la période en cours ; l'annulation coupe le renouvellement
+mais garde l'accès jusqu'à la fin du mois payé (`POST …/resume` pour réactiver) ;
+un abonnement offert ne se renouvelle pas.
 
 ---
 
@@ -344,7 +371,8 @@ WebSocket
 ├── auth/register                    POST  (+ champs `invite` optionnel, `terms_accepted` requis)
 ├── uploads/{avatar,banner,game/<slug>}      POST  (multipart → Cloudflare R2)
 ├── payments/
-│   ├── wallet · purchase · tip · payout
+│   ├── wallet · purchase · purchases/<id> · tip · payouts
+│   ├── withdrawal/{eligibility,quote,start,confirm}
 │   └── history                      GET   (ledger paginé)
 ├── channels/<slug>/tier             GET   (palier public)
 ├── streamer/tier                    GET, PUT
@@ -353,7 +381,8 @@ WebSocket
 ├── subscriptions/gift               POST  (offrir un abo : `{channel_slug, recipient}`)
 ├── subscriptions/gifted             GET   (abos que j'ai offerts)
 ├── subscriptions/<slug>/status      GET
-├── subscriptions/<slug>             DELETE
+├── subscriptions/<slug>/resume      POST  (réactive le renouvellement)
+├── subscriptions/<slug>             DELETE (annule le renouvellement, accès conservé)
 ├── analytics/me/revenue             GET   (revenus créateur jour/semaine/mois)
 ├── achievements                     GET   (mon catalogue + débloqués, champs name/criteria/icon/icon_url)
 ├── achievements/<username>          GET   (public — succès débloqués d'un profil + total)

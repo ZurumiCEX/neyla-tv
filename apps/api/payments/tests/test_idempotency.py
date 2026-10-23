@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from accounts.factories import UserFactory
-from channels_app.models import Channel
+from channels_app.testing import provisioned_channel
 from payments import services
 from payments.models import Payout, Purchase, Tip
 
@@ -31,7 +31,7 @@ def test_create_purchase_without_key_creates_each_time():
 
 def test_send_tip_is_idempotent():
     fan = UserFactory()
-    channel = Channel.objects.get(user=UserFactory())
+    channel = provisioned_channel(UserFactory())
     services.create_purchase(fan, 500)
     t1 = services.send_tip(fan, channel.slug, 50, idempotency_key="tip-1")
     t2 = services.send_tip(fan, channel.slug, 50, idempotency_key="tip-1")
@@ -41,14 +41,22 @@ def test_send_tip_is_idempotent():
     assert services.get_wallet(fan).aura_balance == 450
 
 
-def test_request_payout_is_idempotent():
-    user = UserFactory()
-    services.create_purchase(user, 500)
-    p1 = services.request_payout(user, 100, idempotency_key="po-1")
-    p2 = services.request_payout(user, 100, idempotency_key="po-1")
+def test_create_payout_is_idempotent(earning_streamer):
+    user = earning_streamer(1000)  # gagne 700
+    p1 = services.create_payout(user, 100, idempotency_key="po-1")
+    p2 = services.create_payout(user, 100, idempotency_key="po-1")
     assert p1.id == p2.id
     assert Payout.objects.filter(user=user).count() == 1
-    assert services.get_wallet(user).aura_balance == 400
+    assert services.get_wallet(user).aura_balance == 600
+
+
+def test_idempotency_key_is_scoped_per_user():
+    """La clé d'un autre utilisateur ne renvoie jamais son objet."""
+    a, b = UserFactory(), UserFactory()
+    pa, _ = services.create_purchase(a, 100, idempotency_key="shared")
+    pb, _ = services.create_purchase(b, 200, idempotency_key="shared")
+    assert pa.id != pb.id
+    assert services.get_wallet(b).aura_balance == 200
 
 
 def test_purchase_endpoint_honors_header(auth_client_factory):

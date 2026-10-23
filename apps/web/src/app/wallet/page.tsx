@@ -6,6 +6,8 @@ import { idempotencyKey } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useT } from "@/lib/i18n";
 import { fmt, fmtFcfa } from "@/lib/format";
+import { useFormat } from "@/lib/use-format";
+import { notifyWalletChanged } from "@/lib/wallet-events";
 import { CardsLogo, OrangeMoneyLogo, WaveLogo } from "@/components/PaymentLogos";
 
 type Ledger = {
@@ -20,7 +22,19 @@ type WalletData = {
   aura_balance: number;
   balance: FiatEq;
   unit_price_xof: string;
+  payout_hold: boolean;
   recent: Ledger[];
+};
+type PayoutRow = {
+  id: number;
+  aura_amount: number;
+  fee_aura: number;
+  fiat_amount: string;
+  currency: string;
+  destination_provider: "wave" | "orange_money" | "";
+  destination_phone: string;
+  status: string;
+  created_at: string;
 };
 type Purchase = {
   id: number;
@@ -36,6 +50,8 @@ type Eligibility = {
   balance: number;
   withdrawable: number;
   fee_pct: number;
+  min_aura: number;
+  payout_hold: boolean;
   unit_price_xof: string;
 };
 type Quote = {
@@ -54,7 +70,9 @@ type Method = "card" | "orange_money" | "wave";
 export default function WalletPage() {
   const router = useRouter();
   const t = useT();
+  const { date } = useFormat();
   const { user, loading, authFetch } = useAuth();
+  const [returnNotice, setReturnNotice] = useState<"pending" | "paid" | "canceled" | null>(null);
   const [wallet, setWallet] = useState<WalletData | null>(null);
   const [tab, setTab] = useState<Tab>("buy");
   const [history, setHistory] = useState<Ledger[] | null>(null);
@@ -67,10 +85,44 @@ export default function WalletPage() {
   const load = useCallback(async () => {
     try {
       setWallet(await authFetch<WalletData>("/api/payments/wallet"));
+      notifyWalletChanged();
     } catch {
       setError(t("wallet.loadError"));
     }
   }, [authFetch, t]);
+
+  // Retour du checkout Stripe : ?paid=1&purchase=ID → on attend la confirmation
+  // (webhook) en interrogeant l'achat, puis on rafraîchit le solde.
+  useEffect(() => {
+    if (loading || !user) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("canceled")) {
+      setReturnNotice("canceled");
+      return;
+    }
+    const id = params.get("purchase");
+    if (!params.get("paid") || !id) return;
+    setReturnNotice("pending");
+    let tries = 0;
+    const timer = setInterval(async () => {
+      tries += 1;
+      try {
+        const p = await authFetch<{ status: string }>(`/api/payments/purchases/${id}`);
+        if (p.status === "paid") {
+          clearInterval(timer);
+          setReturnNotice("paid");
+          setPurchases(null);
+          load();
+        } else if (p.status !== "pending" || tries >= 15) {
+          clearInterval(timer);
+          setReturnNotice(null);
+        }
+      } catch {
+        clearInterval(timer);
+      }
+    }, 2000);
+    return () => clearInterval(timer);
+  }, [loading, user, authFetch, load]);
 
   useEffect(() => {
     if (loading) return;
@@ -113,8 +165,9 @@ export default function WalletPage() {
       }
       setPurchases(null);
       await load();
-    } catch {
-      setError(t("wallet.buyError"));
+    } catch (err) {
+      const e = err as { data?: { detail?: string } };
+      setError(e.data?.detail ?? t("wallet.buyError"));
     } finally {
       setBusy(false);
     }
@@ -149,15 +202,29 @@ export default function WalletPage() {
           {masked ? "••••••" : fmt(wallet.aura_balance)}{" "}
           <span className="text-lg text-neutral-400">Aura</span>
         </p>
-        <p className="mt-1 text-sm text-neutral-400">
-          ≈ {masked ? "••••" : fmtFcfa(wallet.balance.xof)}{" "}
-          {!masked && (
-            <span className="text-neutral-600">
-              ({wallet.balance.eur} € / {wallet.balance.usd} $)
-            </span>
-          )}
+        <p className="mt-1 text-xs text-neutral-500">
+          {t("wallet.unitPrice", { price: wallet.unit_price_xof })}
         </p>
+        {wallet.payout_hold && (
+          <p className="mt-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-300">
+            {t("wallet.payoutHold")}
+          </p>
+        )}
       </div>
+
+      {returnNotice && (
+        <p
+          className={`mb-4 rounded-lg border p-3 text-sm ${
+            returnNotice === "paid"
+              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+              : returnNotice === "canceled"
+                ? "border-neutral-700 bg-neutral-900 text-neutral-300"
+                : "border-amber-500/40 bg-amber-500/10 text-amber-300"
+          }`}
+        >
+          {t(`wallet.return.${returnNotice}`)}
+        </p>
+      )}
 
       {error && (
         <p className="mb-4 rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-300">
@@ -249,9 +316,7 @@ export default function WalletPage() {
               <tbody>
                 {purchases.map((p) => (
                   <tr key={p.id} className="border-t border-neutral-800/60">
-                    <td className="py-2 text-neutral-400">
-                      {new Date(p.created_at).toLocaleDateString("fr-FR")}
-                    </td>
+                    <td className="py-2 text-neutral-400">{date(p.created_at)}</td>
                     <td className="py-2 text-emerald-300">+{fmt(p.credits)} Aura</td>
                     <td className="py-2 text-right text-neutral-300">
                       {fmt(p.fiat_amount)} {p.currency}
@@ -278,9 +343,7 @@ export default function WalletPage() {
               <tbody>
                 {history.map((l, i) => (
                   <tr key={i} className="border-t border-neutral-800/60">
-                    <td className="py-2 text-neutral-500">
-                      {new Date(l.created_at).toLocaleDateString("fr-FR")}
-                    </td>
+                    <td className="py-2 text-neutral-500">{date(l.created_at)}</td>
                     <td className="py-2 text-neutral-400">{t(`wallet.kind.${l.kind}`)}</td>
                     <td
                       className={`py-2 text-right font-semibold ${
@@ -334,9 +397,13 @@ function MethodButton({
 
 function WithdrawTab({ onDone }: { onDone: () => void }) {
   const t = useT();
+  const { num, date } = useFormat();
   const { authFetch } = useAuth();
   const [elig, setElig] = useState<Eligibility | null>(null);
+  const [payouts, setPayouts] = useState<PayoutRow[] | null>(null);
   const [amount, setAmount] = useState("");
+  const [destProvider, setDestProvider] = useState<"wave" | "orange_money">("wave");
+  const [phone, setPhone] = useState("");
   const [quote, setQuote] = useState<Quote | null>(null);
   const [step, setStep] = useState<"form" | "otp" | "done">("form");
   const [code, setCode] = useState("");
@@ -347,6 +414,9 @@ function WithdrawTab({ onDone }: { onDone: () => void }) {
     authFetch<Eligibility>("/api/payments/withdrawal/eligibility")
       .then(setElig)
       .catch(() => setElig(null));
+    authFetch<Paginated<PayoutRow>>("/api/payments/payouts")
+      .then((d) => setPayouts(d.results))
+      .catch(() => setPayouts([]));
   }, [authFetch]);
 
   useEffect(() => {
@@ -378,7 +448,11 @@ function WithdrawTab({ onDone }: { onDone: () => void }) {
     try {
       await authFetch("/api/payments/withdrawal/start", {
         method: "POST",
-        body: JSON.stringify({ aura_amount: n }),
+        body: JSON.stringify({
+          aura_amount: n,
+          destination_provider: destProvider,
+          destination_phone: phone.trim(),
+        }),
       });
       setStep("otp");
     } catch (err) {
@@ -428,6 +502,7 @@ function WithdrawTab({ onDone }: { onDone: () => void }) {
         <ul className="mt-2 list-inside list-disc space-y-1 text-neutral-400">
           <li>{t("wallet.withdrawInfo1")}</li>
           <li>{t("wallet.withdrawInfo2", { pct: elig.fee_pct })}</li>
+          <li>{t("wallet.withdrawInfoMin", { n: num(elig.min_aura) })}</li>
           <li>{t("wallet.withdrawInfo3")}</li>
         </ul>
       </section>
@@ -439,15 +514,14 @@ function WithdrawTab({ onDone }: { onDone: () => void }) {
               {t("wallet.withdrawable")}
             </p>
             <p className="mt-1 text-2xl font-bold text-emerald-400">
-              {elig.withdrawable.toLocaleString("fr-FR")}{" "}
-              <span className="text-sm text-neutral-400">Aura</span>
+              {num(elig.withdrawable)} <span className="text-sm text-neutral-400">Aura</span>
             </p>
           </div>
           <div className="rounded-xl border border-neutral-800 bg-neutral-900/40 p-3">
             <p className="text-xs uppercase tracking-wider text-neutral-500">
               {t("wallet.balance")}
             </p>
-            <p className="mt-1 text-2xl font-bold">{elig.balance.toLocaleString("fr-FR")}</p>
+            <p className="mt-1 text-2xl font-bold">{num(elig.balance)}</p>
           </div>
         </div>
 
@@ -459,15 +533,51 @@ function WithdrawTab({ onDone }: { onDone: () => void }) {
           </p>
         )}
 
+        {elig.payout_hold && (
+          <p className="mb-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-300">
+            {t("wallet.payoutHold")}
+          </p>
+        )}
+
         {step !== "otp" ? (
           <>
+            <label className="mb-1 block text-xs uppercase tracking-wider text-neutral-500">
+              {t("wallet.payoutDestination")}
+            </label>
+            <div className="mb-3 grid grid-cols-[auto_1fr] gap-2">
+              <div className="flex gap-1">
+                {(["wave", "orange_money"] as const).map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setDestProvider(p)}
+                    className={`rounded-lg border px-3 py-2 text-xs font-semibold ${
+                      destProvider === p
+                        ? "border-secondary bg-secondary/10 text-secondary-light"
+                        : "border-neutral-700 text-neutral-300 hover:border-neutral-500"
+                    }`}
+                  >
+                    {p === "wave" ? "Wave" : "Orange Money"}
+                  </button>
+                ))}
+              </div>
+              <input
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder={t("wallet.payoutPhone")}
+                className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-secondary-light"
+              />
+            </div>
             <label className="mb-1 block text-xs uppercase tracking-wider text-neutral-500">
               {t("wallet.withdrawAmount")}
             </label>
             <div className="flex gap-2">
               <input
                 type="number"
-                min={1}
+                min={elig.min_aura}
                 max={elig.withdrawable}
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
@@ -476,7 +586,14 @@ function WithdrawTab({ onDone }: { onDone: () => void }) {
               />
               <button
                 type="button"
-                disabled={busy || !quote || quote.aura > elig.withdrawable}
+                disabled={
+                  busy ||
+                  elig.payout_hold ||
+                  !quote ||
+                  quote.aura > elig.withdrawable ||
+                  quote.aura < elig.min_aura ||
+                  phone.trim().length < 8
+                }
                 onClick={start}
                 className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
               >
@@ -535,6 +652,37 @@ function WithdrawTab({ onDone }: { onDone: () => void }) {
           </div>
         )}
       </section>
+
+      <section className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
+        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-neutral-400">
+          {t("wallet.payoutHistory")}
+        </h3>
+        {payouts === null ? (
+          <p className="text-sm text-neutral-500">{t("common.loading")}</p>
+        ) : payouts.length === 0 ? (
+          <p className="text-sm text-neutral-500">{t("wallet.payoutNone")}</p>
+        ) : (
+          <table className="w-full text-left text-sm">
+            <tbody>
+              {payouts.map((p) => (
+                <tr key={p.id} className="border-t border-neutral-800/60">
+                  <td className="py-2 text-neutral-500">{date(p.created_at)}</td>
+                  <td className="py-2 text-neutral-300">
+                    {num(p.aura_amount)} Aura → {fmtFcfa(p.fiat_amount)}
+                  </td>
+                  <td className="py-2 text-neutral-400">
+                    {p.destination_provider === "orange_money" ? "Orange Money" : "Wave"}{" "}
+                    {p.destination_phone}
+                  </td>
+                  <td className="py-2 text-right">
+                    <StatusPill status={p.status} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
     </div>
   );
 }
@@ -567,7 +715,7 @@ function StatusPill({ status }: { status: string }) {
   const cls =
     status === "paid"
       ? "border-emerald-500/40 text-emerald-300"
-      : status === "failed"
+      : status === "failed" || status === "refunded" || status === "disputed"
         ? "border-red-500/40 text-red-300"
         : "border-amber-500/40 text-amber-300";
   return (

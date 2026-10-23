@@ -120,6 +120,12 @@ envs:
   - key: STREAM_STATUS_POLL_SECONDS
     value: "20"
     scope: RUN_TIME
+  # DÉMO : autorise les paiements simulés (fake / Wave / Orange Money sans clé).
+  # Repasser à "0" dès que de vrais moyens de paiement sont branchés, sinon
+  # n'importe qui obtient de l'Aura gratuite.
+  - key: PAYMENTS_ALLOW_FAKE
+    value: "1"
+    scope: RUN_TIME
   - key: SENTRY_DSN
     value: ""
     scope: RUN_TIME

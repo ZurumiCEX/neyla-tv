@@ -14,16 +14,17 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from . import services
-from .models import LedgerEntry, Purchase
-from .providers import get_provider
+from .models import LedgerEntry, Payout, Purchase
+from .providers import get_provider, is_known_provider
 from .serializers import (
     LedgerEntrySerializer,
-    PayoutSerializer,
+    PayoutHistorySerializer,
     PurchaseHistorySerializer,
     PurchaseSerializer,
     TipSerializer,
     WalletSerializer,
     WithdrawalConfirmSerializer,
+    WithdrawalQuoteSerializer,
     WithdrawalStartSerializer,
 )
 
@@ -54,22 +55,46 @@ class PurchaseHistoryView(ListAPIView):
         return Purchase.objects.filter(user=self.request.user)
 
 
+class PayoutHistoryView(ListAPIView):
+    """Historique paginé des retraits de l'utilisateur courant."""
+
+    serializer_class = PayoutHistorySerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Payout.objects.filter(user=self.request.user)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def purchase_detail(request: Request, pk: int) -> Response:
+    """Statut d'un achat (suivi après retour du checkout Stripe)."""
+    obj = Purchase.objects.filter(pk=pk, user=request.user).first()
+    if obj is None:
+        return Response({"detail": "Achat introuvable."}, status=status.HTTP_404_NOT_FOUND)
+    return Response(PurchaseHistorySerializer(obj).data)
+
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 @ratelimit(key="user", rate="30/h", method="POST", block=True)
 def purchase(request: Request) -> Response:
     serializer = PurchaseSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
-    obj, result = services.create_purchase(
-        request.user,
-        serializer.validated_data["credits"],
-        idempotency_key=request.headers.get("Idempotency-Key") or None,
-        method=serializer.validated_data.get("method", "card"),
-    )
+    try:
+        obj, result = services.create_purchase(
+            request.user,
+            serializer.validated_data["credits"],
+            idempotency_key=request.headers.get("Idempotency-Key") or None,
+            method=serializer.validated_data.get("method", "card"),
+        )
+    except services.PaymentError as exc:
+        return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
     from . import conversion
 
     return Response(
         {
+            "id": obj.id,
             "status": obj.status,
             "checkout_url": result.get("checkout_url"),
             "credits": obj.credits,
@@ -104,25 +129,6 @@ def tip(request: Request) -> Response:
     )
 
 
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def payout(request: Request) -> Response:
-    serializer = PayoutSerializer(data=request.data)
-    serializer.is_valid(raise_exception=True)
-    try:
-        obj = services.request_payout(
-            request.user,
-            serializer.validated_data["aura_amount"],
-            idempotency_key=request.headers.get("Idempotency-Key") or None,
-        )
-    except services.PaymentError as exc:
-        return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-    return Response(
-        {"aura_amount": obj.aura_amount, "fiat_amount": str(obj.fiat_amount), "status": obj.status},
-        status=status.HTTP_201_CREATED,
-    )
-
-
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def withdrawal_eligibility(request: Request) -> Response:
@@ -133,7 +139,9 @@ def withdrawal_eligibility(request: Request) -> Response:
             "is_streamer": services.is_eligible_streamer(request.user),
             "balance": wallet.aura_balance,
             "withdrawable": services.withdrawable_balance(request.user),
-            "fee_pct": round(services.withdrawal_fee_pct() * 100),
+            "fee_pct": float(round(services.withdrawal_fee_pct() * 100, 2)),
+            "min_aura": services.withdrawal_min_aura(),
+            "payout_hold": wallet.payout_hold,
             "unit_price_xof": str(services.aura_unit_price()),
         }
     )
@@ -143,7 +151,7 @@ def withdrawal_eligibility(request: Request) -> Response:
 @permission_classes([IsAuthenticated])
 @ratelimit(key="user", rate="10/h", method="POST", block=True)
 def withdrawal_quote(request: Request) -> Response:
-    serializer = WithdrawalStartSerializer(data=request.data)
+    serializer = WithdrawalQuoteSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     return Response(services.withdrawal_quote(serializer.validated_data["aura_amount"]))
 
@@ -155,7 +163,13 @@ def withdrawal_start(request: Request) -> Response:
     serializer = WithdrawalStartSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     try:
-        services.start_withdrawal(request.user, serializer.validated_data["aura_amount"])
+        data = serializer.validated_data
+        services.start_withdrawal(
+            request.user,
+            data["aura_amount"],
+            data["destination_provider"],
+            data["destination_phone"],
+        )
     except services.PaymentError as exc:
         return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
     return Response({"otp_sent": True, "ttl_minutes": services.WITHDRAWAL_OTP_TTL_MIN})
@@ -171,19 +185,16 @@ def withdrawal_confirm(request: Request) -> Response:
         obj = services.confirm_withdrawal(request.user, serializer.validated_data["code"])
     except services.PaymentError as exc:
         return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-    return Response(
-        {"aura_amount": obj.aura_amount, "fiat_amount": str(obj.fiat_amount), "status": obj.status},
-        status=status.HTTP_201_CREATED,
-    )
+    return Response(PayoutHistorySerializer(obj).data, status=status.HTTP_201_CREATED)
 
 
 @csrf_exempt
 @require_POST
 def webhook(request, provider: str) -> HttpResponse:
+    if not is_known_provider(provider):
+        return JsonResponse({"detail": "Fournisseur inconnu."}, status=404)
     event = get_provider(provider).verify_webhook(request)
-    if not event or not event.get("purchase_id"):
+    if not event:
         return JsonResponse({"detail": "Webhook invalide."}, status=400)
-    obj = Purchase.objects.filter(id=event["purchase_id"]).first()
-    if obj is not None:
-        services.confirm_purchase(obj)
+    services.handle_provider_event(provider, event)
     return JsonResponse({"detail": "ok"})

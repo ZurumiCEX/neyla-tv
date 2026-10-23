@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import pytest
+from django.db.models import Sum
 from django.urls import reverse
 
 from accounts.factories import UserFactory
 from accounts.models import User
-from channels_app.models import Channel
+from channels_app.testing import provisioned_channel
 from payments import services
-from payments.models import FeeRule, LedgerEntry, Payout
+from payments.models import FeeRule, LedgerEntry, Payout, PlatformRevenue
 
 pytestmark = pytest.mark.django_db
 
@@ -38,35 +39,56 @@ def test_tip_respects_fee_rule():
     FeeRule.objects.create(product=FeeRule.Product.TIP, mode=FeeRule.Mode.PERCENTAGE, value=20)
     fan = UserFactory()
     streamer = UserFactory()
-    channel = Channel.objects.get(user=streamer)
+    channel = provisioned_channel(streamer)
     services.create_purchase(fan, 200)
     tip = services.send_tip(fan, channel.slug, 100)
     assert tip.platform_fee == 20
     assert tip.creator_share == 80
 
 
-def test_resolve_payout_fail_refunds_user():
-    user = UserFactory()
-    services.create_purchase(user, 500)
-    payout = services.request_payout(user, 300)
-    assert services.get_wallet(user).aura_balance == 200
+def test_resolve_payout_fail_refunds_user(earning_streamer):
+    from payments.models import LedgerEntry
+
+    user = earning_streamer(1000)  # 700 gagnés
+    payout = services.create_payout(user, 300)
+    assert services.get_wallet(user).aura_balance == 400
     admin = UserFactory()
     services.resolve_payout(admin, payout, "fail")
     payout.refresh_from_db()
     assert payout.status == Payout.Status.FAILED
-    assert services.get_wallet(user).aura_balance == 500
+    assert services.get_wallet(user).aura_balance == 700
+    # Le recrédit est une écriture dédiée, pas un « retrait » positif.
+    assert LedgerEntry.objects.filter(
+        wallet__user=user, kind=LedgerEntry.Kind.PAYOUT_REVERSAL, amount=300
+    ).exists()
+    # Les frais d'un retrait échoué ne sont jamais comptés en revenu.
+    assert not PlatformRevenue.objects.filter(source="withdrawal").exists()
 
 
-def test_resolve_payout_paid_then_locked():
-    user = UserFactory()
-    services.create_purchase(user, 500)
-    payout = services.request_payout(user, 100)
+def test_resolve_payout_processing_then_paid_records_fee(earning_streamer):
+    user = earning_streamer(1000)
+    payout = services.create_payout(user, 100)
     admin = UserFactory()
+    services.resolve_payout(admin, payout, "processing")
     services.resolve_payout(admin, payout, "paid")
     payout.refresh_from_db()
     assert payout.status == Payout.Status.PAID
+    assert PlatformRevenue.objects.get(source="withdrawal").amount_aura == payout.fee_aura == 3
     with pytest.raises(services.PaymentError):
         services.resolve_payout(admin, payout, "paid")
+
+
+def test_tip_and_subscription_fees_recorded_as_revenue():
+    from subscriptions import services as subs
+
+    fan = UserFactory()
+    channel = provisioned_channel(UserFactory())
+    subs.set_tier(channel, price_aura=100, perks=[])
+    services.create_purchase(fan, 500)
+    services.send_tip(fan, channel.slug, 100)
+    subs.subscribe(fan, channel.slug)
+    sources = dict(PlatformRevenue.objects.values_list("source").annotate(s=Sum("amount_aura")))
+    assert sources == {"tip": 30, "subscription": 30}
 
 
 def test_transactions_endpoint_requires_admin(auth_client_factory):

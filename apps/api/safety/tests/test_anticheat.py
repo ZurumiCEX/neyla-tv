@@ -7,7 +7,7 @@ from django.urls import reverse
 
 from accounts.factories import UserFactory
 from accounts.models import User
-from channels_app.models import Channel
+from channels_app.testing import provisioned_channel
 from payments import services as pay
 from safety import anticheat
 from safety.models import RiskEvent
@@ -15,22 +15,24 @@ from safety.models import RiskEvent
 pytestmark = pytest.mark.django_db
 
 
-def test_tip_velocity_flagged():
+def test_tip_velocity_flagged(django_capture_on_commit_callbacks):
     creator = UserFactory()
-    channel = Channel.objects.get(user=creator)
+    channel = provisioned_channel(creator)
     fan = UserFactory()
-    pay.create_purchase(fan, 1000)
-    for _ in range(anticheat.TIP_MAX_PER_WINDOW + 1):
-        pay.send_tip(fan, channel.slug, 1)
+    pay.create_purchase(fan, 10 * (anticheat.TIP_MAX_PER_WINDOW + 1))
+    # Les détecteurs tournent APRÈS commit (le tip n'est jamais annulé par eux).
+    with django_capture_on_commit_callbacks(execute=True):
+        for _ in range(anticheat.TIP_MAX_PER_WINDOW + 1):
+            pay.send_tip(fan, channel.slug, 10)
     assert RiskEvent.objects.filter(user=fan, kind=RiskEvent.Kind.TIP_VELOCITY).exists()
 
 
 def test_no_flag_under_threshold():
     creator = UserFactory()
-    channel = Channel.objects.get(user=creator)
+    channel = provisioned_channel(creator)
     fan = UserFactory()
     pay.create_purchase(fan, 1000)
-    pay.send_tip(fan, channel.slug, 1)
+    pay.send_tip(fan, channel.slug, 10)
     assert not RiskEvent.objects.filter(user=fan, kind=RiskEvent.Kind.TIP_VELOCITY).exists()
 
 
@@ -71,7 +73,7 @@ def test_overview(auth_client_factory):
 
 def test_view_inflation_flagged():
     creator = UserFactory()
-    channel = Channel.objects.get(user=creator)
+    channel = provisioned_channel(creator)
     # 0 follower, 0 IP distincte → tout viewer élevé est suspect.
     anticheat.evaluate_view_inflation(channel, 200)
     assert RiskEvent.objects.filter(user=creator, kind=RiskEvent.Kind.VIEW_INFLATION).exists()
@@ -79,36 +81,38 @@ def test_view_inflation_flagged():
 
 def test_view_inflation_ignored_under_min():
     creator = UserFactory()
-    channel = Channel.objects.get(user=creator)
+    channel = provisioned_channel(creator)
     anticheat.evaluate_view_inflation(channel, anticheat.VIEW_MIN_SUSPICIOUS - 1)
     assert not RiskEvent.objects.filter(user=creator, kind=RiskEvent.Kind.VIEW_INFLATION).exists()
 
 
-def test_subscription_churn_flagged():
+def test_subscription_churn_flagged(django_capture_on_commit_callbacks):
     creator = UserFactory()
-    channel = Channel.objects.get(user=creator)
+    channel = provisioned_channel(creator)
     from subscriptions import services as subs
 
     subs.set_tier(channel, price_aura=10, perks=[])
     fan = UserFactory()
     pay.create_purchase(fan, 1000)
     # Plusieurs cycles abonnement → paiements SUB_PAID répétés.
-    for _ in range(anticheat.SUB_CHURN_MAX):
-        subs.subscribe(fan, channel.slug)
-        subs.cancel(fan, channel.slug)
+    with django_capture_on_commit_callbacks(execute=True):
+        for _ in range(anticheat.SUB_CHURN_MAX):
+            subs.subscribe(fan, channel.slug)
+            subs.cancel(fan, channel.slug)
     assert RiskEvent.objects.filter(user=fan, kind=RiskEvent.Kind.SUB_ABUSE).exists()
 
 
-def test_subscription_creator_burst_flagged():
+def test_subscription_creator_burst_flagged(django_capture_on_commit_callbacks):
     creator = UserFactory()
-    channel = Channel.objects.get(user=creator)
+    channel = provisioned_channel(creator)
     from subscriptions import services as subs
 
     subs.set_tier(channel, price_aura=1, perks=[])
-    for _ in range(anticheat.SUB_CREATOR_MAX):
-        fan = UserFactory()
-        pay.create_purchase(fan, 100)
-        subs.subscribe(fan, channel.slug)
+    with django_capture_on_commit_callbacks(execute=True):
+        for _ in range(anticheat.SUB_CREATOR_MAX):
+            fan = UserFactory()
+            pay.create_purchase(fan, 100)
+            subs.subscribe(fan, channel.slug)
     assert RiskEvent.objects.filter(user=creator, kind=RiskEvent.Kind.SUB_ABUSE).exists()
 
 
@@ -116,7 +120,7 @@ def test_self_deal_shared_ip_flagged():
     from chat.models import ChatUserIp
 
     creator = UserFactory()
-    channel = Channel.objects.get(user=creator)
+    channel = provisioned_channel(creator)
     fan = UserFactory()
     # Comptes liés : même IP enregistrée pour les deux.
     ChatUserIp.objects.create(channel=channel, user=creator, ip="7.7.7.7")
@@ -129,7 +133,7 @@ def test_self_deal_distinct_ip_not_flagged():
     from chat.models import ChatUserIp
 
     creator = UserFactory()
-    channel = Channel.objects.get(user=creator)
+    channel = provisioned_channel(creator)
     fan = UserFactory()
     ChatUserIp.objects.create(channel=channel, user=creator, ip="1.1.1.1")
     ChatUserIp.objects.create(channel=channel, user=fan, ip="2.2.2.2")
@@ -165,6 +169,6 @@ def test_detect_chat_spam_clean():
 
 def test_flag_chat_bot_creates_event():
     user = UserFactory()
-    channel = Channel.objects.get(user=UserFactory())
+    channel = provisioned_channel(UserFactory())
     anticheat.flag_chat_bot(user, channel, "repeat")
     assert RiskEvent.objects.filter(user=user, kind=RiskEvent.Kind.CHAT_BOT).exists()

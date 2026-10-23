@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
-from .models import FeeRule, LedgerEntry, Purchase, Wallet
+from .models import FeeRule, LedgerEntry, Payout, PayoutDestination, Purchase, Wallet
 
 
 class LedgerEntrySerializer(serializers.ModelSerializer):
@@ -28,6 +28,15 @@ class FeeRuleSerializer(serializers.ModelSerializer):
         fields = ("id", "product", "mode", "value", "is_active", "created_at", "updated_at")
         read_only_fields = ("id", "created_at", "updated_at")
 
+    def validate(self, attrs):
+        mode = attrs.get("mode", getattr(self.instance, "mode", FeeRule.Mode.PERCENTAGE))
+        value = attrs.get("value", getattr(self.instance, "value", None))
+        if value is not None and value < 0:
+            raise serializers.ValidationError({"value": "La commission ne peut pas être négative."})
+        if mode == FeeRule.Mode.PERCENTAGE and value is not None and value > 100:
+            raise serializers.ValidationError({"value": "Un pourcentage ne peut pas dépasser 100."})
+        return attrs
+
 
 class WalletSerializer(serializers.ModelSerializer):
     recent = serializers.SerializerMethodField()
@@ -36,7 +45,7 @@ class WalletSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Wallet
-        fields = ("aura_balance", "balance", "unit_price_xof", "recent")
+        fields = ("aura_balance", "balance", "unit_price_xof", "payout_hold", "recent")
         read_only_fields = fields
 
     def get_recent(self, obj):
@@ -82,12 +91,31 @@ class TipSerializer(serializers.Serializer):
     message = serializers.CharField(required=False, allow_blank=True, default="", max_length=200)
 
 
-class PayoutSerializer(serializers.Serializer):
+class PayoutHistorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Payout
+        fields = (
+            "id",
+            "aura_amount",
+            "fee_aura",
+            "fiat_amount",
+            "currency",
+            "destination_provider",
+            "destination_phone",
+            "status",
+            "created_at",
+            "resolved_at",
+        )
+        read_only_fields = fields
+
+
+class WithdrawalQuoteSerializer(serializers.Serializer):
     aura_amount = serializers.IntegerField(min_value=1, max_value=1_000_000)
 
 
-class WithdrawalStartSerializer(serializers.Serializer):
-    aura_amount = serializers.IntegerField(min_value=1, max_value=1_000_000)
+class WithdrawalStartSerializer(WithdrawalQuoteSerializer):
+    destination_provider = serializers.ChoiceField(choices=PayoutDestination.choices)
+    destination_phone = serializers.CharField(max_length=20)
 
 
 class WithdrawalConfirmSerializer(serializers.Serializer):

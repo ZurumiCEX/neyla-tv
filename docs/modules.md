@@ -80,8 +80,10 @@ Chaque app est autonome : `models`, `views`, `serializers`, `services`,
   ledger enrichi (`currency`/`related_*`/`metadata`) ; `admin_views.py`
   (transactions unifiées, commissions, résolution payouts). **Business model
   unifié** : tip 30 % / abonnement 30 % (sur le créateur) ; achat 1 %
-  **streamer uniquement** (viewer = 0 %). Taux par défaut seedés via migration
-  `payments/0008_seed_default_fees` ; admin éditable.
+  **streamer uniquement** (viewer = 0 %) ; retrait = frais de traitement 3 %.
+  `PlatformRevenue` trace chaque commission ; seule l'Aura gagnée est retirable
+  (Wave / Orange Money, OTP e-mail) ; remboursements/litiges Stripe repris ;
+  `reconcile_wallets` contrôle la cohérence solde ↔ ledger.
 - **`audit`** : `AuditEvent` (`actor`, `action`, `target`, `meta`) + `record()`,
   appelé sur les actions sensibles (approbation, payout, changement de rôle…).
 - **`charity` (différenciation RSE)** : `Charity` (asso agréée), `CharityEvent`

@@ -6,6 +6,7 @@ import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useT } from "@/lib/i18n";
 import { fmt, fmtAura } from "@/lib/format";
+import { notifyWalletChanged } from "@/lib/wallet-events";
 
 type Charity = {
   slug: string;
@@ -46,13 +47,28 @@ type TopDonor = {
   created_at: string;
 };
 
+type Disbursement = {
+  charity: string;
+  fiat_amount_xof: number;
+  reference: string;
+  paid_at: string;
+  proof_url: string;
+};
+
+type Transparency = {
+  disbursed_aura: number;
+  disbursed_xof: number;
+  pending_aura: number;
+  disbursements: Disbursement[];
+};
+
 type CurrentResp = {
   event: CharityEvent | null;
   total?: number;
   donor_count?: number;
   by_charity?: ByCharity[];
   top_donors?: TopDonor[];
-};
+} & Partial<Transparency>;
 
 export default function CharityPage() {
   const t = useT();
@@ -97,6 +113,12 @@ export default function CharityPage() {
           donorCount={data.donor_count ?? 0}
           byCharity={data.by_charity ?? []}
           topDonors={data.top_donors ?? []}
+          transparency={{
+            disbursed_aura: data.disbursed_aura ?? 0,
+            disbursed_xof: data.disbursed_xof ?? 0,
+            pending_aura: data.pending_aura ?? 0,
+            disbursements: data.disbursements ?? [],
+          }}
           onDonated={load}
           authFetch={authFetch}
           isAuthed={!!user}
@@ -112,6 +134,7 @@ function CharityEventView({
   donorCount,
   byCharity,
   topDonors,
+  transparency,
   onDonated,
   authFetch,
   isAuthed,
@@ -121,6 +144,7 @@ function CharityEventView({
   donorCount: number;
   byCharity: ByCharity[];
   topDonors: TopDonor[];
+  transparency: Transparency;
   onDonated: () => void;
   authFetch: ReturnType<typeof useAuth>["authFetch"];
   isAuthed: boolean;
@@ -165,14 +189,50 @@ function CharityEventView({
         <Stat label={t("charity.donors")} value={fmt(donorCount)} />
       </section>
 
+      {/* Transparence : reversé vs en attente de reversement */}
+      <section className="mb-6 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
+        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-neutral-400">
+          {t("charity.transparency")}
+        </h3>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <p className="text-sm text-neutral-300">
+            {t("charity.disbursed")}{" "}
+            <span className="font-semibold text-emerald-300">
+              {fmt(transparency.disbursed_xof)} FCFA
+            </span>{" "}
+            <span className="text-neutral-500">({fmtAura(transparency.disbursed_aura)})</span>
+          </p>
+          <p className="text-sm text-neutral-300">
+            {t("charity.pending")}{" "}
+            <span className="font-semibold text-amber-300">
+              {fmtAura(transparency.pending_aura)}
+            </span>
+          </p>
+        </div>
+        {transparency.disbursements.length > 0 && (
+          <ul className="mt-3 space-y-1 text-xs text-neutral-400">
+            {transparency.disbursements.map((d) => (
+              <li key={`${d.reference}-${d.paid_at}`}>
+                {d.paid_at} · {d.charity} · {fmt(d.fiat_amount_xof)} FCFA · {t("charity.ref")}{" "}
+                {d.proof_url ? (
+                  <a href={d.proof_url} target="_blank" rel="noreferrer" className="underline">
+                    {d.reference}
+                  </a>
+                ) : (
+                  d.reference
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
       <div className="grid gap-6 md:grid-cols-[1fr_360px]">
         {/* Colonne gauche : description, répartition par cause */}
         <div className="space-y-6">
           {event.description_md && (
             <article className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
-              <p className="whitespace-pre-line text-sm text-neutral-200">
-                {event.description_md}
-              </p>
+              <p className="whitespace-pre-line text-sm text-neutral-200">{event.description_md}</p>
             </article>
           )}
 
@@ -202,10 +262,7 @@ function CharityEventView({
                         <span className="w-10 text-right text-xs text-neutral-500">{pct}%</span>
                       </div>
                       <div className="h-1.5 w-full overflow-hidden rounded-full bg-neutral-800">
-                        <div
-                          className="h-full bg-secondary"
-                          style={{ width: `${pct}%` }}
-                        />
+                        <div className="h-full bg-secondary" style={{ width: `${pct}%` }} />
                       </div>
                     </li>
                   );
@@ -271,9 +328,7 @@ function Stat({ label, value, primary }: { label: string; value: string; primary
   return (
     <div
       className={`rounded-2xl border p-5 ${
-        primary
-          ? "border-secondary/40 bg-secondary/10"
-          : "border-neutral-800 bg-neutral-900/60"
+        primary ? "border-secondary/40 bg-secondary/10" : "border-neutral-800 bg-neutral-900/60"
       }`}
     >
       <p className="text-xs uppercase tracking-wider text-neutral-400">{label}</p>
@@ -324,6 +379,7 @@ function DonateForm({
       setStatus({ ok: true, msg: t("charity.thanksDesc", { n: fmt(n) }) });
       setMessage("");
       onDonated();
+      notifyWalletChanged();
     } catch (err) {
       const e = err as { data?: { detail?: string } };
       setStatus({ ok: false, msg: e.data?.detail ?? "Erreur" });
