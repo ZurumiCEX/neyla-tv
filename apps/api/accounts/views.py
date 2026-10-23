@@ -71,6 +71,18 @@ def _clear_refresh_cookie(response: Response) -> Response:
     return response
 
 
+def _password_error(exc: DjangoValidationError) -> Response:
+    """Erreur de robustesse du mot de passe, au format d'erreur homogène."""
+    messages = list(exc.messages)
+    return Response(
+        {
+            "detail": messages[0] if messages else "Mot de passe invalide.",
+            "errors": {"password": messages},
+        },
+        status=status.HTTP_400_BAD_REQUEST,
+    )
+
+
 @api_view(["POST"])
 @authentication_classes([])
 @permission_classes([AllowAny])
@@ -83,6 +95,7 @@ def register(request: Request) -> Response:
     terms_accepted = data.pop("terms_accepted", False)
     captcha_token = data.pop("captcha_token", "")
     data.pop("website", None)  # honeypot, déjà validé par le serializer
+    data.pop("password_confirm", None)  # déjà comparé par le serializer
 
     # Captcha : exigé uniquement si la clé Turnstile est configurée (prod).
     from safety.captcha import is_enabled as captcha_enabled
@@ -102,7 +115,7 @@ def register(request: Request) -> Response:
     except RegistrationError as exc:
         return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
     except DjangoValidationError as exc:
-        return Response({"password": list(exc.messages)}, status=status.HTTP_400_BAD_REQUEST)
+        return _password_error(exc)
     send_email_verification.delay(user.pk)
     return Response(MeSerializer(user).data, status=status.HTTP_201_CREATED)
 
@@ -350,7 +363,7 @@ def password_reset_confirm(request: Request) -> Response:
     except InvalidToken as exc:
         return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
     except DjangoValidationError as exc:
-        return Response({"password": list(exc.messages)}, status=status.HTTP_400_BAD_REQUEST)
+        return _password_error(exc)
     return Response({"detail": "Mot de passe mis à jour."})
 
 

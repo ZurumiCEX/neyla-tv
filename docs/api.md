@@ -69,7 +69,7 @@ Les `CharityEvent` sont automatiquement miroir dans `PlatformEvent` (signal).
 
 | Méthode | Chemin | Auth | Rate-limit | Description |
 |---------|--------|------|-----------|-------------|
-| `POST` | `/api/auth/register` | — | 5 / 5 min / IP | Crée un compte `{email, username, password, invite?, terms_accepted}`. `terms_accepted=true` est **obligatoire** (attestation 13 ans + CGU). |
+| `POST` | `/api/auth/register` | — | 5 / 5 min / IP | Crée un compte `{email, username, password, password_confirm, date_of_birth (AAAA-MM-JJ), invite?, terms_accepted}`. **18 ans minimum** (vérifié sur `date_of_birth`), mot de passe ≥ 8 caractères (non similaire à l'email/pseudo, non courant), confirmation identique, `terms_accepted=true`. Erreurs : `{detail: <premier message>, errors: {champ: [...]}}`. |
 | `POST` | `/api/auth/login` | — | 10 / 5 min / IP | `{email, password}` → `{access, user}` + cookie refresh. |
 | `POST` | `/api/auth/refresh` | cookie | — | Rafraîchit l'access token depuis le cookie (ou `{refresh}`). |
 | `POST` | `/api/auth/logout` | cookie | — | Blackliste le refresh, efface le cookie. `204`. |
@@ -368,7 +368,7 @@ WebSocket
 
 ```
 /api/
-├── auth/register                    POST  (+ champs `invite` optionnel, `terms_accepted` requis)
+├── auth/register                    POST  (+ `password_confirm`, `date_of_birth` 18+, `terms_accepted`, `invite` optionnel)
 ├── uploads/{avatar,banner,game/<slug>}      POST  (multipart → Cloudflare R2)
 ├── payments/
 │   ├── wallet · purchase · purchases/<id> · tip · payouts

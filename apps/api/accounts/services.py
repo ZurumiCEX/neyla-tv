@@ -29,11 +29,12 @@ def register_user(
     password: str,
     invite_code: str = "",
     terms_accepted: bool = False,
+    date_of_birth=None,
 ) -> User:
     """Crée un utilisateur. Lève RegistrationError si conflit ou règle violée."""
     if not terms_accepted:
         raise RegistrationError(
-            "Vous devez attester avoir 13 ans ou plus et accepter les conditions d'utilisation."
+            "Vous devez attester avoir 18 ans ou plus et accepter les conditions d'utilisation."
         )
     username_lc = username.lower()
     if username_lc in RESERVED_USERNAMES:
@@ -42,10 +43,13 @@ def register_user(
         raise RegistrationError("Un compte existe déjà avec cet email.")
     if User.objects.filter(username=username_lc).exists():
         raise RegistrationError("Ce username est déjà pris.")
-    validate_password(password)
+    # Utilisateur provisoire : active le contrôle de similarité mot de passe /
+    # email / username (sans lui, le validateur ne compare rien).
+    validate_password(password, user=User(email=email, username=username_lc))
     user = User.objects.create_user(email=email, username=username_lc, password=password)
     user.terms_accepted_at = timezone.now()
-    user.save(update_fields=["terms_accepted_at"])
+    user.date_of_birth = date_of_birth
+    user.save(update_fields=["terms_accepted_at", "date_of_birth"])
     if invite_code:
         from invitations.services import try_redeem
 

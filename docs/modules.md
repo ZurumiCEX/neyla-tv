@@ -25,8 +25,8 @@ Chaque app est autonome : `models`, `views`, `serializers`, `services`,
   reset mot de passe, profil.
 - **Modèle** : `User` (email unique, username `^[a-z0-9_]{3,30}$`,
   `display_name`, `avatar_url`, `bio`, `email_verified_at`, `terms_accepted_at`,
-  `invited_by`). `AUTH_USER_MODEL`. L'inscription **exige** `terms_accepted=true`
-  (attestation 13 ans + CGU).
+  `invited_by`, `date_of_birth`). `AUTH_USER_MODEL`. L'inscription **exige** une date de
+  naissance (18 ans minimum), un mot de passe confirmé (≥ 8 caractères) et `terms_accepted=true`.
 - **Guides/tutoriels** : modèles `Guide` + `GuideStep` (contenu localisé FR/EN/PT,
   icône, ordre, publication) gérés en **back-office Django** (CRUD, étapes en
   inline) ; `GuideProgress` (clé `"<slug>:<step_id>"`) suit les acquis par
@@ -143,7 +143,9 @@ Chaque app est autonome : `models`, `views`, `serializers`, `services`,
 | Route | Fichier | Rôle |
 |-------|---------|------|
 | `/` | `page.tsx` | Accueil : lives + santé des services |
-| `/login`, `/register` | `*/page.tsx` | Auth |
+| `/login`, `/register` | `*/page.tsx` | Auth (œil afficher/masquer, jauge de robustesse, confirmation, date de naissance 18+) |
+| `/forgot-password`, `/reset-password/[token]` | `page.tsx` | Mot de passe oublié / réinitialisation |
+| `/terms`, `/privacy`, `/cookies`, `/guidelines`, `/dmca`, `/about`, `/contact` | `page.tsx` | Pages légales et institutionnelles (FR/EN/PT, `lib/legal-content.ts`) |
 | `/verify-email/[token]` | `page.tsx` | Vérification email |
 | `/dashboard` | `page.tsx` | Espace streamer (clé de stream, chaîne) |
 | `/revenus` | `page.tsx` | Revenus consolidés du créateur (tips + abos + parrainage), période jour/semaine/mois |

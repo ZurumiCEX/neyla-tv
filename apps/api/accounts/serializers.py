@@ -2,15 +2,39 @@
 
 from __future__ import annotations
 
+import datetime
+
 from rest_framework import serializers
 
 from .models import USERNAME_REGEX, User, UserSession
 
+MIN_AGE_YEARS = 18
+PASSWORD_MIN_LENGTH = 8
+
+
+def age_on(birth: datetime.date, today: datetime.date) -> int:
+    """Âge révolu à la date `today` (un 29 février compte au 28 les années non bissextiles)."""
+    return today.year - birth.year - ((today.month, today.day) < (birth.month, birth.day))
+
 
 class RegisterSerializer(serializers.Serializer):
     email = serializers.EmailField()
-    username = serializers.RegexField(USERNAME_REGEX)
-    password = serializers.CharField(write_only=True, min_length=10, max_length=128)
+    username = serializers.RegexField(
+        USERNAME_REGEX,
+        error_messages={
+            "invalid": "3 à 30 caractères : lettres minuscules, chiffres ou « _ » uniquement."
+        },
+    )
+    password = serializers.CharField(
+        write_only=True, min_length=PASSWORD_MIN_LENGTH, max_length=128
+    )
+    password_confirm = serializers.CharField(write_only=True, max_length=128)
+    date_of_birth = serializers.DateField(
+        error_messages={
+            "required": "Ta date de naissance est requise.",
+            "invalid": "Date de naissance invalide (format AAAA-MM-JJ).",
+        }
+    )
     invite = serializers.CharField(required=False, allow_blank=True, default="", max_length=16)
     terms_accepted = serializers.BooleanField(write_only=True)
     # Honeypot : champ invisible côté UI ; rempli ⇒ bot.
@@ -25,9 +49,26 @@ class RegisterSerializer(serializers.Serializer):
     def validate_terms_accepted(self, value: bool) -> bool:
         if not value:
             raise serializers.ValidationError(
-                "Vous devez attester avoir 13 ans ou plus et accepter les conditions d'utilisation."
+                "Vous devez attester avoir 18 ans ou plus et accepter les conditions d'utilisation."
             )
         return value
+
+    def validate_date_of_birth(self, value: datetime.date) -> datetime.date:
+        today = datetime.date.today()
+        if value > today or value.year < 1900:
+            raise serializers.ValidationError("Date de naissance invalide.")
+        if age_on(value, today) < MIN_AGE_YEARS:
+            raise serializers.ValidationError(
+                f"Neyla TV est réservée aux personnes de {MIN_AGE_YEARS} ans ou plus."
+            )
+        return value
+
+    def validate(self, attrs):
+        if attrs.get("password") != attrs.get("password_confirm"):
+            raise serializers.ValidationError(
+                {"password_confirm": "Les deux mots de passe ne correspondent pas."}
+            )
+        return attrs
 
     def validate_website(self, value: str) -> str:
         # Honeypot : aucun utilisateur réel ne remplit ce champ.
@@ -157,4 +198,4 @@ class TokenSerializer(serializers.Serializer):
 
 class PasswordResetConfirmSerializer(serializers.Serializer):
     token = serializers.CharField()
-    password = serializers.CharField(min_length=10, max_length=128)
+    password = serializers.CharField(min_length=PASSWORD_MIN_LENGTH, max_length=128)

@@ -1,7 +1,9 @@
 """Handler d'exceptions DRF : enveloppe d'erreur homogène.
 
 Conserve `detail` quand il existe (compat front), et enveloppe les erreurs de
-validation par champ sous `{detail, errors}`.
+validation par champ sous `{detail, errors}`. `detail` reprend alors le premier
+message de champ, pour que le front affiche la vraie raison (et non un texte
+générique).
 """
 
 from __future__ import annotations
@@ -15,5 +17,22 @@ def exception_handler(exc, context):
         return None
     data = response.data
     if isinstance(data, list) or (isinstance(data, dict) and "detail" not in data):
-        response.data = {"detail": "Requête invalide.", "errors": data}
+        response.data = {"detail": _first_message(data) or "Requête invalide.", "errors": data}
     return response
+
+
+def _first_message(data) -> str:
+    """Premier message lisible d'une structure d'erreurs DRF (dict / list imbriqués)."""
+    if isinstance(data, dict):
+        for value in data.values():
+            msg = _first_message(value)
+            if msg:
+                return msg
+        return ""
+    if isinstance(data, list):
+        for value in data:
+            msg = _first_message(value)
+            if msg:
+                return msg
+        return ""
+    return str(data)

@@ -23,6 +23,8 @@ def test_register_creates_user_and_triggers_email(api_client, mailoutbox):
             "email": "neo@example.com",
             "username": "neo",
             "password": "correct-horse-battery-staple",
+            "password_confirm": "correct-horse-battery-staple",
+            "date_of_birth": "1995-05-17",
             "terms_accepted": True,
         },
         format="json",
@@ -43,6 +45,8 @@ def test_register_duplicate_email_rejected(api_client):
             "email": "dup@example.com",
             "username": "other",
             "password": "correct-horse-battery-staple",
+            "password_confirm": "correct-horse-battery-staple",
+            "date_of_birth": "1995-05-17",
             "terms_accepted": True,
         },
         format="json",
@@ -57,6 +61,8 @@ def test_register_invalid_username_rejected(api_client):
             "email": "x@example.com",
             "username": "AB",
             "password": "correct-horse-battery-staple",
+            "password_confirm": "correct-horse-battery-staple",
+            "date_of_birth": "1995-05-17",
             "terms_accepted": True,
         },
         format="json",
@@ -71,6 +77,8 @@ def test_register_without_terms_rejected(api_client):
             "email": "no-cgu@example.com",
             "username": "nocgu",
             "password": "correct-horse-battery-staple",
+            "password_confirm": "correct-horse-battery-staple",
+            "date_of_birth": "1995-05-17",
         },
         format="json",
     )
@@ -209,6 +217,8 @@ def test_register_honeypot_blocks_bot(api_client):
             "email": "bot@example.com",
             "username": "spammer",
             "password": "correct-horse-battery-staple",
+            "password_confirm": "correct-horse-battery-staple",
+            "date_of_birth": "1995-05-17",
             "terms_accepted": True,
             "website": "http://spam.example.com",
         },
@@ -224,6 +234,8 @@ def test_register_disposable_email_rejected(api_client):
             "email": "throwaway@yopmail.com",
             "username": "throwaway",
             "password": "correct-horse-battery-staple",
+            "password_confirm": "correct-horse-battery-staple",
+            "date_of_birth": "1995-05-17",
             "terms_accepted": True,
         },
         format="json",
@@ -239,8 +251,98 @@ def test_register_accepts_clean_payload_in_fake_captcha_mode(api_client):
             "email": "newbie-clean@example.com",
             "username": "cleanguy",
             "password": "correct-horse-battery-staple",
+            "password_confirm": "correct-horse-battery-staple",
+            "date_of_birth": "1995-05-17",
             "terms_accepted": True,
         },
         format="json",
     )
     assert resp.status_code == 201
+
+
+# --- Âge, confirmation et robustesse du mot de passe ---
+
+
+def _payload(**overrides):
+    data = {
+        "email": "adult@example.com",
+        "username": "adultuser",
+        "password": "Bonjour-Dakar-2026",
+        "password_confirm": "Bonjour-Dakar-2026",
+        "date_of_birth": "1995-05-17",
+        "terms_accepted": True,
+    }
+    data.update(overrides)
+    return data
+
+
+def test_register_rejects_under_18(api_client):
+    import datetime
+
+    today = datetime.date.today()
+    seventeen = today.replace(year=today.year - 17).isoformat()
+    resp = api_client.post(
+        reverse("auth-register"), _payload(date_of_birth=seventeen), format="json"
+    )
+    assert resp.status_code == 400
+    assert "18 ans" in resp.json()["detail"]
+
+
+def test_register_accepts_exactly_18(api_client):
+    import datetime
+
+    today = datetime.date.today()
+    birthday = (
+        today.replace(year=today.year - 18)
+        if not (today.month == 2 and today.day == 29)
+        else datetime.date(today.year - 18, 2, 28)
+    )
+    resp = api_client.post(
+        reverse("auth-register"), _payload(date_of_birth=birthday.isoformat()), format="json"
+    )
+    assert resp.status_code == 201, resp.content
+
+
+def test_register_requires_date_of_birth(api_client):
+    data = _payload()
+    data.pop("date_of_birth")
+    resp = api_client.post(reverse("auth-register"), data, format="json")
+    assert resp.status_code == 400
+    assert "date_of_birth" in resp.json()["errors"]
+
+
+def test_register_rejects_password_mismatch(api_client):
+    resp = api_client.post(
+        reverse("auth-register"), _payload(password_confirm="Autre-chose-2026"), format="json"
+    )
+    assert resp.status_code == 400
+    assert "correspondent pas" in resp.json()["detail"]
+
+
+def test_register_accepts_8_char_password(api_client):
+    resp = api_client.post(
+        reverse("auth-register"),
+        _payload(password="Kpx7#mQz", password_confirm="Kpx7#mQz"),
+        format="json",
+    )
+    assert resp.status_code == 201, resp.content
+
+
+def test_register_rejects_password_similar_to_username(api_client):
+    resp = api_client.post(
+        reverse("auth-register"),
+        _payload(
+            username="leopoldsenghor", password="leopoldsenghor", password_confirm="leopoldsenghor"
+        ),
+        format="json",
+    )
+    assert resp.status_code == 400
+    assert resp.json()["detail"]  # message explicite, pas un texte générique
+
+
+def test_register_stores_date_of_birth(api_client):
+    from accounts.models import User
+
+    resp = api_client.post(reverse("auth-register"), _payload(), format="json")
+    assert resp.status_code == 201
+    assert str(User.objects.get(username="adultuser").date_of_birth) == "1995-05-17"

@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { PasswordInput } from "@/components/PasswordInput";
 import { useAuth } from "@/lib/auth-context";
 import { useT } from "@/lib/i18n";
 
@@ -88,22 +90,28 @@ export default function LoginPage() {
           <span className="mb-1 block text-sm text-neutral-300">{t("auth.email")}</span>
           <input
             type="email"
+            autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
             className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-neutral-100 outline-none focus:border-secondary-light"
           />
         </label>
-        <label className="block">
-          <span className="mb-1 block text-sm text-neutral-300">{t("auth.password")}</span>
-          <input
-            type="password"
+        <div>
+          <PasswordInput
+            label={t("auth.password")}
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onValueChange={setPassword}
+            autoComplete="current-password"
             required
-            className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-neutral-100 outline-none focus:border-secondary-light"
           />
-        </label>
+          <Link
+            href="/forgot-password"
+            className="mt-1 inline-block text-xs text-neutral-400 hover:text-emerald-300"
+          >
+            {t("auth.forgot")}
+          </Link>
+        </div>
         <button
           type="submit"
           disabled={busy}
@@ -115,9 +123,9 @@ export default function LoginPage() {
       {error && <p className="mt-4 text-sm text-red-300">{error}</p>}
       <p className="mt-6 text-sm text-neutral-400">
         {t("auth.noAccount")}{" "}
-        <a href="/register" className="text-emerald-300 underline">
+        <Link href="/register" className="text-emerald-300 underline">
           {t("nav.register")}
-        </a>
+        </Link>
       </p>
     </main>
   );
