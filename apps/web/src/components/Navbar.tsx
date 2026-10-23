@@ -116,13 +116,23 @@ export function Navbar() {
               className="w-full rounded-full border border-neutral-800 bg-neutral-900 px-4 py-1.5 text-sm text-neutral-100 outline-none focus:border-secondary-light"
             />
           </form>
-          <Link
-            href="/parcourir"
-            onClick={() => setMenuOpen(false)}
-            className="block rounded-lg px-2 py-2 text-sm text-neutral-200 hover:bg-neutral-800"
-          >
-            {t("nav.browse")}
-          </Link>
+          {[
+            { href: "/", label: t("side.home"), show: true },
+            { href: "/parcourir", label: t("side.browse"), show: true },
+            { href: "/suivis", label: t("side.follows"), show: Boolean(user) },
+            { href: "/instant", label: t("side.shorts"), show: true },
+          ]
+            .filter((l) => l.show)
+            .map((l) => (
+              <Link
+                key={l.href}
+                href={l.href}
+                onClick={() => setMenuOpen(false)}
+                className="block rounded-lg px-2 py-2 text-sm text-neutral-200 hover:bg-neutral-800"
+              >
+                {l.label}
+              </Link>
+            ))}
           {!user && (
             <div className="mt-2 flex gap-2">
               <Link

@@ -2,8 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { notifyFollowsChanged } from "@/lib/follow-events";
+import { useT } from "@/lib/i18n";
 
 export function FollowButton({ username }: { username: string }) {
+  const t = useT();
   const { user, authFetch } = useAuth();
   const [following, setFollowing] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
@@ -37,6 +40,7 @@ export function FollowButton({ username }: { username: string }) {
         await authFetch(`/api/follows/${username}`, { method: "POST" });
         setFollowing(true);
       }
+      notifyFollowsChanged();
     } catch {
       /* ignore */
     } finally {
@@ -56,7 +60,7 @@ export function FollowButton({ username }: { username: string }) {
       } disabled:opacity-50`}
     >
       <HeartIcon filled={!!following} />
-      {following === null ? "…" : following ? "Suivi" : "Suivre"}
+      {following === null ? "…" : following ? t("follow.following") : t("follow.follow")}
     </button>
   );
 }

@@ -312,6 +312,26 @@ un abonnement offert ne se renouvelle pas.
 
 ---
 
+## Instant (vidéos courtes) — `/api/shorts/`
+
+Vidéos verticales ≤ 60 s publiées par les streamers approuvés, hébergées sur
+**Bunny Stream** (VOD). Upload **direct navigateur → Bunny** (TUS signé), puis le
+webhook Bunny (`/api/webhooks/bunny/stream`, statut 3 = prête, 5 = échec) publie
+la vidéo. En mode FAKE, la vidéo est publiée tout de suite avec un clip de démo.
+
+| Méthode | Chemin | Auth | Description |
+|---------|--------|------|-------------|
+| `GET` | `/api/shorts/trending?limit&offset` | — | Fil public classé par popularité amortie par l'âge (`(vues + 5·likes + 1) / (âge_h + 2)^1.5`), suivis ou non. `liked` si connecté. |
+| `GET` | `/api/shorts/<id>` | — | Détail d'une vidéo visible. |
+| `POST` | `/api/shorts/<id>/view` | — (240/h/IP) | +1 vue, dédoublonnée 6 h par spectateur (Redis). |
+| `POST`/`DELETE` | `/api/shorts/<id>/like` | JWT | Aimer / ne plus aimer (idempotent) → `{liked, like_count}`. |
+| `GET` | `/api/channels/<slug>/shorts` | — | Vidéos Instant d'une chaîne. |
+| `GET`/`POST` | `/api/shorts/me` | JWT streamer | Mes vidéos (tous statuts) / démarrer un upload `{title}` → `{short, upload: {mode: "tus", endpoint, library_id, video_id, expires, signature} \| {mode: "fake"}}`. Max 5 envois en cours. |
+| `POST` | `/api/shorts/me/<id>/uploaded` | JWT | Fin de l'envoi TUS → statut « encodage ». |
+| `DELETE` | `/api/shorts/me/<id>` | JWT | Supprime la vidéo (et le fichier Bunny). |
+
+---
+
 ## Uploads médias — `/api/uploads/`
 
 Multipart (`file`), PNG/JPEG/WebP, ≤ 5 Mo. Stockage **Cloudflare R2** (mode FAKE

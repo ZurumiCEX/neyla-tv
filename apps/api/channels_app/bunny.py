@@ -37,6 +37,8 @@ FAKE_HLS_URL = (
     "https://devstreaming-cdn.apple.com/videos/streaming/examples/"
     "bipbop_16x9/bipbop_16x9_variant.m3u8"
 )
+# Vidéo courte publique (CC0) utilisée pour les « Instant » en mode FAKE.
+FAKE_SHORT_URL = "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"
 
 
 @dataclass(frozen=True)
@@ -119,6 +121,10 @@ class BunnyStreamClient:
     def delete_video(self, video_id: str) -> None:
         raise NotImplementedError
 
+    def get_video(self, video_id: str) -> dict:
+        """Métadonnées d'une vidéo (`length` en secondes, `status`…)."""
+        raise NotImplementedError
+
     def upload_params(self, video_id: str, ttl_seconds: int = 3600) -> VideoUpload:
         raise NotImplementedError
 
@@ -153,6 +159,9 @@ class FakeBunnyStreamClient(BunnyStreamClient):
 
     def delete_video(self, video_id: str) -> None:
         logger.info("bunny:fake:delete_video id=%s", video_id)
+
+    def get_video(self, video_id: str) -> dict:  # noqa: ARG002
+        return {}
 
     def upload_params(self, video_id: str, ttl_seconds: int = 3600) -> VideoUpload:
         expires = int(time.time()) + ttl_seconds
@@ -241,6 +250,9 @@ class HttpBunnyStreamClient(BunnyStreamClient):
 
     def delete_video(self, video_id: str) -> None:
         self._request("DELETE", self._url("videos", video_id))
+
+    def get_video(self, video_id: str) -> dict:
+        return self._request("GET", self._url("videos", video_id))
 
     def upload_params(self, video_id: str, ttl_seconds: int = 3600) -> VideoUpload:
         expires = int(time.time()) + ttl_seconds

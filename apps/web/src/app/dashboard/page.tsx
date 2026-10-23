@@ -12,6 +12,7 @@ import { ChatPanel } from "@/components/ChatPanel";
 import { CollaborationManager } from "@/components/CollaborationManager";
 import { CopyButton } from "@/components/CopyButton";
 import { HlsPlayer } from "@/components/HlsPlayer";
+import { ShortsManager } from "@/components/ShortsManager";
 import { LiveBadge } from "@/components/LiveBadge";
 
 type TFn = (key: string, params?: Record<string, string | number>) => string;
@@ -75,6 +76,7 @@ type Tab =
   | "community"
   | "monetization"
   | "collaboration"
+  | "shorts"
   | "broadcast";
 
 function formatDuration(seconds: number | null, t: TFn): string {
@@ -323,6 +325,7 @@ export default function DashboardPage() {
     { id: "community", label: t("dash.tab.community") },
     { id: "monetization", label: t("dash.tab.monetization") },
     { id: "collaboration", label: t("dash.tab.collaboration") },
+    { id: "shorts", label: t("dash.tab.shorts") },
     { id: "broadcast", label: t("dash.tab.broadcast") },
   ];
 
@@ -704,6 +707,16 @@ export default function DashboardPage() {
               <CollaborationManager />
             </div>
           )}
+
+          {/* INSTANT */}
+          {tab === "shorts" &&
+            (channel.is_provisioned ? (
+              <ShortsManager />
+            ) : (
+              <p className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5 text-sm text-amber-300">
+                {t("shortsMgr.gated")}
+              </p>
+            ))}
 
           {/* DIFFUSION */}
           {tab === "broadcast" &&

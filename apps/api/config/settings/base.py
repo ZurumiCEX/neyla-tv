@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "ops",
     "payments",
     "safety",
+    "shorts",
     "social",
     "streamers",
     "subscriptions",

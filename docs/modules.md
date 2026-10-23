@@ -100,6 +100,10 @@ Chaque app est autonome : `models`, `views`, `serializers`, `services`,
 - **`safety` (étendu)** : `captcha.py` (Cloudflare Turnstile, mode FAKE si pas
   de clé) + `is_disposable()` (blocklist domaines email jetables). Honeypot
   `website` au register + validation `is_disposable` sur l'email.
+- **`shorts` (« Instant »)** : `Short` (vidéo courte Bunny VOD, statut
+  uploading → processing → ready/failed, vues/likes, dépublication modération)
+  et `ShortLike`. Upload TUS direct navigateur → Bunny, publication par le
+  webhook Bunny, fil tendance public (popularité amortie par l'âge).
 - **`uploads`** : `services.upload_image()` vers **Cloudflare R2** (boto3, mode
   FAKE hors-ligne) ; endpoints avatar / bannière / vignette de jeu.
 - **`subscriptions`** : `SubTier` (palier prix Aura + `perks` texte +
@@ -153,6 +157,8 @@ Chaque app est autonome : `models`, `views`, `serializers`, `services`,
 | `/c/[slug]` | `page.tsx` | Page chaîne : player + chat + **bouton partager** |
 | `/categories/[slug]` | `page.tsx` | Lives d'une catégorie |
 | `/search` | `SearchView.tsx` | Recherche |
+| `/instant` | `page.tsx` | Fil « Instant » : vidéos courtes verticales populaires (défilement aimanté, lecture auto, like, partage, suivre) |
+| `/suivis` | `page.tsx` | Toutes les chaînes suivies (en direct d'abord, puis hors ligne), catégories, abonnements |
 | `/charity` | `page.tsx` | Charity Day en cours : total, leaderboard, formulaire de don |
 | `/calendrier` | `page.tsx` | Calendrier des événements (filtrable par kind) |
 | `/statut` | `page.tsx` | Page publique d'état (services + uptime + incidents) |

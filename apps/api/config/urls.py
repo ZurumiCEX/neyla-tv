@@ -32,6 +32,7 @@ urlpatterns = [
     path("api/", include("safety.urls")),
     path("api/", include("uploads.urls")),
     path("api/", include("subscriptions.urls")),
+    path("api/", include("shorts.urls")),
     path("api/", include("gamification.urls")),
     path("api/", include("invitations.urls")),
     path("api/", include("charity.urls")),
