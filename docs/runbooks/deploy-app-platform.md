@@ -28,9 +28,10 @@ en console :
 | Variable | Valeur | Note |
 |----------|--------|------|
 | `DJANGO_SECRET_KEY` | aléatoire ≥ 50 car. | `python -c "import secrets;print(secrets.token_urlsafe(64))"` |
-| `CLOUDFLARE_ACCOUNT_ID` | depuis Cloudflare | vide = mode FAKE (pas de live réel) |
-| `CLOUDFLARE_API_TOKEN` | token Stream:Edit | idem |
-| `CLOUDFLARE_WEBHOOK_SECRET` | secret partagé | doit matcher la config du webhook CF |
+| `BUNNY_STREAM_LIBRARY_ID` | Bunny → Stream → bibliothèque → API | vide = mode FAKE (pas de live réel) |
+| `BUNNY_STREAM_API_KEY` | AccessKey de la bibliothèque (chiffrée) | idem |
+| `BUNNY_STREAM_CDN_HOSTNAME` | `vz-xxx.b-cdn.net` | lecture HLS des vidéos « Instant » |
+| `BUNNY_STREAM_WEBHOOK_KEY` | clé de signature (chiffrée) | cf. [runbook Bunny](bunny-stream-setup.md) |
 | `SENTRY_DSN` | optionnel | vide = Sentry désactivé |
 
 > Les variables liées aux bases (`POSTGRES_*`, `REDIS_URL`, `CELERY_*`) sont
@@ -93,7 +94,7 @@ python manage.py seed_demo --flush          # 20 streamers, tous en direct
 
 Comptes créés : `streamer1@demo.neyla.tv` … `streamer20@demo.neyla.tv`,
 `admin@demo.neyla.tv` — mot de passe `DemoPass2026!`. Idempotent et hors-ligne
-(Cloudflare/paiements en FAKE). Les compteurs de spectateurs s'appuient sur
+(Bunny Stream/paiements en FAKE). Les compteurs de spectateurs s'appuient sur
 Redis (présent en prod) ; à défaut, la section « Live en cours » se replie sur
 le pic des sessions.
 

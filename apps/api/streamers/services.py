@@ -2,7 +2,7 @@
 
 - submit_application : (re)dépose une candidature (réessai possible après rejet).
 - approve_application : respecte le quota quotidien, puis déclenche le
-  provisioning Cloudflare de la chaîne (réutilise channels_app).
+  provisioning Bunny Stream de la chaîne (réutilise channels_app).
 - reject_application : refuse avec motif.
 """
 
@@ -123,9 +123,12 @@ def approve_application(application: StreamerApplication, admin) -> StreamerAppl
         application.decided_by = admin
         application.rejection_reason = ""
         application.save()
-    _provision_channel_now(application.user_id)
+    provisioned = _provision_channel_now(application.user_id)
     _notify_decision(application, "approved")
     _audit(admin, "streamer.approve", application)
+    if not provisioned:
+        # Le flux sera recréé à la prochaine ouverture du dashboard (réconciliation).
+        _audit(admin, "streamer.provision_failed", application)
     return application
 
 
@@ -159,15 +162,28 @@ def _notify_decision(application: StreamerApplication, status: str) -> None:
     )
 
 
-def _provision_channel_now(user_id: int) -> None:
+def _provision_channel_now(user_id: int) -> bool:
     """Provisionne la chaîne de façon SYNCHRONE (aucune dépendance au worker Celery).
 
-    L'approbation reste fonctionnelle même si le worker est indisponible ; l'admin
-    voit immédiatement le résultat. provision_channel est idempotent.
+    L'approbation reste fonctionnelle même si le worker est indisponible ou si
+    Bunny échoue : l'échec est journalisé, la notification part quand même et la
+    réconciliation du dashboard réessaiera. provision_channel est idempotent.
+    Retourne True si la chaîne est provisionnée à l'issue de l'appel.
     """
+    import logging
+
+    from channels_app.bunny import BunnyStreamError
     from channels_app.models import Channel
     from channels_app.services import provision_channel
 
     channel = Channel.objects.filter(user_id=user_id).first()
-    if channel is not None and not channel.is_provisioned:
+    if channel is None:
+        return False
+    if channel.is_provisioned:
+        return True
+    try:
         provision_channel(channel)
+    except BunnyStreamError:
+        logging.getLogger(__name__).exception("provisioning Bunny échoué (user %s)", user_id)
+        return False
+    return True

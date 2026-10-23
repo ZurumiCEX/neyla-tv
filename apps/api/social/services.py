@@ -16,7 +16,7 @@ class CollaborationError(Exception):
 
 
 def follow_user(follower: User, target_username: str) -> Follow:
-    target = User.objects.filter(username=target_username.lower()).first()
+    target = User.objects.filter(username__iexact=target_username.strip()).first()
     if target is None:
         raise FollowError("Utilisateur introuvable.")
     if target.pk == follower.pk:
@@ -46,7 +46,7 @@ def follow_user(follower: User, target_username: str) -> Follow:
 
 
 def unfollow_user(follower: User, target_username: str) -> int:
-    target = User.objects.filter(username=target_username.lower()).first()
+    target = User.objects.filter(username__iexact=target_username.strip()).first()
     if target is None:
         raise FollowError("Utilisateur introuvable.")
     deleted, _ = Follow.objects.filter(follower=follower, followee=target).delete()
@@ -61,7 +61,7 @@ def is_following(follower: User, target_username: str) -> bool:
 
 def invite_collaborator(inviter: User, target_username: str) -> Collaboration:
     """Invite un créateur à collaborer. Réutilise/relance une invitation existante."""
-    target = User.objects.filter(username=target_username.lower()).first()
+    target = User.objects.filter(username__iexact=target_username.strip()).first()
     if target is None:
         raise CollaborationError("Utilisateur introuvable.")
     if target.pk == inviter.pk:

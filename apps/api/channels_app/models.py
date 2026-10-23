@@ -1,4 +1,4 @@
-"""Modèle Channel : une chaîne par streamer, mappée à un Live Input Cloudflare."""
+"""Modèle Channel : une chaîne par streamer, mappée à un live stream Bunny Stream."""
 
 from __future__ import annotations
 
@@ -34,11 +34,13 @@ class Channel(models.Model):
         related_name="channels",
     )
 
-    # Cloudflare Stream Live Input.
-    live_input_uid = models.CharField(max_length=64, blank=True, db_index=True)
-    rtmps_url = models.CharField(max_length=200, blank=True)
-    rtmps_key = models.CharField(max_length=200, blank=True)
-    hls_playback_url = models.URLField(blank=True)
+    # Live stream du fournisseur vidéo (Bunny Stream).
+    stream_id = models.CharField(max_length=64, blank=True, db_index=True)
+    ingest_url = models.CharField(max_length=200, blank=True)
+    stream_key = models.CharField(max_length=200, blank=True)
+    playback_url = models.URLField(blank=True)
+    # Dernière vérification d'état auprès du fournisseur (polling).
+    stream_checked_at = models.DateTimeField(null=True, blank=True)
 
     is_live = models.BooleanField(default=False, db_index=True)
     last_live_started_at = models.DateTimeField(null=True, blank=True)
@@ -54,7 +56,7 @@ class Channel(models.Model):
 
     @property
     def is_provisioned(self) -> bool:
-        return bool(self.live_input_uid)
+        return bool(self.stream_id)
 
 
 class StreamSession(models.Model):

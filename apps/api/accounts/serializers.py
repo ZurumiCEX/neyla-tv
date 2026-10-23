@@ -67,10 +67,9 @@ class MeSerializer(serializers.ModelSerializer):
     _ALLOWED_SOCIAL = frozenset({"twitter", "youtube", "instagram", "tiktok", "discord", "website"})
 
     def get_is_streamer(self, obj) -> bool:
-        try:
-            return obj.channel.is_provisioned
-        except Exception:
-            return False
+        from channels_app.utils import is_streamer
+
+        return is_streamer(obj)
 
     def validate_social_links(self, value):
         if not isinstance(value, dict):

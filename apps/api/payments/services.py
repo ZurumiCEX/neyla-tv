@@ -126,12 +126,9 @@ def _is_streamer(user) -> bool:
     pour que les flux longs (webhook → confirm_purchase) voient bien un
     provisionnement intervenu entre-temps.
     """
-    from channels_app.models import Channel
+    from channels_app.utils import is_streamer
 
-    try:
-        return Channel.objects.filter(user_id=user.id).exclude(live_input_uid="").exists()
-    except Exception:
-        return False
+    return is_streamer(user)
 
 
 @transaction.atomic
@@ -318,8 +315,7 @@ WITHDRAWAL_OTP_TTL_MIN = 10
 
 def is_eligible_streamer(user) -> bool:
     """Seuls les streamers approuvés (chaîne provisionnée) peuvent retirer."""
-    channel = getattr(user, "channel", None)
-    return bool(channel and channel.is_provisioned)
+    return _is_streamer(user)
 
 
 def withdrawable_balance(user) -> int:

@@ -7,61 +7,51 @@ import logging
 from django.db import transaction
 from django.utils import timezone
 
-from .cloudflare import CloudflareStreamError, get_client
+from .bunny import BunnyStreamError, get_client
 from .models import Channel, StreamSession
 
 logger = logging.getLogger(__name__)
 
+_STREAM_FIELDS = ["stream_id", "ingest_url", "stream_key", "playback_url"]
+
+
+def _store_stream(channel: Channel, live) -> None:
+    channel.stream_id = live.stream_id
+    channel.ingest_url = live.ingest_url
+    channel.stream_key = live.stream_key
+    channel.playback_url = live.playback_url
+
 
 @transaction.atomic
 def provision_channel(channel: Channel) -> Channel:
-    """Crée le Live Input Cloudflare et stocke les credentials. Idempotent."""
+    """Crée le live stream Bunny et stocke les identifiants. Idempotent."""
     if channel.is_provisioned:
         return channel
-    client = get_client()
-    live = client.create_live_input(label=f"channel:{channel.slug}")
-    channel.live_input_uid = live.uid
-    channel.rtmps_url = live.rtmps_url
-    channel.rtmps_key = live.rtmps_key
-    channel.hls_playback_url = live.hls_playback_url
-    channel.save(
-        update_fields=[
-            "live_input_uid",
-            "rtmps_url",
-            "rtmps_key",
-            "hls_playback_url",
-            "updated_at",
-        ]
-    )
+    live = get_client().create_live_stream(label=f"channel:{channel.slug}")
+    _store_stream(channel, live)
+    channel.save(update_fields=[*_STREAM_FIELDS, "updated_at"])
     return channel
 
 
-@transaction.atomic
 def rotate_stream_key(channel: Channel) -> Channel:
-    """Supprime l'ancien Live Input et en crée un nouveau. Force OBS à reconfigurer."""
+    """Crée un nouveau live stream PUIS supprime l'ancien (force OBS à reconfigurer).
+
+    Ordre « créer avant supprimer » : si la création échoue, la chaîne garde son
+    ancien flux et reste provisionnée.
+    """
     client = get_client()
-    old_uid = channel.live_input_uid
-    if old_uid:
+    old_id = channel.stream_id
+    live = client.create_live_stream(label=f"channel:{channel.slug}")
+    with transaction.atomic():
+        _store_stream(channel, live)
+        channel.save(update_fields=[*_STREAM_FIELDS, "updated_at"])
+        mark_offline(channel)
+    if old_id:
         try:
-            client.delete_live_input(old_uid)
-        except CloudflareStreamError:
-            logger.exception("rotate_stream_key: delete ancien live_input failed")
-    channel.live_input_uid = ""
-    channel.rtmps_url = ""
-    channel.rtmps_key = ""
-    channel.hls_playback_url = ""
-    channel.is_live = False
-    channel.save(
-        update_fields=[
-            "live_input_uid",
-            "rtmps_url",
-            "rtmps_key",
-            "hls_playback_url",
-            "is_live",
-            "updated_at",
-        ]
-    )
-    return provision_channel(channel)
+            client.delete_live_stream(old_id)
+        except BunnyStreamError:
+            logger.exception("rotate_stream_key: suppression de l'ancien flux %s échouée", old_id)
+    return channel
 
 
 def mark_live(channel: Channel) -> bool:

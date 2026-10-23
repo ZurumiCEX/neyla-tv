@@ -27,12 +27,12 @@ email, reset mot de passe, profil éditable, rate-limiting des endpoints sensibl
 → [ADR 002 — Stratégie JWT](docs/adr/002-jwt-strategy.md)
 
 ### ✅ Phase 2 — Chaînes & ingest vidéo
-Création de chaîne, clé de stream RTMPS, rotation de clé, lecture HLS,
-intégration Cloudflare Stream + **mode FAKE** pour développer hors-ligne.
-→ [ADR 003 — Cloudflare Stream](docs/adr/003-cloudflare-stream.md)
+Création de chaîne, clé de stream RTMP, rotation de clé, lecture HLS,
+intégration Bunny Stream + **mode FAKE** pour développer hors-ligne.
+→ [ADR 010 — Bunny Stream](docs/adr/010-bunny-stream.md) (remplace l'ADR 003 Cloudflare Stream)
 
 ### ✅ Phase 3 — Statut live
-Badge LIVE en quasi temps réel via polling HTTP léger + webhook Cloudflare
+Badge LIVE en quasi temps réel via polling HTTP léger + synchronisation serveur Bunny
 signé (HMAC-SHA256, anti-rejeu), compteur de viewers.
 → [ADR 004 — Stratégie live status](docs/adr/004-live-status-strategy.md)
 
@@ -64,7 +64,7 @@ Alternative PaaS au Droplet : moins d'ops, scaling déclaratif, bases managées.
 - ✅ Runbook dédié + ADR.
   → [ADR 008 — App Platform](docs/adr/008-app-platform.md) ·
     [Runbook](docs/runbooks/deploy-app-platform.md)
-- 🚧 Premier déploiement + domaine custom + secrets Cloudflare réels.
+- 🚧 Premier déploiement + domaine custom + secrets Bunny Stream réels.
 
 ---
 

@@ -7,7 +7,7 @@
 # Avant de créer l'app :
 #   1. Connecter le dépôt GitHub `ZurumiCEX/neyla-tv` à DigitalOcean.
 #   2. Remplacer la valeur de DJANGO_SECRET_KEY (placeholder ci-dessous).
-#   3. Renseigner CLOUDFLARE_* en console pour quitter le mode FAKE (live réel).
+#   3. Renseigner BUNNY_STREAM_* en console pour quitter le mode FAKE (live réel).
 #
 # Détails et compromis : docs/adr/008-app-platform.md
 #                         docs/runbooks/deploy-app-platform.md
@@ -101,17 +101,24 @@ envs:
   - key: DJANGO_EMAIL_BACKEND
     value: django.core.mail.backends.console.EmailBackend
     scope: RUN_TIME
-  # Cloudflare Stream — laisser vide active le mode FAKE (aucun live réel).
-  # Renseigner en console (type chiffré) pour activer l'ingest RTMPS réel.
-  - key: CLOUDFLARE_ACCOUNT_ID
+  # Bunny Stream — BUNNY_STREAM_API_KEY vide active le mode FAKE (aucun live réel).
+  # Renseigner en console (type chiffré) pour activer l'ingest RTMP réel.
+  - key: BUNNY_STREAM_LIBRARY_ID
     value: ""
     scope: RUN_TIME
-  - key: CLOUDFLARE_API_TOKEN
+  - key: BUNNY_STREAM_API_KEY
     value: ""
-    scope: RUN_TIME
-  - key: CLOUDFLARE_WEBHOOK_SECRET
-    value: change-me-webhook-secret
     type: SECRET
+    scope: RUN_TIME
+  - key: BUNNY_STREAM_CDN_HOSTNAME
+    value: ""
+    scope: RUN_TIME
+  - key: BUNNY_STREAM_WEBHOOK_KEY
+    value: change-me-webhook-key
+    type: SECRET
+    scope: RUN_TIME
+  - key: STREAM_STATUS_POLL_SECONDS
+    value: "20"
     scope: RUN_TIME
   - key: SENTRY_DSN
     value: ""

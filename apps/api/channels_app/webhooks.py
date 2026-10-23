@@ -1,19 +1,26 @@
-"""Webhook Cloudflare Stream : signature HMAC-SHA256, anti-rejeu, idempotent.
+"""Webhook Bunny Stream : signature HMAC-SHA256, idempotent.
 
-Format de l'entête (aligné sur le style Cloudflare Worker / R2) :
-    Webhook-Signature: time=<unix_seconds>,sig1=<hex_sha256>
+Bunny envoie un POST JSON à chaque changement d'état d'une vidéo :
 
-Avec :
-    sig1 = hex(hmac_sha256(secret, f"{time}.{raw_body}"))
+    {"VideoLibraryId": 123, "VideoGuid": "…", "Status": 3}
+
+signé via l'en-tête `X-BunnyStream-Signature` = hex(hmac_sha256(clé, corps brut)),
+la clé étant `BUNNY_STREAM_WEBHOOK_KEY`.
+
+- Statuts VOD (« Instant ») : 3 = encodage terminé, 4 = résolution prête,
+  5 = échec → délégués à `shorts.services.handle_video_status`.
+- Événements live (best-effort, non documentés par Bunny) : si la charge contient
+  un identifiant de live stream et un état, la chaîne est basculée live/offline.
+  La source de vérité live reste le polling `channels_app.tasks.sync_live_status`.
 """
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import hmac
 import json
 import logging
-import time
 
 from django.conf import settings
 from django.http import HttpRequest, HttpResponse, JsonResponse
@@ -25,67 +32,72 @@ from .services import mark_live, mark_offline
 
 logger = logging.getLogger(__name__)
 
-SIGNATURE_HEADER = "HTTP_WEBHOOK_SIGNATURE"
+SIGNATURE_HEADER = "HTTP_X_BUNNYSTREAM_SIGNATURE"
+LIVE_ONLINE = {"live", "online", "started", "connected", "streaming"}
+LIVE_OFFLINE = {"offline", "ended", "stopped", "disconnected", "idle"}
 
 
-def _parse_signature_header(raw: str) -> tuple[int, str] | None:
-    parts: dict[str, str] = {}
-    for chunk in raw.split(","):
-        if "=" in chunk:
-            k, v = chunk.strip().split("=", 1)
-            parts[k] = v
-    try:
-        return int(parts["time"]), parts["sig1"]
-    except (KeyError, ValueError):
-        return None
-
-
-def _verify_signature(raw_body: bytes, header_value: str) -> bool:
-    parsed = _parse_signature_header(header_value)
-    if parsed is None:
+def verify_signature(raw_body: bytes, provided: str) -> bool:
+    """Compare en temps constant (hex ou base64 acceptés)."""
+    if not provided:
         return False
-    timestamp, provided = parsed
-    drift = abs(time.time() - timestamp)
-    if drift > settings.WEBHOOK_TIMESTAMP_TOLERANCE_SECONDS:
-        return False
-    signed = f"{timestamp}.".encode() + raw_body
-    expected = hmac.new(
-        settings.CLOUDFLARE_WEBHOOK_SECRET.encode(), signed, hashlib.sha256
-    ).hexdigest()
-    return hmac.compare_digest(expected, provided)
+    key = (settings.BUNNY_STREAM_WEBHOOK_KEY or "").encode()
+    digest = hmac.new(key, raw_body, hashlib.sha256).digest()
+    candidates = (digest.hex(), base64.b64encode(digest).decode())
+    provided = provided.strip()
+    return any(hmac.compare_digest(c, provided) for c in candidates)
 
 
-def _handle_event(event_type: str, live_input_uid: str) -> None:
-    channel = Channel.objects.filter(live_input_uid=live_input_uid).first()
+def _handle_live_event(stream_id: str, state: str) -> None:
+    channel = Channel.objects.filter(stream_id=stream_id).first()
     if channel is None:
-        logger.warning("webhook: live_input %s sans chaîne associée", live_input_uid)
+        logger.warning("webhook bunny: live stream %s sans chaîne associée", stream_id)
         return
-    if event_type == "live_input.connected":
+    if state in LIVE_ONLINE:
         if mark_live(channel):
             from notifications.services import notify_followers_live
 
             notify_followers_live(channel)
-    elif event_type == "live_input.disconnected":
+    elif state in LIVE_OFFLINE:
         mark_offline(channel)
     else:
-        logger.info("webhook: événement non géré %s", event_type)
+        logger.info("webhook bunny: état live non géré %s", state)
+
+
+def _handle_video_event(video_guid: str, status: int) -> None:
+    try:
+        from shorts.services import handle_video_status
+    except ImportError:  # app « Instant » absente
+        return
+    handle_video_status(video_guid, status)
 
 
 @csrf_exempt
 @require_POST
-def cloudflare_stream_webhook(request: HttpRequest) -> HttpResponse:
-    header_value = request.META.get(SIGNATURE_HEADER, "")
-    if not header_value or not _verify_signature(request.body, header_value):
-        logger.warning("webhook: signature invalide ou manquante")
+def bunny_stream_webhook(request: HttpRequest) -> HttpResponse:
+    if not verify_signature(request.body, request.META.get(SIGNATURE_HEADER, "")):
+        logger.warning("webhook bunny: signature invalide ou manquante")
         return JsonResponse({"detail": "Signature invalide."}, status=400)
     try:
         payload = json.loads(request.body or b"{}")
     except json.JSONDecodeError:
         return JsonResponse({"detail": "JSON invalide."}, status=400)
-    event_type = payload.get("eventType") or payload.get("type") or ""
-    data = payload.get("data") or payload
-    live_input_uid = data.get("live_input_uid") or data.get("uid") or ""
-    if not event_type or not live_input_uid:
+    if not isinstance(payload, dict):
+        return JsonResponse({"detail": "Payload invalide."}, status=400)
+
+    stream_id = str(payload.get("LiveStreamId") or payload.get("StreamId") or "")
+    if stream_id:
+        state = str(payload.get("State") or payload.get("Status") or "").lower()
+        _handle_live_event(stream_id, state)
+        return JsonResponse({"detail": "ok"})
+
+    video_guid = str(payload.get("VideoGuid") or "")
+    status = payload.get("Status")
+    if not video_guid or status is None:
         return JsonResponse({"detail": "Payload incomplet."}, status=400)
-    _handle_event(event_type, live_input_uid)
+    try:
+        status_code = int(status)
+    except (TypeError, ValueError):
+        return JsonResponse({"detail": "Statut invalide."}, status=400)
+    _handle_video_event(video_guid, status_code)
     return JsonResponse({"detail": "ok"})

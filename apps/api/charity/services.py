@@ -123,9 +123,9 @@ def aggregates(event: CharityEvent, top: int = 10) -> dict:
 
 def _is_streamer(user) -> bool:
     """Marque visuelle dans le leaderboard (badge streamer)."""
-    from channels_app.models import Channel
+    from channels_app.utils import is_streamer
 
-    return Channel.objects.filter(user_id=user.id).exclude(live_input_uid="").exists()
+    return is_streamer(user)
 
 
 def streamer_compliance(user, event: CharityEvent) -> dict:

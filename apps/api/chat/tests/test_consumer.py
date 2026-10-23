@@ -35,7 +35,9 @@ def _make_user():
     return UserFactory()
 
 
+@database_sync_to_async
 def _access_for(user) -> str:
+    # RefreshToken.for_user écrit un OutstandingToken (blacklist) : accès DB → thread.
     return str(RefreshToken.for_user(user).access_token)
 
 
@@ -64,7 +66,7 @@ async def test_streamer_can_connect_even_offline():
     user, channel = await _make_streamer("offlinestream")
     # On force offline pour le test.
     await database_sync_to_async(Channel.objects.filter(pk=channel.pk).update)(is_live=False)
-    token = _access_for(user)
+    token = await _access_for(user)
     comm = WebsocketCommunicator(application, _ws_path(channel.slug, token=token))
     connected, _ = await comm.connect()
     assert connected
@@ -87,7 +89,7 @@ async def test_anonymous_cannot_send():
 async def test_authenticated_user_can_send_and_receive():
     _, channel = await _make_streamer("speakok")
     sender = await _make_user()
-    token = _access_for(sender)
+    token = await _access_for(sender)
     comm = WebsocketCommunicator(application, _ws_path(channel.slug, token=token))
     connected, _ = await comm.connect()
     assert connected
@@ -104,7 +106,7 @@ async def test_banned_user_cannot_connect():
     _, channel = await _make_streamer("banowner")
     banned = await _make_user()
     await database_sync_to_async(ChatBan.objects.create)(channel=channel, user=banned, until=None)
-    token = _access_for(banned)
+    token = await _access_for(banned)
     comm = WebsocketCommunicator(application, _ws_path(channel.slug, token=token))
     connected, code = await comm.connect()
     assert not connected
@@ -126,7 +128,7 @@ async def test_shadow_banned_user_can_connect():
     await database_sync_to_async(ChatBan.objects.create)(
         channel=channel, user=shadowed, until=None, shadow=True
     )
-    token = _access_for(shadowed)
+    token = await _access_for(shadowed)
     comm = WebsocketCommunicator(application, _ws_path(channel.slug, token=token))
     connected, _ = await comm.connect()
     assert connected  # shadow ban ne ferme pas la connexion
@@ -141,10 +143,12 @@ async def test_shadow_message_echoed_to_self_only():
         channel=channel, user=shadowed, until=None, shadow=True
     )
 
-    obs = WebsocketCommunicator(application, _ws_path(channel.slug, token=_access_for(streamer)))
+    obs = WebsocketCommunicator(
+        application, _ws_path(channel.slug, token=await _access_for(streamer))
+    )
     assert (await obs.connect())[0]
     shadow_comm = WebsocketCommunicator(
-        application, _ws_path(channel.slug, token=_access_for(shadowed))
+        application, _ws_path(channel.slug, token=await _access_for(shadowed))
     )
     assert (await shadow_comm.connect())[0]
 
@@ -184,7 +188,7 @@ async def test_connect_records_user_ip():
     fan = await _make_user()
     comm = WebsocketCommunicator(
         application,
-        _ws_path(channel.slug, token=_access_for(fan)),
+        _ws_path(channel.slug, token=await _access_for(fan)),
         headers=[(b"x-forwarded-for", b"5.5.5.5")],
     )
     assert (await comm.connect())[0]
@@ -204,13 +208,13 @@ async def test_ipban_command_bans_user_ip():
 
     fan_comm = WebsocketCommunicator(
         application,
-        _ws_path(channel.slug, token=_access_for(fan)),
+        _ws_path(channel.slug, token=await _access_for(fan)),
         headers=[(b"x-forwarded-for", b"5.5.5.5")],
     )
     assert (await fan_comm.connect())[0]
 
     streamer_comm = WebsocketCommunicator(
-        application, _ws_path(channel.slug, token=_access_for(streamer))
+        application, _ws_path(channel.slug, token=await _access_for(streamer))
     )
     assert (await streamer_comm.connect())[0]
 

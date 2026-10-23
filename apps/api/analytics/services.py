@@ -37,7 +37,7 @@ def platform_overview() -> dict:
         "users_total": User.objects.count(),
         "dau": User.objects.filter(last_active_at__gte=now - timedelta(days=1)).count(),
         "mau": User.objects.filter(last_active_at__gte=now - timedelta(days=30)).count(),
-        "streamers_total": Channel.objects.exclude(live_input_uid="").count(),
+        "streamers_total": Channel.objects.exclude(stream_id="").count(),
         "live_now": Channel.objects.filter(is_live=True).count(),
         "streams_total": sessions.count(),
         "streams_7d": sessions.filter(started_at__gte=now - timedelta(days=7)).count(),

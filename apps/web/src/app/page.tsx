@@ -1,17 +1,11 @@
 import { GameCard, type GameSummary } from "@/components/GameCard";
-import { HomeVideoCarousel, type HeroVideo } from "@/components/HomeVideoCarousel";
+import { FeaturedLiveHero } from "@/components/FeaturedLiveHero";
 import { LiveCard, type LiveChannel } from "@/components/LiveCard";
 import { apiFetchServer } from "@/lib/api";
 import { getServerT } from "@/lib/i18n-server";
 
 type LiveListResp = { results: LiveChannel[]; total: number };
 type CategoryListResp = { results: GameSummary[] };
-
-// Vidéos du diaporama d'accueil (lecture auto, son bas, rotation 5 min).
-const HERO_VIDEOS: HeroVideo[] = [
-  { id: "ySxy5BRVl48", start: 98 },
-  { id: "gwIpCbZH494" },
-];
 
 async function safeFetch<T>(path: string, fallback: T): Promise<T> {
   try {
@@ -37,7 +31,7 @@ export default async function HomePage() {
 
   return (
     <main className="w-full px-4 py-6">
-      <HomeVideoCarousel videos={HERO_VIDEOS} />
+      <FeaturedLiveHero lives={lives.results} />
 
       <section>
         <div className="flex items-baseline justify-between">

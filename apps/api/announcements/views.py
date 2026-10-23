@@ -19,11 +19,12 @@ def _audience_for(request: Request) -> set[str]:
         audiences.add(SiteAnnouncement.Audience.ANONYMOUS)
         return audiences
     # Authentifié → streamers vs viewers selon la chaîne provisionnée.
-    from channels_app.models import Channel
+    from channels_app.utils import is_streamer
 
-    is_streamer = Channel.objects.filter(user_id=user.id).exclude(live_input_uid="").exists()
     audiences.add(
-        SiteAnnouncement.Audience.STREAMERS if is_streamer else SiteAnnouncement.Audience.VIEWERS
+        SiteAnnouncement.Audience.STREAMERS
+        if is_streamer(user)
+        else SiteAnnouncement.Audience.VIEWERS
     )
     return audiences
 

@@ -11,11 +11,17 @@ app = Celery("neyla")
 app.config_from_object("django.conf:settings", namespace="CELERY")
 app.autodiscover_tasks()
 
-# Planification lue par `celery beat` : renouvellement quotidien des abonnements.
+# Planification lue par `celery beat` :
+# - renouvellement quotidien des abonnements ;
+# - synchronisation live/offline des flux Bunny Stream (polling).
 app.conf.beat_schedule = {
     "process-due-subscriptions": {
         "task": "subscriptions.tasks.process_due_subscriptions_task",
         "schedule": crontab(hour=3, minute=0),
+    },
+    "sync-live-status": {
+        "task": "channels_app.tasks.sync_live_status",
+        "schedule": float(os.environ.get("STREAM_STATUS_POLL_SECONDS", "20")),
     },
 }
 

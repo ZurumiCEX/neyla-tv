@@ -22,9 +22,10 @@ type MyChannel = {
   slug: string;
   title: string;
   thumbnail_url: string;
-  rtmps_url: string;
-  rtmps_key: string;
-  hls_playback_url: string;
+  ingest_url: string;
+  stream_key: string;
+  playback_url: string;
+  stream_checked_at: string | null;
   is_live: boolean;
   is_provisioned: boolean;
   last_live_started_at: string | null;
@@ -267,6 +268,7 @@ export default function DashboardPage() {
   }
 
   async function rotate() {
+    if (!window.confirm(t("dash.rotateConfirm"))) return;
     setRotating(true);
     try {
       const data = await authFetch<MyChannel>("/api/channels/me/key/rotate", { method: "POST" });
@@ -417,9 +419,10 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_400px]">
               <section className="space-y-4">
                 <div className="overflow-hidden rounded-2xl border border-neutral-800 bg-black">
-                  {channel.is_provisioned && channel.hls_playback_url ? (
+                  {channel.is_provisioned && channel.playback_url ? (
                     <HlsPlayer
-                      src={channel.hls_playback_url}
+                      src={channel.playback_url}
+                      isLive={channel.is_live}
                       poster={channel.thumbnail_url}
                       className="aspect-video w-full"
                     />
@@ -709,22 +712,22 @@ export default function DashboardPage() {
                 <Field label={t("dash.status")}>
                   <span className="text-emerald-300">{t("dash.approved")}</span>
                 </Field>
-                <Field label={t("dash.rtmpsServer")}>
+                <Field label={t("dash.rtmpServer")}>
                   <div className="flex items-center gap-2">
-                    <code className="break-all text-emerald-300">{channel.rtmps_url || "—"}</code>
-                    {channel.rtmps_url && <CopyButton value={channel.rtmps_url} />}
+                    <code className="break-all text-emerald-300">{channel.ingest_url || "—"}</code>
+                    {channel.ingest_url && <CopyButton value={channel.ingest_url} />}
                   </div>
                 </Field>
                 <Field label={t("dash.streamKey")}>
                   <div className="flex items-center gap-2">
                     <code className="break-all text-emerald-300">
-                      {channel.rtmps_key
+                      {channel.stream_key
                         ? revealKey
-                          ? channel.rtmps_key
-                          : "•".repeat(Math.min(channel.rtmps_key.length, 40))
+                          ? channel.stream_key
+                          : "•".repeat(Math.min(channel.stream_key.length, 40))
                         : "—"}
                     </code>
-                    {channel.rtmps_key && (
+                    {channel.stream_key && (
                       <>
                         <button
                           type="button"
@@ -733,13 +736,13 @@ export default function DashboardPage() {
                         >
                           {revealKey ? t("dash.hide") : t("dash.show")}
                         </button>
-                        <CopyButton value={channel.rtmps_key} />
+                        <CopyButton value={channel.stream_key} />
                       </>
                     )}
                   </div>
                 </Field>
                 <Field label={t("dash.hlsUrl")}>
-                  <code className="break-all text-neutral-300">{channel.hls_playback_url || "—"}</code>
+                  <code className="break-all text-neutral-300">{channel.playback_url || "—"}</code>
                 </Field>
                 <div className="rounded-xl border border-neutral-800 bg-neutral-900/40 p-4 text-sm text-neutral-300">
                   <p className="mb-2 font-semibold text-neutral-100">{t("dash.obsTitle")}</p>

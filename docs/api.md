@@ -28,7 +28,7 @@ HTTP sont préfixées par `/api/`. L'admin Django est servi sous `/admin/`.
 |---------|--------|------|-------------|
 | `GET` | `/api/livez` | — | Liveness simple (process up). Aucune dépendance. |
 | `GET` | `/api/healthz` | — | Ping DB + Redis. `200 {status, db, redis}` ou `503 {degraded,…}`. |
-| `GET` | `/api/status` | — | État détaillé pour la page publique `/statut` : `services: {api, database, redis, cloudflare_stream}` avec `{ok, latency_ms}` chacun, `checked_at`, `uptime_pct_30d`, `incidents`. |
+| `GET` | `/api/status` | — | État détaillé pour la page publique `/statut` : `services: {api, database, redis, bunny_stream}` avec `{ok, latency_ms}` chacun, `checked_at`, `uptime_pct_30d`, `incidents`. |
 
 ---
 
@@ -89,14 +89,17 @@ is_email_verified, date_joined`.
 
 | Méthode | Chemin | Auth | Rate-limit | Description |
 |---------|--------|------|-----------|-------------|
-| `GET` | `/api/channels/me` | JWT | — | Ma chaîne, **avec credentials RTMPS** (si provisionnée) + `follower_count`, `viewers`. |
+| `GET` | `/api/channels/me` | JWT | — | Ma chaîne, **avec identifiants de stream** (`ingest_url`, `stream_key`, si provisionnée) + `follower_count`, `viewers`. |
 | `PATCH` | `/api/channels/me` | JWT | — | Met à jour `{title?, thumbnail_url?, banner_url?, social_links?, category_slug?}`. `social_links` : clés ∈ {twitter, youtube, instagram, tiktok, discord, website}. |
 | `GET` | `/api/channels/me/sessions` | JWT | `limit` (≤100, déf 50) | Historique des diffusions : `started_at`, `ended_at`, `duration_seconds`, `peak_viewers`, `category`. |
 | `POST` | `/api/channels/me/key/rotate` | JWT | 5 / j / user | Régénère la clé de stream. **403** si chaîne non provisionnée. |
 | `GET` | `/api/channels/<slug>` | — | — | Chaîne publique (sans secrets) : streamer (+ bio), bannière, réseaux sociaux, catégorie, HLS, statut. |
 | `GET` | `/api/channels/<slug>/status` | — | cache 5 s | `{is_live, last_live_started_at, viewers}` (poll du badge LIVE). |
 
-> ⚠️ `rtmps_key` n'est **jamais** exposée dans la vue publique, uniquement
+| `POST` | `/api/channels/me/live` | JWT | 60 / h / user | Bascule live manuelle (repli du polling). **403** si chaîne non provisionnée. |
+| `GET` | `/api/channels/me/stream-health` | JWT | 30 / min | État du flux côté Bunny (`provider`, `mode`, `is_live`, `reachable`, `checked_at`). **403** si non provisionnée. |
+
+> ⚠️ `stream_key` n'est **jamais** exposée dans la vue publique, uniquement
 > dans `/api/channels/me`.
 
 ---
@@ -126,7 +129,7 @@ is_email_verified, date_joined`.
 ## Streamer (candidature) — `/api/streamer/`
 
 L'inscription est ouverte à tous, mais **streamer est gaté** : candidature →
-validation admin (panel) → provisioning Cloudflare à l'approbation. Quota
+validation admin (panel) → provisioning Bunny Stream à l'approbation. Quota
 quotidien d'approbations configurable (`STREAMER_DAILY_APPROVAL_QUOTA`, défaut 100).
 
 **Creator Application System** : la candidature est un formulaire détaillé
@@ -299,11 +302,11 @@ si non configuré → URL `fake.local`).
 
 | Méthode | Chemin | Sécurité | Description |
 |---------|--------|----------|-------------|
-| `POST` | `/api/webhooks/cloudflare/stream` | HMAC-SHA256 | Événements Cloudflare Stream (`live_input.connected/disconnected`) → bascule `is_live`. |
+| `POST` | `/api/webhooks/bunny/stream` | HMAC-SHA256 | Événements Bunny Stream : statut d'encodage des vidéos « Instant » (`VideoGuid`, `Status` 3 = prête, 5 = échec) ; événements live éventuels (`LiveStreamId`, `State`) → bascule `is_live`. |
 
-**Signature** : en-tête `Webhook-Signature: time=<unix>,sig1=<hmac_sha256>`,
-vérifiée avec `CLOUDFLARE_WEBHOOK_SECRET`. Tolérance de fraîcheur
-`WEBHOOK_TIMESTAMP_TOLERANCE_SECONDS` (300 s par défaut) → anti-rejeu.
+**Signature** : en-tête `X-BunnyStream-Signature` = HMAC-SHA256 hex du corps
+brut, clé `BUNNY_STREAM_WEBHOOK_KEY`. L'état live est par ailleurs synchronisé
+par polling (Celery beat `sync_live_status`, cf. [ADR 010](adr/010-bunny-stream.md)).
 
 ---
 
@@ -325,7 +328,7 @@ vérifiée avec `CLOUDFLARE_WEBHOOK_SECRET`. Tolérance de fraîcheur
 ├── discover/{live,categories,categories/<slug>,search}   GET
 ├── follows/{me,<username>,<username>/status}
 ├── c/<slug>/chat/history            GET
-└── webhooks/cloudflare/stream       POST
+└── webhooks/bunny/stream            POST
 
 WebSocket
 └── ws/c/<slug>/chat                 (?token=<JWT>)

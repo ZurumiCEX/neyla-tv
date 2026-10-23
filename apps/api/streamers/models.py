@@ -2,7 +2,7 @@
 
 Un inscrit dépose une candidature détaillée (identité, profil gaming, motivation,
 expérience, équipement, personnalité). Un score automatique aide l'admin à
-prioriser. Le provisioning Cloudflare n'a lieu qu'à l'approbation (cf. services).
+prioriser. Le provisioning Bunny Stream n'a lieu qu'à l'approbation (cf. services).
 """
 
 from __future__ import annotations

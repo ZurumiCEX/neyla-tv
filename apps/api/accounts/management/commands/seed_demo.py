@@ -5,7 +5,7 @@
     python manage.py seed_demo --streamers 8 --viewers 30
 
 Idempotent : ré-exécutable sans doublon (clé = email @demo.neyla.tv / slug jeu).
-Tout est synchrone et hors-ligne (Cloudflare/paiements en mode FAKE).
+Tout est synchrone et hors-ligne (Bunny Stream/paiements en mode FAKE).
 Identifiants de connexion : <email démo> / DemoPass2026!
 """
 

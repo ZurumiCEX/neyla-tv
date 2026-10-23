@@ -18,15 +18,15 @@ def test_my_channel_requires_auth(api_client):
 
 
 def test_my_channel_unprovisioned_has_no_credentials(auth_client_factory):
-    """Sans approbation streamer : chaîne non provisionnée, pas de clé RTMPS."""
+    """Sans approbation streamer : chaîne non provisionnée, pas de clé de stream."""
     user = UserFactory()
     client = auth_client_factory(user)
     response = client.get(reverse("channel-me"))
     assert response.status_code == 200
     data = response.json()
     assert data["is_provisioned"] is False
-    assert data["rtmps_url"] == ""
-    assert data["rtmps_key"] == ""
+    assert data["ingest_url"] == ""
+    assert data["stream_key"] == ""
 
 
 def test_my_channel_provisioned_returns_credentials(auth_client_factory):
@@ -36,8 +36,8 @@ def test_my_channel_provisioned_returns_credentials(auth_client_factory):
     response = client.get(reverse("channel-me"))
     assert response.status_code == 200
     data = response.json()
-    assert data["rtmps_url"] == "rtmps://fake.local/live"
-    assert data["rtmps_key"].startswith("fake-key-")
+    assert data["ingest_url"] == "rtmp://fake.local/live"
+    assert data["stream_key"].startswith("fake-key-")
     assert data["is_provisioned"]
 
 
@@ -60,13 +60,13 @@ def test_rotate_key_forbidden_when_unprovisioned(auth_client_factory):
     assert response.status_code == 403
 
 
-def test_rotate_key_changes_rtmps_key_when_provisioned(auth_client_factory):
+def test_rotate_key_changes_stream_key_when_provisioned(auth_client_factory):
     user = UserFactory()
     provision_channel(Channel.objects.get(user=user))
     client = auth_client_factory(user)
     before = client.get(reverse("channel-me")).json()
     rotated = client.post(reverse("channel-rotate-key")).json()
-    assert rotated["rtmps_key"] != before["rtmps_key"]
+    assert rotated["stream_key"] != before["stream_key"]
 
 
 def test_patch_my_channel_sets_banner_and_socials(auth_client_factory):
@@ -107,14 +107,14 @@ def test_public_channel_exposes_banner_socials_bio(api_client):
     assert data["streamer"]["bio"] == "Salut"
 
 
-def test_public_channel_excludes_rtmps_credentials(api_client):
+def test_public_channel_excludes_stream_credentials(api_client):
     user = UserFactory(username="public1")
     Channel.objects.filter(user=user).update(title="Bonjour")
     response = api_client.get(reverse("channel-public", kwargs={"slug": "public1"}))
     assert response.status_code == 200
     data = response.json()
-    assert "rtmps_url" not in data
-    assert "rtmps_key" not in data
+    assert "ingest_url" not in data
+    assert "stream_key" not in data
     assert data["streamer"]["username"] == "public1"
 
 
@@ -185,6 +185,7 @@ def test_patch_my_channel_rejects_too_many_tags(auth_client_factory):
 
 def test_set_live_toggles_state(auth_client_factory):
     user = UserFactory()
+    provision_channel(Channel.objects.get(user=user))
     client = auth_client_factory(user)
     response = client.post(reverse("channel-set-live"), {"live": True}, format="json")
     assert response.status_code == 200

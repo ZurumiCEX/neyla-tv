@@ -202,9 +202,17 @@ def overlay_test(request: Request) -> Response:
 @permission_classes([IsAuthenticated])
 @ratelimit(key="user", rate="60/h", method="POST", block=True)
 def set_live(request: Request) -> Response:
-    """Bascule live manuelle (repli/démo quand le webhook encodeur n'est pas branché)."""
+    """Bascule live manuelle (repli/démo quand le polling Bunny n'a pas encore vu le flux).
+
+    Réservée aux chaînes provisionnées (streamer approuvé) : sinon n'importe quel
+    compte pourrait notifier ses followers et ouvrir des sessions fictives.
+    """
     channel = _get_my_channel(request.user)
     going_live = bool(request.data.get("live", True))
+    if going_live and not channel.is_provisioned:
+        raise PermissionDenied(
+            "Chaîne non provisionnée : l'accès streamer doit d'abord être approuvé."
+        )
     if going_live:
         changed = mark_live(channel)
         if changed:
@@ -228,6 +236,43 @@ def rotate_key(request: Request) -> Response:  # noqa: ARG001
     rotate_stream_key(channel)
     channel.refresh_from_db()
     return Response(MyChannelSerializer(channel).data)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+@ratelimit(key="user", rate="30/m", method="GET", block=True)
+def stream_health(request: Request) -> Response:
+    """État du flux côté Bunny (« Tester la connexion » du dashboard)."""
+    from .bunny import BunnyStreamError, get_client
+    from .tasks import sync_channel_status
+
+    channel = _get_my_channel(request.user)
+    if not channel.is_provisioned:
+        raise PermissionDenied(
+            "Chaîne non provisionnée : l'accès streamer doit d'abord être approuvé."
+        )
+    client = get_client()
+    payload = {
+        "provider": "bunny",
+        "mode": "fake" if client.is_fake else "live",
+        "is_live": channel.is_live,
+        "reachable": True,
+        "checked_at": channel.stream_checked_at,
+    }
+    if not client.is_fake:
+        try:
+            state = sync_channel_status(channel, client)
+        except BunnyStreamError:
+            state = None
+        channel.refresh_from_db()
+        payload.update(
+            {
+                "reachable": state is not None,
+                "is_live": channel.is_live,
+                "checked_at": channel.stream_checked_at,
+            }
+        )
+    return Response(payload)
 
 
 @api_view(["GET"])

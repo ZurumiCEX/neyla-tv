@@ -13,7 +13,7 @@ type StatusResp = {
   incidents: { id: number; title: string; body_md: string; status: string }[];
 };
 
-const SERVICE_ORDER = ["api", "database", "redis", "cloudflare_stream"];
+const SERVICE_ORDER = ["api", "database", "redis", "bunny_stream"];
 
 export default function StatusPage() {
   const t = useT();

@@ -9,6 +9,7 @@ export type LiveChannel = {
   thumbnail_url: string;
   is_live: boolean;
   viewers?: number;
+  playback_url?: string;
   streamer: { username: string; display_name: string; avatar_url: string };
   category: { slug: string; name: string } | null;
 };

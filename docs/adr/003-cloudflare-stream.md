@@ -1,6 +1,6 @@
 # ADR 003 — Cloudflare Stream pour l'ingestion vidéo
 
-- **Statut** : Acceptée
+- **Statut** : Remplacée par [ADR 010 — Bunny Stream](010-bunny-stream.md)
 - **Date** : 2026-05-16
 
 ## Contexte

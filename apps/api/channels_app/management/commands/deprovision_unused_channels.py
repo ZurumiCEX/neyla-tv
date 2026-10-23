@@ -1,6 +1,6 @@
 """Déprovisionne les chaînes provisionnées mais jamais passées live.
 
-Outil MANUEL pour récupérer les Live Inputs Cloudflare créés par l'ancien
+Outil MANUEL pour récupérer les live streams Bunny créés par l'ancien
 comportement (auto-provision à l'inscription), désormais remplacé par le gating
 streamer. Dry-run par défaut ; ajouter --apply pour exécuter réellement.
 
@@ -12,12 +12,12 @@ from __future__ import annotations
 
 from django.core.management.base import BaseCommand
 
-from channels_app.cloudflare import CloudflareStreamError, get_client
+from channels_app.bunny import BunnyStreamError, get_client
 from channels_app.models import Channel
 
 
 class Command(BaseCommand):
-    help = "Supprime les Live Inputs des chaînes provisionnées jamais passées live."
+    help = "Supprime les live streams des chaînes provisionnées jamais passées live."
 
     def add_arguments(self, parser) -> None:
         parser.add_argument(
@@ -29,31 +29,29 @@ class Command(BaseCommand):
     def handle(self, *args, **options) -> None:
         apply = options["apply"]
         prefix = "[APPLY]" if apply else "[DRY-RUN]"
-        channels = Channel.objects.exclude(live_input_uid="").filter(
-            last_live_started_at__isnull=True
-        )
+        channels = Channel.objects.exclude(stream_id="").filter(last_live_started_at__isnull=True)
         client = get_client()
         done = 0
         for channel in channels:
-            self.stdout.write(f"{prefix} {channel.slug} (uid={channel.live_input_uid})")
+            self.stdout.write(f"{prefix} {channel.slug} (id={channel.stream_id})")
             if not apply:
                 done += 1
                 continue
             try:
-                client.delete_live_input(channel.live_input_uid)
-            except CloudflareStreamError as exc:
+                client.delete_live_stream(channel.stream_id)
+            except BunnyStreamError as exc:
                 self.stderr.write(f"  échec suppression {channel.slug}: {exc}")
                 continue
-            channel.live_input_uid = ""
-            channel.rtmps_url = ""
-            channel.rtmps_key = ""
-            channel.hls_playback_url = ""
+            channel.stream_id = ""
+            channel.ingest_url = ""
+            channel.stream_key = ""
+            channel.playback_url = ""
             channel.save(
                 update_fields=[
-                    "live_input_uid",
-                    "rtmps_url",
-                    "rtmps_key",
-                    "hls_playback_url",
+                    "stream_id",
+                    "ingest_url",
+                    "stream_key",
+                    "playback_url",
                     "updated_at",
                 ]
             )

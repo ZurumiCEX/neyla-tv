@@ -73,7 +73,7 @@ def test_status_endpoint_returns_services():
     c = Client()
     body = c.get("/api/status").json()
     assert body["status"] in {"ok", "degraded"}
-    assert set(body["services"]) >= {"database", "redis", "cloudflare_stream", "api"}
+    assert set(body["services"]) >= {"database", "redis", "bunny_stream", "api"}
     for s in body["services"].values():
         assert "ok" in s and "latency_ms" in s
     assert "checked_at" in body

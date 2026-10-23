@@ -1,11 +1,10 @@
-"""Tests du webhook Cloudflare : signature, idempotence, événements."""
+"""Tests du webhook Bunny Stream : signature, événements live et VOD."""
 
 from __future__ import annotations
 
 import hashlib
 import hmac
 import json
-import time
 
 import pytest
 from django.conf import settings
@@ -18,92 +17,70 @@ from channels_app.services import provision_channel
 pytestmark = pytest.mark.django_db
 
 
-def _sign(body: bytes, ts: int | None = None) -> dict[str, str]:
-    if ts is None:
-        ts = int(time.time())
-    signed = f"{ts}.".encode() + body
-    sig = hmac.new(settings.CLOUDFLARE_WEBHOOK_SECRET.encode(), signed, hashlib.sha256).hexdigest()
-    return {"HTTP_WEBHOOK_SIGNATURE": f"time={ts},sig1={sig}"}
+def _sign(body: bytes) -> dict[str, str]:
+    key = settings.BUNNY_STREAM_WEBHOOK_KEY.encode()
+    sig = hmac.new(key, body, hashlib.sha256).hexdigest()
+    return {"HTTP_X_BUNNYSTREAM_SIGNATURE": sig}
 
 
 def _post(client, payload: dict, headers: dict | None = None):
     body = json.dumps(payload).encode()
     return client.post(
-        reverse("cloudflare-stream-webhook"),
+        reverse("bunny-stream-webhook"),
         data=body,
         content_type="application/json",
-        **(headers or _sign(body)),
+        **(headers if headers is not None else _sign(body)),
     )
+
+
+def _provisioned(username: str) -> Channel:
+    channel = Channel.objects.get(user=UserFactory(username=username))
+    provision_channel(channel)
+    channel.refresh_from_db()
+    return channel
 
 
 def test_webhook_rejects_missing_signature(client):
-    response = client.post(
-        reverse("cloudflare-stream-webhook"),
-        data=b"{}",
-        content_type="application/json",
-    )
+    response = _post(client, {"VideoGuid": "x", "Status": 3}, headers={})
     assert response.status_code == 400
 
 
 def test_webhook_rejects_wrong_signature(client):
-    body = json.dumps({"x": 1}).encode()
-    response = client.post(
-        reverse("cloudflare-stream-webhook"),
-        data=body,
-        content_type="application/json",
-        HTTP_WEBHOOK_SIGNATURE="time=123,sig1=deadbeef",
+    response = _post(
+        client,
+        {"VideoGuid": "x", "Status": 3},
+        headers={"HTTP_X_BUNNYSTREAM_SIGNATURE": "deadbeef"},
     )
     assert response.status_code == 400
 
 
-def test_webhook_rejects_stale_timestamp(client):
-    body = json.dumps({"eventType": "live_input.connected", "data": {"uid": "x"}}).encode()
-    response = _post(
-        client,
-        {"eventType": "live_input.connected", "data": {"uid": "x"}},
-        headers=_sign(body, ts=int(time.time()) - 3600),
-    )
-    assert response.status_code == 400
+def test_webhook_rejects_incomplete_payload(client):
+    assert _post(client, {"VideoLibraryId": 1}).status_code == 400
 
 
-def test_webhook_connected_marks_channel_live(client):
-    user = UserFactory(username="streamerlive")
-    channel = Channel.objects.get(user=user)
-    provision_channel(channel)
-    channel.refresh_from_db()
-    response = _post(
-        client,
-        {
-            "eventType": "live_input.connected",
-            "data": {"live_input_uid": channel.live_input_uid},
-        },
-    )
+def test_webhook_video_status_is_accepted(client):
+    response = _post(client, {"VideoLibraryId": 1, "VideoGuid": "abc", "Status": 3})
+    assert response.status_code == 200
+
+
+def test_webhook_live_online_marks_channel_live(client):
+    channel = _provisioned("streamerlive")
+    response = _post(client, {"LiveStreamId": channel.stream_id, "State": "Live"})
     assert response.status_code == 200
     channel.refresh_from_db()
     assert channel.is_live
 
 
-def test_webhook_disconnected_marks_channel_offline(client):
-    user = UserFactory(username="streamerend")
-    channel = Channel.objects.get(user=user)
-    provision_channel(channel)
+def test_webhook_live_offline_marks_channel_offline(client):
+    channel = _provisioned("streamerend")
     channel.is_live = True
     channel.save()
-    response = _post(
-        client,
-        {
-            "eventType": "live_input.disconnected",
-            "data": {"live_input_uid": channel.live_input_uid},
-        },
-    )
+    response = _post(client, {"LiveStreamId": channel.stream_id, "State": "Offline"})
     assert response.status_code == 200
     channel.refresh_from_db()
     assert not channel.is_live
 
 
-def test_webhook_unknown_uid_is_silent_ok(client):
-    response = _post(
-        client,
-        {"eventType": "live_input.connected", "data": {"live_input_uid": "ghost"}},
-    )
+def test_webhook_unknown_stream_is_silent_ok(client):
+    response = _post(client, {"LiveStreamId": "ghost", "State": "live"})
     assert response.status_code == 200

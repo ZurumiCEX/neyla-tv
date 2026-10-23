@@ -1,11 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { apiFetch } from "@/lib/api";
-
-type Status = { is_live: boolean; last_live_started_at: string | null };
-
-const POLL_INTERVAL_MS = 5_000;
+import { useT } from "@/lib/i18n";
+import { useLiveStatus } from "@/lib/use-live-status";
 
 export function LiveBadge({
   slug,
@@ -14,26 +10,8 @@ export function LiveBadge({
   slug: string;
   initial: { is_live: boolean };
 }) {
-  const [isLive, setIsLive] = useState(initial.is_live);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function tick() {
-      try {
-        const data = await apiFetch<Status>(`/api/channels/${slug}/status`);
-        if (!cancelled) setIsLive(data.is_live);
-      } catch {
-        /* tolérant : on garde l'état précédent */
-      }
-    }
-
-    const id = setInterval(tick, POLL_INTERVAL_MS);
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-    };
-  }, [slug]);
+  const t = useT();
+  const { isLive } = useLiveStatus(slug, initial.is_live);
 
   return (
     <span
@@ -47,7 +25,7 @@ export function LiveBadge({
           isLive ? "animate-pulse bg-secondary" : "bg-neutral-500"
         }`}
       />
-      {isLive ? "En direct" : "Hors-ligne"}
+      {isLive ? t("live.badge.on") : t("live.badge.off")}
     </span>
   );
 }

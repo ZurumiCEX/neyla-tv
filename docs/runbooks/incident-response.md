@@ -51,7 +51,8 @@ docker compose ... logs --tail=500 api | jq -r 'select(.level=="ERROR") | .msg' 
 | Postgres KO                         | `restart postgres` ; si volume corrompu → cf. restore-postgres.md      |
 | Redis KO                            | `restart redis` (les messages chat éphémères, OK)                      |
 | Erreur déploy récent                | rollback `git checkout <SHA_PRECEDENT>` puis rebuild (cf. deploy.md)    |
-| Webhooks Cloudflare en boucle 4xx   | vérifier `CLOUDFLARE_WEBHOOK_SECRET` + horloge NTP du Droplet          |
+| Webhooks Bunny en boucle 4xx        | vérifier `BUNNY_STREAM_WEBHOOK_KEY` (clé de signature de la bibliothèque) |
+| Chaînes coincées en live / jamais live | service `beat` arrêté → `sync_live_status` ne tourne plus ; `verify_bunny_stream` |
 | Latence anormale                    | `docker stats` ; tuer process zombie (`docker exec ... ps aux`)        |
 
 ```bash

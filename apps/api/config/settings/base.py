@@ -272,17 +272,21 @@ SAFETY_VISION_PROVIDER = env("SAFETY_VISION_PROVIDER", default="")
 # Mettre les images en file d'examen manuel quand aucun fournisseur de vision.
 SAFETY_REVIEW_UPLOADS = env.bool("SAFETY_REVIEW_UPLOADS", default=False)
 
-# --- Cloudflare Stream ---
-# Si CLOUDFLARE_API_TOKEN est vide, on bascule sur un client FAKE en dev/tests
-# qui retourne des URLs rtmps://fake.local pour développer hors-ligne.
-CLOUDFLARE_ACCOUNT_ID = env("CLOUDFLARE_ACCOUNT_ID", default="")
-CLOUDFLARE_API_TOKEN = env("CLOUDFLARE_API_TOKEN", default="")
-# Subdomain public (customer-XXXX.cloudflarestream.com) — utile pour l'iframe
-# embarqué Cloudflare. Optionnel : URLs HLS/RTMPS viennent directement de l'API.
-CLOUDFLARE_STREAM_SUBDOMAIN = env("CLOUDFLARE_STREAM_SUBDOMAIN", default="")
-CLOUDFLARE_WEBHOOK_SECRET = env("CLOUDFLARE_WEBHOOK_SECRET", default="dev-webhook-secret")
-# Tolérance de fraîcheur de la signature webhook (anti-rejeu).
-WEBHOOK_TIMESTAMP_TOLERANCE_SECONDS = 5 * 60
+# --- Bunny Stream (unique fournisseur vidéo : live + VOD « Instant ») ---
+# Si BUNNY_STREAM_API_KEY est vide, on bascule sur un client FAKE en dev/tests
+# (aucun appel réseau, flux HLS public de test pour la démo).
+# - LIBRARY_ID / API_KEY : Bunny → Stream → Video Library → API (AccessKey).
+# - CDN_HOSTNAME : vz-xxxxxxxx-xxx.b-cdn.net (lecture HLS + miniatures VOD).
+# - WEBHOOK_KEY : clé utilisée pour vérifier X-BunnyStream-Signature (la clé
+#   « Read-Only API Key » de la bibliothèque).
+BUNNY_STREAM_LIBRARY_ID = env("BUNNY_STREAM_LIBRARY_ID", default="")
+BUNNY_STREAM_API_KEY = env("BUNNY_STREAM_API_KEY", default="")
+BUNNY_STREAM_CDN_HOSTNAME = env("BUNNY_STREAM_CDN_HOSTNAME", default="")
+BUNNY_STREAM_WEBHOOK_KEY = env("BUNNY_STREAM_WEBHOOK_KEY", default="dev-webhook-key")
+# Surcharge optionnelle de l'URL d'ingest RTMP si l'API ne la renvoie pas.
+BUNNY_STREAM_RTMP_URL = env("BUNNY_STREAM_RTMP_URL", default="")
+# Fréquence de synchronisation live/offline (Celery beat, secondes).
+STREAM_STATUS_POLL_SECONDS = env.int("STREAM_STATUS_POLL_SECONDS", default=20)
 
 # --- Logs JSON simples ---
 LOGGING = {

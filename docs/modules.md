@@ -37,13 +37,14 @@ Chaque app est autonome : `models`, `views`, `serializers`, `services`,
 - → [ADR 002](adr/002-jwt-strategy.md)
 
 ### `channels_app` — chaînes & ingest vidéo
-- **Rôle** : chaîne d'un streamer, clé RTMPS, lecture HLS, intégration
-  Cloudflare Stream, webhook de statut live.
+- **Rôle** : chaîne d'un streamer, clé de stream RTMP, lecture HLS, intégration
+  **Bunny Stream** (live + VOD), synchronisation live/offline par polling.
 - **Modèle** : `Channel` (OneToOne `User`, `slug`, `title`, `category` FK→`Game`,
-  `live_input_uid`, `rtmps_url`, `rtmps_key`, `hls_playback_url`, `is_live`).
-- **À noter** : `cloudflare.py` (client réel + **client FAKE** si pas de token),
-  `webhooks.py` (vérif HMAC), `signals.py`, `tasks.py`.
-- → [ADR 003](adr/003-cloudflare-stream.md) · [ADR 004](adr/004-live-status-strategy.md)
+  `stream_id`, `ingest_url`, `stream_key`, `playback_url`, `stream_checked_at`, `is_live`).
+- **À noter** : `bunny.py` (client réel + **client FAKE** si pas de clé),
+  `tasks.sync_live_status` (polling Celery beat), `webhooks.py` (vérif HMAC
+  `X-BunnyStream-Signature`), `utils.is_streamer()` (test streamer unique).
+- → [ADR 010](adr/010-bunny-stream.md) · [ADR 004](adr/004-live-status-strategy.md)
 
 ### `chat` — chat temps réel
 - **Rôle** : WebSocket chat (Channels), historique, slow-mode, modération.
@@ -142,7 +143,7 @@ Chaque app est autonome : `models`, `views`, `serializers`, `services`,
 | `/` | `page.tsx` | Accueil : lives + santé des services |
 | `/login`, `/register` | `*/page.tsx` | Auth |
 | `/verify-email/[token]` | `page.tsx` | Vérification email |
-| `/dashboard` | `page.tsx` | Espace streamer (clé RTMPS, chaîne) |
+| `/dashboard` | `page.tsx` | Espace streamer (clé de stream, chaîne) |
 | `/revenus` | `page.tsx` | Revenus consolidés du créateur (tips + abos + parrainage), période jour/semaine/mois |
 | `/abonnements` | `page.tsx` | Mes abonnements + cadeau d'abonnement (onglets Actifs/Offert) |
 | `/c/[slug]` | `page.tsx` | Page chaîne : player + chat + **bouton partager** |
@@ -192,8 +193,9 @@ Telegram + Web Share API natif), `Footer` (4 colonnes incl. Légal + gros logo).
 Navigateur ──HTTP──▶ web (Next.js)         page SSR + assets
           ──HTTP──▶ api (DRF)              REST /api/*
           ──WSS───▶ api (Channels)         chat /ws/*
-OBS ──RTMPS──▶ Cloudflare Stream ──HLS──▶ Navigateur (HlsPlayer)
-Cloudflare ──webhook signé──▶ api          bascule is_live
+OBS ──RTMP──▶ Bunny Stream ──HLS (CDN)──▶ Navigateur (HlsPlayer)
+Celery beat ──polling état──▶ Bunny      bascule is_live
+Bunny ──webhook signé──▶ api             encodage vidéos « Instant »
 api ◀──▶ Postgres (durable) · Redis (chat éphémère, channel layer, Celery)
 Celery worker/beat ◀──▶ Redis              emails, tâches async
 ```
