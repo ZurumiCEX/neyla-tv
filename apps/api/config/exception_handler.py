@@ -10,8 +10,17 @@ from __future__ import annotations
 
 from rest_framework.views import exception_handler as drf_exception_handler
 
+RATE_LIMITED_DETAIL = "Trop de tentatives, réessaie dans quelques minutes."
+
 
 def exception_handler(exc, context):
+    from django_ratelimit.exceptions import Ratelimited
+    from rest_framework.response import Response
+
+    # django-ratelimit lève un PermissionDenied (→ 403 « permission refusée ») :
+    # on renvoie un vrai 429 avec un message compréhensible.
+    if isinstance(exc, Ratelimited):
+        return Response({"detail": RATE_LIMITED_DETAIL}, status=429)
     response = drf_exception_handler(exc, context)
     if response is None:
         return None

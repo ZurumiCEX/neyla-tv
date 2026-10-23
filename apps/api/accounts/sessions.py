@@ -13,10 +13,9 @@ logger = logging.getLogger(__name__)
 
 
 def _client_ip(request) -> str | None:
-    forwarded = request.META.get("HTTP_X_FORWARDED_FOR", "")
-    if forwarded:
-        return forwarded.split(",")[0].strip() or None
-    return request.META.get("REMOTE_ADDR") or None
+    from config.client_ip import client_ip
+
+    return client_ip(request) or None
 
 
 def _device(request) -> str:

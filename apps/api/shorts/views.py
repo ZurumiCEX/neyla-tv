@@ -88,15 +88,9 @@ def view(request: Request, pk: int) -> Response:
     if short is None:
         return Response({"detail": "Vidéo introuvable."}, status=status.HTTP_404_NOT_FOUND)
     user = request.user
-    viewer = (
-        f"u{user.pk}"
-        if user.is_authenticated
-        else "ip"
-        + (
-            request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")[0].strip()
-            or request.META.get("REMOTE_ADDR", "")
-        )
-    )
+    from config.client_ip import client_ip
+
+    viewer = f"u{user.pk}" if user.is_authenticated else f"ip{client_ip(request)}"
     counted = services.register_view(short, viewer)
     return Response({"counted": counted})
 

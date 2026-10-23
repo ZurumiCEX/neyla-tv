@@ -218,3 +218,20 @@ def test_approved_streamer_auto_provisioned_on_dashboard(auth_client_factory):
     StreamerApplication.objects.create(user=user, status=StreamerApplication.Status.APPROVED)
     data = auth_client_factory(user).get(reverse("channel-me")).json()
     assert data["is_provisioned"] is True
+
+
+def test_public_channel_exposes_followers_verified_and_goal(api_client):
+    from social.services import follow_user
+
+    streamer = UserFactory(username="kickstyle")
+    channel = Channel.objects.get(user=streamer)
+    provision_channel(channel)
+    Channel.objects.filter(pk=channel.pk).update(
+        goal_target=50, goal_kind="subs", goal_title="Objectif"
+    )
+    for _ in range(3):
+        follow_user(UserFactory(), "kickstyle")
+    data = api_client.get(reverse("channel-public", kwargs={"slug": "kickstyle"})).json()
+    assert data["follower_count"] == 3
+    assert data["is_verified"] is True
+    assert data["goal"] == {"title": "Objectif", "kind": "subs", "target": 50, "current": 0}

@@ -11,6 +11,25 @@ const INTERNAL_API_URL =
 
 export type ApiError = { status: number; data: unknown };
 
+/** Corps JSON, ou null si la réponse n'en est pas (page d'erreur HTML d'un proxy…). */
+function parseBody(text: string): unknown {
+  if (!text) return null;
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+/** fetch qui transforme une coupure réseau en ApiError (status 0). */
+async function safeFetch(url: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch {
+    throw { status: 0, data: null } satisfies ApiError;
+  }
+}
+
 /** Génère une clé d'idempotence (réutilisée sur retry réseau via les headers). */
 export function idempotencyKey(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -19,11 +38,8 @@ export function idempotencyKey(): string {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-export async function apiFetch<T = unknown>(
-  path: string,
-  init: RequestInit = {},
-): Promise<T> {
-  const res = await fetch(`${PUBLIC_API_URL}${path}`, {
+export async function apiFetch<T = unknown>(path: string, init: RequestInit = {}): Promise<T> {
+  const res = await safeFetch(`${PUBLIC_API_URL}${path}`, {
     ...init,
     credentials: "include",
     headers: {
@@ -31,8 +47,7 @@ export async function apiFetch<T = unknown>(
       ...(init.headers ?? {}),
     },
   });
-  const text = await res.text();
-  const data = text ? (JSON.parse(text) as unknown) : null;
+  const data = parseBody(await res.text());
   if (!res.ok) {
     throw { status: res.status, data } satisfies ApiError;
   }
@@ -45,14 +60,13 @@ export async function apiUpload<T = unknown>(
   formData: FormData,
   init: RequestInit = {},
 ): Promise<T> {
-  const res = await fetch(`${PUBLIC_API_URL}${path}`, {
+  const res = await safeFetch(`${PUBLIC_API_URL}${path}`, {
     method: "POST",
     ...init,
     credentials: "include",
     body: formData,
   });
-  const text = await res.text();
-  const data = text ? (JSON.parse(text) as unknown) : null;
+  const data = parseBody(await res.text());
   if (!res.ok) {
     throw { status: res.status, data } satisfies ApiError;
   }

@@ -83,8 +83,13 @@ docker compose -f infra/compose/docker-compose.yml exec api python manage.py see
 `seed_demo` crée une plateforme complète pour tester le MVP, sans réseau ni vraie
 clé (Bunny et paiements en mode simulé) :
 
-- 20 streamers en direct répartis sur les 5 macro-catégories, 40 spectateurs ;
-- 30 vidéos Instant, follows, tips, abonnements (dont offerts et renouvelés) ;
+- 20 streamers en direct répartis sur les 5 macro-catégories (bio, réseaux
+  sociaux, tags de langue, objectifs de chaîne en cours), 40 spectateurs ;
+- chat animé (25 à 40 messages par live, abonnés et modérateurs), follows
+  (3 à 8 chaînes par spectateur, quelques « stars »), tips avec message ;
+- 50 vidéos Instant, abonnements (dont offerts et renouvelés) ;
+- `viewer36` → `viewer40` : un spectateur par palier Aura (42 · 180 · 1 450 ·
+  6 200 · 12 500 Aura) pour voir chaque badge ;
 - un retrait Wave en cours, un achat en attente, un Charity Day avec dons et
   premier versement, des annonces et des événements au calendrier.
 

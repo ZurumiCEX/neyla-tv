@@ -9,12 +9,14 @@ export function LiveStage({
   src,
   poster,
   initialLive,
+  className,
 }: {
   slug: string;
   src: string;
   poster?: string;
   initialLive: boolean;
+  className?: string;
 }) {
   const { isLive } = useLiveStatus(slug, initialLive);
-  return <HlsPlayer src={src} poster={poster} isLive={isLive} />;
+  return <HlsPlayer src={src} poster={poster} isLive={isLive} className={className} />;
 }

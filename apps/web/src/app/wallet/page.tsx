@@ -9,6 +9,9 @@ import { fmt, fmtFcfa } from "@/lib/format";
 import { useFormat } from "@/lib/use-format";
 import { notifyWalletChanged } from "@/lib/wallet-events";
 import { CardsLogo, OrangeMoneyLogo, WaveLogo } from "@/components/PaymentLogos";
+import { AuraBadge, auraTier } from "@/components/AuraBadge";
+import { AuraLedger } from "@/components/AuraLedger";
+import { AuraTierLadder } from "@/components/AuraTierLadder";
 
 type Ledger = {
   amount: number;
@@ -198,10 +201,16 @@ export default function WalletPage() {
             <EyeIcon off={masked} />
           </button>
         </div>
-        <p className="text-4xl font-bold text-emerald-400">
-          {masked ? "••••••" : fmt(wallet.aura_balance)}{" "}
-          <span className="text-lg text-neutral-400">Aura</span>
-        </p>
+        <div className="flex items-center gap-3">
+          {(() => {
+            const tier = auraTier(wallet.aura_balance);
+            return tier ? <AuraBadge tier={tier} size={48} /> : null;
+          })()}
+          <p className="text-4xl font-bold text-emerald-400">
+            {masked ? "••••••" : fmt(wallet.aura_balance)}{" "}
+            <span className="text-lg text-neutral-400">Aura</span>
+          </p>
+        </div>
         <p className="mt-1 text-xs text-neutral-500">
           {t("wallet.unitPrice", { price: wallet.unit_price_xof })}
         </p>
@@ -210,6 +219,10 @@ export default function WalletPage() {
             {t("wallet.payoutHold")}
           </p>
         )}
+      </div>
+
+      <div className="mb-6">
+        <AuraTierLadder balance={wallet.aura_balance} masked={masked} />
       </div>
 
       {returnNotice && (
@@ -339,25 +352,7 @@ export default function WalletPage() {
           ) : history.length === 0 ? (
             <p className="text-sm text-neutral-500">{t("wallet.noOps")}</p>
           ) : (
-            <table className="w-full text-left text-sm">
-              <tbody>
-                {history.map((l, i) => (
-                  <tr key={i} className="border-t border-neutral-800/60">
-                    <td className="py-2 text-neutral-500">{date(l.created_at)}</td>
-                    <td className="py-2 text-neutral-400">{t(`wallet.kind.${l.kind}`)}</td>
-                    <td
-                      className={`py-2 text-right font-semibold ${
-                        l.amount >= 0 ? "text-emerald-300" : "text-red-300"
-                      }`}
-                    >
-                      {l.amount >= 0 ? "+" : ""}
-                      {fmt(l.amount)}
-                    </td>
-                    <td className="py-2 text-right text-neutral-500">{fmt(l.balance_after)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <AuraLedger entries={history} />
           )}
         </section>
       )}

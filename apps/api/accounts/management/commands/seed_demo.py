@@ -72,6 +72,205 @@ SHORT_TITLES = [
     "Débat : le meilleur jollof ?",
     "Mon setup stream à petit budget",
 ]
+SHORT_TITLES += [
+    "Ace en ranked, la team en folie",
+    "Attiéké poisson braisé : la vraie recette",
+    "Coupé-décalé improvisé en plein live",
+    "Portrait au stylo bille en 1 min",
+    "Le penalty le plus froid du tournoi",
+    "Tour de Saint-Louis en tuk-tuk",
+    "Beat afro fait en direct",
+    "Build Fortnite : la technique du 90",
+    "Quel est le meilleur maquis d'Abidjan ?",
+    "Unboxing de ma nouvelle webcam (merci le chat !)",
+    "Mon premier clutch sur CS2",
+    "Workout de 60 s sans matériel",
+    "Tenue wax du jour ✨",
+    "Live coding : un bot pour mon chat",
+    "Le chat choisit ma musique 🎶",
+]
+# Personae des streamers démo : (nom affiché, bio, tags, pseudo réseaux).
+PERSONAS = [
+    (
+        "Awa Gaming",
+        "Valorant et bonne humeur depuis Dakar 🇸🇳. Live tous les soirs à 20 h.",
+        ["Français", "Wolof", "FPS"],
+        "awa.gaming",
+    ),
+    (
+        "Kofi Plays",
+        "Joueur LoL main support. On grimpe ensemble, sans rage 😄",
+        ["Français", "Compétitif"],
+        "kofiplays",
+    ),
+    (
+        "Mariam Cuisine",
+        "Recettes d'Afrique de l'Ouest en direct, du marché à l'assiette.",
+        ["Français", "Bambara", "Cuisine"],
+        "mariam.cuisine",
+    ),
+    (
+        "DJ Sahel",
+        "Afrobeats, coupé-décalé et amapiano. Sets live le week-end 🎧",
+        ["Français", "Musique"],
+        "djsahel",
+    ),
+    (
+        "Ibou Talks",
+        "Débats, actus et grosses discussions avec le chat.",
+        ["Français", "Wolof", "Discussion"],
+        "ibou.talks",
+    ),
+    (
+        "Fatou Art",
+        "Illustratrice. Speedpaint, portraits et commandes en live.",
+        ["Français", "Art"],
+        "fatou.art",
+    ),
+    (
+        "Yao FC",
+        "FC 25, Ultimate Team et tournois communautaires ⚽",
+        ["Français", "Sport"],
+        "yao.fc",
+    ),
+    (
+        "Nana Voyage",
+        "Je vous emmène partout : marchés, plages, villages 🌍",
+        ["Français", "IRL", "Voyage"],
+        "nana.voyage",
+    ),
+    (
+        "Moussa Dev",
+        "Développeur. Je code des outils pour streamers en direct.",
+        ["Français", "Tech"],
+        "moussa.dev",
+    ),
+    (
+        "Aïcha Style",
+        "Mode wax, beauté et conseils petit budget.",
+        ["Français", "Mode"],
+        "aicha.style",
+    ),
+    (
+        "Sékou Craft",
+        "Minecraft survie et builds géants avec la commu.",
+        ["Français", "Bambara", "Chill"],
+        "sekou.craft",
+    ),
+    (
+        "Binta Fit",
+        "Coach sportive. Séances live gratuites, tous niveaux 💪",
+        ["Français", "Sport"],
+        "binta.fit",
+    ),
+    (
+        "Koffi Sound",
+        "Guitare, voix et reprises à la demande du chat.",
+        ["Français", "Musique"],
+        "koffi.sound",
+    ),
+    (
+        "Adama Ranked",
+        "CS2 et Apex. Grind, stratégie et bonne ambiance.",
+        ["Français", "FPS"],
+        "adama.ranked",
+    ),
+    (
+        "Rokia Design",
+        "Design graphique : logos et overlays offerts aux petits streamers.",
+        ["Français", "Créatif"],
+        "rokia.design",
+    ),
+    (
+        "Tidiane GTA",
+        "RP GTA V sur serveur francophone, histoires folles garanties.",
+        ["Français", "RP"],
+        "tidiane.gta",
+    ),
+    (
+        "Salif Fighter",
+        "Street Fighter 6, sets FT5 contre le chat 🥊",
+        ["Français", "Combat"],
+        "salif.fighter",
+    ),
+    (
+        "Kadi Chill",
+        "Just Chatting, jeux indés et papotage du dimanche.",
+        ["Français", "Nouchi", "Chill"],
+        "kadi.chill",
+    ),
+    (
+        "Oumar Dota",
+        "Dota 2 depuis 10 ans. Coaching gratuit le mercredi.",
+        ["Français", "MOBA"],
+        "oumar.dota",
+    ),
+    (
+        "Grâce Live",
+        "Afrobeats, danse et défis avec la communauté ✨",
+        ["Français", "Musique", "Danse"],
+        "grace.live",
+    ),
+]
+# Messages de chat démo (français, wolof, nouchi, emojis).
+CHAT_LINES = [
+    "Salut tout le monde 👋",
+    "GG !!! 🔥🔥",
+    "Nanga def ? 😄",
+    "On est ensemble 💪",
+    "C'est validé ça",
+    "Trop fort le clutch",
+    "Le son est nickel ce soir",
+    "Djamm rek 🙏",
+    "Y'a pas drap, ça gâte !",
+    "Première fois ici, la vibe est top",
+    "Abonné depuis 3 mois, toujours au top ❤️",
+    "Quelqu'un est de Bamako ici ?",
+    "Abidjan dans la place 🇨🇮",
+    "Dakar représente 🇸🇳",
+    "Tu joues quoi après ?",
+    "LOL 😂😂",
+    "Mashallah, magnifique",
+    "On veut un deuxième round !",
+    "Le boss final arrive…",
+    "Wesh la team 👊",
+    "Merci pour le live 🙌",
+    "Ça c'est du niveau pro",
+    "Ma connexion lag un peu, c'est moi ?",
+    "Le chat est chaud ce soir 😅",
+    "Bravo pour les 1000 followers !",
+    "Tip envoyé, continue comme ça ✨",
+    "C'est gâté gâté 🔥",
+    "Je reste jusqu'à la fin",
+    "Quel setup tu utilises ?",
+    "Jërëjëf pour le stream",
+]
+CHAT_USERS = [
+    ("fatou_sn", "Fatou_SN"),
+    ("blaz_abj", "BlazAbj"),
+    ("moussa221", "Moussa221"),
+    ("aminata.k", "Aminata.K"),
+    ("le_vrai_yao", "LeVraiYao"),
+    ("kiki_bko", "KikiBko"),
+    ("drogba_fan", "DrogbaFan"),
+    ("ndeye", "Ndeye"),
+    ("papis_tv", "PapisTV"),
+    ("zoum_zoum", "ZoumZoum"),
+    ("seydou_gaming", "SeydouGaming"),
+    ("awa_lover", "AwaLover"),
+]
+TIP_MESSAGES = [
+    "Bravo !",
+    "Pour la nouvelle webcam 📷",
+    "Continue comme ça 🔥",
+    "Joyeux anniversaire !",
+    "Le meilleur stream du soir",
+    "Pour le thé ☕",
+    "Jërëjëf pour les conseils",
+    "On est ensemble 💪",
+]
+# Soldes cibles pour afficher chaque palier Aura (1 · 100 · 1 000 · 5 000 · 10 000).
+TIER_BALANCES = [42, 180, 1_450, 6_200, 12_500]
 BANNED = ["arnaque", "spam-link", "insulte1"]
 CHARITIES = [
     (
@@ -139,6 +338,8 @@ class Command(BaseCommand):
         self._shorts(streamers, viewers)
         self._monetization_scenarios(streamers, viewers)
         self._announcements_events()
+        self._goal_activity(streamers, viewers)
+        self._tier_balances(streamers, viewers)
         self.stdout.write(
             self.style.SUCCESS(
                 f"Seed OK : {len(streamers)} streamers, {len(viewers)} viewers. "
@@ -289,7 +490,31 @@ class Command(BaseCommand):
             channel.category = game
             channel.thumbnail_url = f"{IMG}/{handle}-th/640/360"
             channel.banner_url = f"{IMG}/{handle}-bn/1200/300"
-            channel.social_links = {"twitter": f"https://x.com/{handle}"}
+            persona = PERSONAS[i % len(PERSONAS)]
+            display, bio, tags, social = persona
+            if i >= len(PERSONAS):
+                display, social = f"{display} {i // len(PERSONAS) + 1}", f"{social}{i + 1}"
+            user.display_name = display
+            if not user.bio or user.bio.startswith("Compte démo"):
+                user.bio = bio
+            user.save(update_fields=["display_name", "bio"])
+            channel.tags = tags
+            channel.social_links = {
+                "instagram": f"https://instagram.com/{social}",
+                "twitter": f"https://x.com/{social.replace('.', '_')}",
+                "youtube": f"https://youtube.com/@{social.replace('.', '')}",
+                "tiktok": f"https://tiktok.com/@{social}",
+            }
+            # Un tiers des chaînes affichent un objectif (abonnés ou Aura reçue).
+            if i % 3 == 0:
+                channel.goal_kind = "subs" if i % 2 == 0 else "tips"
+                channel.goal_title = (
+                    "Objectif : nouveaux abonnés"
+                    if channel.goal_kind == "subs"
+                    else "Objectif : nouvelle webcam"
+                )
+                channel.goal_target = 10 if channel.goal_kind == "subs" else 5000
+                channel.goal_started_at = timezone.now() - timezone.timedelta(days=7)
             channel.save()
             sub_services.set_tier(
                 channel,
@@ -353,23 +578,34 @@ class Command(BaseCommand):
             pass
 
     def _chat(self, channel):
+        """25 à 40 messages variés (pseudos, rôles, abonnés) par chaîne en direct."""
         try:
             import redis
             from django.conf import settings
 
             client = redis.Redis.from_url(settings.REDIS_URL, decode_responses=True)
             key = f"chat:msgs:{channel.id}"
-            if client.llen(key) > 0:
+            if client.llen(key) >= 25:
                 return
-            for n in range(5):
+            client.delete(key)
+            now_ms = int(timezone.now().timestamp() * 1000)
+            count = random.randint(25, 40)
+            for n in range(count):
+                username, display = random.choice(CHAT_USERS)
+                role = "moderator" if username == "papis_tv" else "user"
                 client.rpush(
                     key,
                     json.dumps(
                         {
                             "id": f"seed-{channel.id}-{n}",
-                            "user": {"username": "fan_demo", "display_name": "Fan", "role": "user"},
-                            "content": random.choice(["GG !", "Salut 👋", "trop fort", "lets go"]),
-                            "ts": int(timezone.now().timestamp() * 1000),
+                            "user": {
+                                "username": username,
+                                "display_name": display,
+                                "role": role,
+                                "is_subscriber": sum(map(ord, username)) % 3 == 0 or role != "user",
+                            },
+                            "content": random.choice(CHAT_LINES),
+                            "ts": now_ms - (count - n) * random.randint(4_000, 20_000),
                         }
                     ),
                 )
@@ -388,7 +624,10 @@ class Command(BaseCommand):
         for i in range(count):
             viewer = self._mkuser(f"viewer{i+1}", f"Viewer {i+1}")
             viewers.append(viewer)
-            for _user, channel in random.sample(streamers, min(3, len(streamers))):
+            # Chacun suit 3 à 8 chaînes ; les 3 « stars » sont suivies par presque tous.
+            picks = random.sample(streamers, min(random.randint(3, 8), len(streamers)))
+            stars = [s for s in streamers[:3] if random.random() < 0.85]
+            for _user, channel in {c.pk: (u, c) for u, c in picks + stars}.values():
                 try:
                     follow_user(viewer, channel.slug)
                 except Exception:  # noqa: BLE001
@@ -400,7 +639,9 @@ class Command(BaseCommand):
                 pay.create_purchase(viewer, target_balance - balance)
             target = random.choice(streamers)[1]
             try:
-                pay.send_tip(viewer, target.slug, random.choice([10, 20, 50]), "Bravo !")
+                pay.send_tip(
+                    viewer, target.slug, random.choice([10, 20, 50]), random.choice(TIP_MESSAGES)
+                )
             except PaymentError:
                 pass
         # un retrait (Wave) depuis un streamer ayant reçu des tips
@@ -567,14 +808,14 @@ class Command(BaseCommand):
                 )
 
     def _shorts(self, streamers, viewers):
-        """~30 vidéos « Instant » prêtes, avec vues et likes réalistes."""
+        """~50 vidéos « Instant » prêtes, avec vues et likes réalistes."""
         from shorts.models import Short, ShortLike
 
         if not streamers:
             return
         now = timezone.now()
         created = 0
-        for i in range(30):
+        for i in range(50):
             user, channel = streamers[i % len(streamers)]
             guid = f"demo-short-{channel.slug}-{i}"
             short, was_created = Short.objects.get_or_create(
@@ -597,6 +838,53 @@ class Command(BaseCommand):
                 short.like_count = short.likes.count() + random.randint(0, 400)
                 short.save(update_fields=["like_count"])
         self.stdout.write(f"[instant] {created} vidéos courtes créées.")
+
+    def _goal_activity(self, streamers, viewers):
+        """Remplit les objectifs de chaîne à 30-80 % (abonnements ou tips réels)."""
+        from channels_app.views import goal_progress
+        from payments import services as pay
+        from subscriptions import services as sub_services
+
+        fans = viewers[10 : -len(TIER_BALANCES)] or viewers
+        for _user, channel in streamers:
+            if channel.goal_target <= 0:
+                continue
+            wanted = int(channel.goal_target * random.uniform(0.3, 0.8))
+            for fan in random.sample(fans, len(fans)):
+                if goal_progress(channel) >= wanted:
+                    break
+                try:
+                    if channel.goal_kind == "subs":
+                        sub_services.subscribe(fan, channel.slug)
+                    else:
+                        amount = random.choice([100, 200, 300])
+                        pay.create_purchase(fan, amount)
+                        pay.send_tip(fan, channel.slug, amount, random.choice(TIP_MESSAGES))
+                except Exception:  # noqa: BLE001, S112 - déjà abonné, solde insuffisant…
+                    continue
+
+    def _tier_balances(self, streamers, viewers):
+        """Les 5 derniers spectateurs atteignent chacun un palier Aura différent.
+
+        Achat si le solde est trop bas, gros tip à une chaîne s'il est trop haut :
+        tout passe par le grand livre (reconcile_wallets reste à zéro écart).
+        """
+        from payments import services as pay
+
+        if len(viewers) < len(TIER_BALANCES) or not streamers:
+            return
+        for viewer, target in zip(viewers[-len(TIER_BALANCES) :], TIER_BALANCES, strict=True):
+            balance = pay.get_wallet(viewer).aura_balance
+            diff = target - balance
+            try:
+                if diff > 0:
+                    pay.create_purchase(viewer, diff)
+                elif -diff >= pay.tip_min_aura():
+                    channel = random.choice(streamers)[1]
+                    pay.send_tip(viewer, channel.slug, -diff, random.choice(TIP_MESSAGES))
+            except Exception:  # noqa: BLE001 - best effort
+                pass
+        self.stdout.write(f"[aura] paliers démo : {', '.join(map(str, TIER_BALANCES))} Aura.")
 
     def _monetization_scenarios(self, streamers, viewers):
         """Cas réalistes : abonnements offerts, renouvellement, achat en attente,

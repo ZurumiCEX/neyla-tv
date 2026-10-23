@@ -57,7 +57,7 @@ export function TipButton({ channelSlug }: { channelSlug: string }) {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="rounded-md bg-amber-500 px-3 py-1 text-sm font-semibold text-neutral-950 hover:bg-amber-400"
+        className="flex h-9 items-center rounded-md bg-amber-500 px-3 text-sm font-semibold text-neutral-950 hover:bg-amber-400"
       >
         {t("tip.button")} {sent ? "✓" : ""}
       </button>

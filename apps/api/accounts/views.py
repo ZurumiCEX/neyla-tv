@@ -86,7 +86,7 @@ def _password_error(exc: DjangoValidationError) -> Response:
 @api_view(["POST"])
 @authentication_classes([])
 @permission_classes([AllowAny])
-@ratelimit(key="ip", rate="5/5m", method="POST", block=True)
+@ratelimit(key="ip", rate="10/h", method="POST", block=True)
 def register(request: Request) -> Response:
     serializer = RegisterSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
@@ -102,9 +102,9 @@ def register(request: Request) -> Response:
     from safety.captcha import verify as captcha_verify
 
     if captcha_enabled():
-        client_ip = request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")[
-            0
-        ].strip() or request.META.get("REMOTE_ADDR", "")
+        from config.client_ip import client_ip as real_ip
+
+        client_ip = real_ip(request)
         if not captcha_verify(captcha_token, client_ip):
             return Response(
                 {"detail": "Captcha invalide.", "captcha_required": True},
@@ -117,13 +117,22 @@ def register(request: Request) -> Response:
     except DjangoValidationError as exc:
         return _password_error(exc)
     send_email_verification.delay(user.pk)
-    return Response(MeSerializer(user).data, status=status.HTTP_201_CREATED)
+    # Connexion immédiate : plus besoin de retaper ses identifiants après
+    # l'inscription. Le profil reste aussi à la racine (compat clients).
+    refresh = RefreshToken.for_user(user)
+    sessions.record_login(user, request, refresh)
+    profile = MeSerializer(user).data
+    response = Response(
+        {**profile, "user": profile, "access": str(refresh.access_token)},
+        status=status.HTTP_201_CREATED,
+    )
+    return _set_refresh_cookie(response, str(refresh))
 
 
 @api_view(["POST"])
 @authentication_classes([])
 @permission_classes([AllowAny])
-@ratelimit(key="ip", rate="10/5m", method="POST", block=True)
+@ratelimit(key="ip", rate="20/10m", method="POST", block=True)
 def login(request: Request) -> Response:
     email = (request.data.get("email") or "").strip()
     password = request.data.get("password") or ""

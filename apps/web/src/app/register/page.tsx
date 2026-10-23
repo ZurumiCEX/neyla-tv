@@ -2,7 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
+import { apiErrorMessage } from "@/lib/api-errors";
+import { type AuthUser, useAuth } from "@/lib/auth-context";
 import { useT } from "@/lib/i18n";
 import { PasswordInput } from "@/components/PasswordInput";
 import { PASSWORD_MIN_LENGTH, PasswordStrength } from "@/components/PasswordStrength";
@@ -26,6 +29,8 @@ type ApiErr = { data?: { detail?: string; errors?: Record<string, string[]> } };
 
 export default function RegisterPage() {
   const t = useT();
+  const router = useRouter();
+  const { adoptSession } = useAuth();
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -68,7 +73,7 @@ export default function RegisterPage() {
     setStatus(null);
     setFieldErrors({});
     try {
-      await apiFetch("/api/auth/register", {
+      const res = await apiFetch<{ access?: string; user?: AuthUser }>("/api/auth/register", {
         method: "POST",
         body: JSON.stringify({
           email,
@@ -82,6 +87,12 @@ export default function RegisterPage() {
           captcha_token: captchaToken,
         }),
       });
+      // L'API ouvre directement la session : on entre sur la plateforme.
+      if (res.access && res.user) {
+        adoptSession(res.access, res.user);
+        router.push("/?welcome=1");
+        return;
+      }
       setStatus({ ok: true, msg: t("auth.registerOk") });
     } catch (err) {
       const e = err as ApiErr;
@@ -91,7 +102,7 @@ export default function RegisterPage() {
           Object.entries(errors).map(([k, v]) => [k, Array.isArray(v) ? String(v[0]) : String(v)]),
         ),
       );
-      setStatus({ ok: false, msg: e.data?.detail ?? t("auth.registerFail") });
+      setStatus({ ok: false, msg: apiErrorMessage(err, t, "auth.registerFail") });
     } finally {
       setBusy(false);
     }

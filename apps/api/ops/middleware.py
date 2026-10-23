@@ -23,11 +23,10 @@ _BYPASS_PREFIXES = (
 
 
 def _client_ip(request) -> str:
-    """Best-effort : récupère l'IP du client (X-Forwarded-For en prod derrière proxy)."""
-    xff = request.META.get("HTTP_X_FORWARDED_FOR", "")
-    if xff:
-        return xff.split(",")[0].strip()
-    return request.META.get("REMOTE_ADDR", "")
+    """IP réelle du client (derrière Cloudflare / App Platform)."""
+    from config.client_ip import client_ip
+
+    return client_ip(request)
 
 
 def _allowed(request) -> bool:

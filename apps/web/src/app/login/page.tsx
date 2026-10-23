@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PasswordInput } from "@/components/PasswordInput";
+import { apiErrorMessage } from "@/lib/api-errors";
 import { useAuth } from "@/lib/auth-context";
 import { useT } from "@/lib/i18n";
 
@@ -30,8 +31,7 @@ export default function LoginPage() {
         router.push("/dashboard");
       }
     } catch (err) {
-      const e = err as { data?: { detail?: string } };
-      setError(e.data?.detail ?? t("auth.loginFail"));
+      setError(apiErrorMessage(err, t, "auth.loginFail"));
     } finally {
       setBusy(false);
     }
@@ -46,8 +46,7 @@ export default function LoginPage() {
       await loginTwoFactor(twoFactorToken, code.trim());
       router.push("/dashboard");
     } catch (err) {
-      const e = err as { data?: { detail?: string } };
-      setError(e.data?.detail ?? t("auth.2fa.invalid"));
+      setError(apiErrorMessage(err, t, "auth.2fa.invalid"));
     } finally {
       setBusy(false);
     }
@@ -120,7 +119,17 @@ export default function LoginPage() {
           {busy ? "..." : t("auth.signin")}
         </button>
       </form>
-      {error && <p className="mt-4 text-sm text-red-300">{error}</p>}
+      {error && (
+        <p
+          role="alert"
+          className="mt-4 rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-300"
+        >
+          {error}{" "}
+          <Link href="/forgot-password" className="underline">
+            {t("auth.forgot")}
+          </Link>
+        </p>
+      )}
       <p className="mt-6 text-sm text-neutral-400">
         {t("auth.noAccount")}{" "}
         <Link href="/register" className="text-emerald-300 underline">

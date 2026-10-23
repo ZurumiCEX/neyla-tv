@@ -72,3 +72,64 @@ html[data-theme="light"] .text-blue-300 { color: #1d4ed8 !important; }
 /* Les surcouches posées sur une vidéo / image gardent un texte clair. */
 html[data-theme="light"] .bg-black .text-neutral-300,
 html[data-theme="light"] [class*="from-black"] .text-neutral-300 { color: #e5e7eb !important; }
+
+/* Barre d'objectif de la page chaîne : rayures animées. */
+.goal-stripes {
+  background-image: linear-gradient(
+    135deg,
+    rgba(0, 0, 0, 0.18) 25%,
+    transparent 25%,
+    transparent 50%,
+    rgba(0, 0, 0, 0.18) 50%,
+    rgba(0, 0, 0, 0.18) 75%,
+    transparent 75%,
+    transparent
+  );
+  background-size: 16px 16px;
+  animation: goal-stripes 1s linear infinite;
+  transition: width 0.6s ease;
+}
+@keyframes goal-stripes {
+  to { background-position: 16px 0; }
+}
+
+/* Pseudos colorés du chat : assombris en thème clair pour rester lisibles. */
+html[data-theme="light"] .chat-name { filter: brightness(0.55) saturate(1.6); }
+
+@media (prefers-reduced-motion: reduce) {
+  .goal-stripes { animation: none; }
+}
+
+/* Badges Aura : animations en boucle (actives seulement avec .aura-animated). */
+.aura-badge :is(.aura-float, .aura-spin-slow, .aura-shimmer, .aura-rays) {
+  transform-box: view-box;
+  transform-origin: 24px 24px;
+}
+.aura-animated .aura-float { animation: aura-float 2.4s ease-in-out infinite; }
+.aura-animated .aura-breathe { animation: aura-breathe 2.2s ease-in-out infinite; }
+.aura-animated .aura-spin-slow { animation: aura-spin 9s linear infinite; }
+.aura-animated .aura-shimmer { animation: aura-shimmer 2.6s ease-in-out infinite; }
+.aura-animated .aura-rays { animation: aura-rays 3s ease-in-out infinite, aura-spin 18s linear infinite; }
+.aura-badge .aura-breathe { transform-box: fill-box; transform-origin: center; }
+@keyframes aura-float {
+  0%, 100% { transform: translateY(1.5px); }
+  50% { transform: translateY(-1.5px); }
+}
+@keyframes aura-breathe {
+  0%, 100% { transform: scale(0.9); opacity: 0.85; }
+  50% { transform: scale(1.04); opacity: 1; }
+}
+@keyframes aura-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes aura-shimmer {
+  0%, 100% { transform: scale(0.94) rotate(0deg); filter: brightness(1); }
+  50% { transform: scale(1.04) rotate(22.5deg); filter: brightness(1.35); }
+}
+@keyframes aura-rays {
+  0%, 100% { opacity: 0.75; }
+  50% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .aura-animated g { animation: none !important; }
+}

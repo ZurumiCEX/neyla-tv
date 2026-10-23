@@ -73,24 +73,36 @@ export function Navbar() {
 
         {/* Droite : contrôles */}
         <div className="flex shrink-0 items-center gap-2 text-sm">
-          <GuidesMenu />
+          {/* Guides et langue : masqués sur mobile pour éviter le défilement horizontal. */}
+          <div className="hidden items-center gap-2 sm:flex">
+            <GuidesMenu />
+          </div>
           <ThemeToggle />
-          <LanguageSwitcher />
+          <div className="hidden items-center sm:flex">
+            <LanguageSwitcher />
+          </div>
 
           {loading ? (
             <span className="px-2 text-neutral-500">…</span>
           ) : user ? (
             <>
               <AuraBalance />
-              <EventsMenu />
+              <div className="hidden items-center sm:flex">
+                <EventsMenu />
+              </div>
               <NotificationBell />
               <span className="hidden text-sm text-neutral-400 lg:inline">@{user.username}</span>
               <ProfileMenu />
             </>
           ) : (
             <>
-              <EventsMenu />
-              <Link href="/login" className="text-neutral-300 hover:text-emerald-300">
+              <div className="hidden items-center sm:flex">
+                <EventsMenu />
+              </div>
+              <Link
+                href="/login"
+                className="hidden text-neutral-300 hover:text-emerald-300 sm:inline"
+              >
                 {t("nav.login")}
               </Link>
               <Link
@@ -151,6 +163,11 @@ export function Navbar() {
               </Link>
             </div>
           )}
+          <div className="mt-3 flex items-center gap-2 border-t border-neutral-800 pt-3">
+            <LanguageSwitcher />
+            <GuidesMenu />
+            <EventsMenu />
+          </div>
         </div>
       )}
     </nav>

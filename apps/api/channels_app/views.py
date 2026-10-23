@@ -323,7 +323,22 @@ def public_channel(request: Request, slug: str) -> Response:  # noqa: ARG001
     channel = Channel.objects.select_related("user").filter(slug=slug.lower()).first()
     if channel is None:
         raise NotFound("Chaîne introuvable.")
-    return Response(PublicChannelSerializer(channel).data, status=status.HTTP_200_OK)
+    from social.models import Follow
+
+    data = PublicChannelSerializer(channel).data
+    data["follower_count"] = Follow.objects.filter(followee=channel.user).count()
+    data["is_verified"] = channel.is_provisioned
+    data["goal"] = (
+        {
+            "title": channel.goal_title,
+            "kind": channel.goal_kind,
+            "target": channel.goal_target,
+            "current": goal_progress(channel),
+        }
+        if channel.goal_target > 0
+        else None
+    )
+    return Response(data, status=status.HTTP_200_OK)
 
 
 @api_view(["GET"])
