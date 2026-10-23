@@ -37,7 +37,7 @@ const PAGE_SIZE = 10;
 
 export default function InstantPage() {
   const t = useT();
-  const { user, authFetch } = useAuth();
+  const { user, loading: authLoading, authFetch } = useAuth();
   const [items, setItems] = useState<ShortItem[]>([]);
   const [nextOffset, setNextOffset] = useState<number | null>(0);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -67,13 +67,17 @@ export default function InstantPage() {
     }
   }, [nextOffset, loadingMore, user, authFetch]);
 
-  // Lien partagé (?v=<id>) : la vidéo partagée s'affiche en premier.
+  // Premier chargement une fois l'auth résolue (sinon « liked » serait faux
+  // pour un utilisateur connecté). Lien partagé (?v=<id>) affiché en premier.
+  const started = useRef(false);
   useEffect(() => {
+    if (authLoading || started.current) return;
+    started.current = true;
     const shared = Number(new URLSearchParams(window.location.search).get("v"));
     const start = async () => {
       if (shared) {
         try {
-          const first = await apiFetch<ShortItem>(`/api/shorts/${shared}`);
+          const first = await (user ? authFetch : apiFetch)<ShortItem>(`/api/shorts/${shared}`);
           setItems([first]);
         } catch {
           /* vidéo indisponible : fil normal */
@@ -83,7 +87,7 @@ export default function InstantPage() {
     };
     start();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [authLoading]);
 
   // La vidéo la plus visible devient active ; charge la suite à l'avant-dernière.
   useEffect(() => {

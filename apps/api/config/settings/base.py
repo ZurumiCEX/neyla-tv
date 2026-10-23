@@ -6,6 +6,7 @@ import ssl
 from pathlib import Path
 
 import environ
+from corsheaders.defaults import default_headers
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 
@@ -178,7 +179,8 @@ SIMPLE_JWT = {
 # Cookie pour stocker le refresh token côté navigateur (HttpOnly, SameSite=Lax).
 REFRESH_COOKIE_NAME = "neyla_refresh"
 REFRESH_COOKIE_MAX_AGE = int(SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"].total_seconds())
-REFRESH_COOKIE_SECURE = not DEBUG
+# Cookie « Secure » en prod (HTTPS) ; surchargé en dev (HTTP). Configurable.
+REFRESH_COOKIE_SECURE = env.bool("REFRESH_COOKIE_SECURE", default=not DEBUG)
 REFRESH_COOKIE_SAMESITE = "Lax"
 REFRESH_COOKIE_PATH = "/api/auth/"
 
@@ -201,6 +203,11 @@ CORS_ALLOWED_ORIGINS = env.list(
     "DJANGO_CORS_ALLOWED_ORIGINS",
     default=["http://localhost:3000"],
 )
+# Front et API sur des origines distinctes (dev :3000/:8000, Vercel + API) :
+# le cookie de refresh exige les credentials, et l'en-tête d'idempotence des
+# paiements doit être autorisé, sinon le navigateur bloque connexion et tips.
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = (*default_headers, "idempotency-key")
 
 
 # --- Redis / Channels ---

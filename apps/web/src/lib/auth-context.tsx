@@ -29,9 +29,7 @@ export type AuthUser = {
   role: "user" | "support" | "moderator" | "admin";
 };
 
-export type LoginResult =
-  | { twoFactorRequired: false }
-  | { twoFactorRequired: true; token: string };
+export type LoginResult = { twoFactorRequired: false } | { twoFactorRequired: true; token: string };
 
 type AuthState = {
   user: AuthUser | null;
@@ -52,9 +50,7 @@ export function useAuth(): AuthState {
   return ctx;
 }
 
-type LoginResp =
-  | { access: string; user: AuthUser }
-  | { two_factor_required: true; token: string };
+type LoginResp = { access: string; user: AuthUser } | { two_factor_required: true; token: string };
 type RefreshResp = { access: string };
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -62,23 +58,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const accessRef = useRef<string | null>(null);
+  const refreshInFlight = useRef<Promise<string | null> | null>(null);
 
-  // Sync ref avec state pour usage dans des closures stables.
-  useEffect(() => {
-    accessRef.current = accessToken;
-  }, [accessToken]);
-
-  const refresh = useCallback(async (): Promise<string | null> => {
-    try {
-      const data = await apiFetch<RefreshResp>("/api/auth/refresh", { method: "POST" });
-      setAccessToken(data.access);
-      return data.access;
-    } catch {
-      setAccessToken(null);
-      setUser(null);
-      return null;
-    }
+  // Met à jour le ref IMMÉDIATEMENT (pas dans un effet) : les effets des pages
+  // enfants s'exécutent avant ceux du provider, et appelleraient sinon l'API
+  // sans jeton juste après la connexion.
+  const applyAccess = useCallback((token: string | null) => {
+    accessRef.current = token;
+    setAccessToken(token);
   }, []);
+
+  // Un seul refresh à la fois : le refresh fait tourner le cookie (l'ancien est
+  // révoqué), des appels parallèles se révoqueraient mutuellement → déconnexion.
+  const refresh = useCallback((): Promise<string | null> => {
+    if (refreshInFlight.current) return refreshInFlight.current;
+    const run = (async () => {
+      try {
+        const data = await apiFetch<RefreshResp>("/api/auth/refresh", { method: "POST" });
+        applyAccess(data.access);
+        return data.access;
+      } catch {
+        applyAccess(null);
+        setUser(null);
+        return null;
+      } finally {
+        refreshInFlight.current = null;
+      }
+    })();
+    refreshInFlight.current = run;
+    return run;
+  }, [applyAccess]);
 
   // Bootstrap : tente un refresh silencieux puis charge le profil.
   useEffect(() => {
@@ -96,7 +105,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!cancelled) setUser(me);
       } catch {
         if (!cancelled) {
-          setAccessToken(null);
+          applyAccess(null);
           setUser(null);
         }
       } finally {
@@ -106,7 +115,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [refresh]);
+  }, [refresh, applyAccess]);
 
   const login = useCallback(
     async (email: string, password: string): Promise<LoginResult> => {
@@ -117,21 +126,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if ("two_factor_required" in data) {
         return { twoFactorRequired: true, token: data.token };
       }
-      setAccessToken(data.access);
+      applyAccess(data.access);
       setUser(data.user);
       return { twoFactorRequired: false };
     },
-    [],
+    [applyAccess],
   );
 
-  const loginTwoFactor = useCallback(async (token: string, code: string) => {
-    const data = await apiFetch<{ access: string; user: AuthUser }>("/api/auth/2fa/login", {
-      method: "POST",
-      body: JSON.stringify({ token, code }),
-    });
-    setAccessToken(data.access);
-    setUser(data.user);
-  }, []);
+  const loginTwoFactor = useCallback(
+    async (token: string, code: string) => {
+      const data = await apiFetch<{ access: string; user: AuthUser }>("/api/auth/2fa/login", {
+        method: "POST",
+        body: JSON.stringify({ token, code }),
+      });
+      applyAccess(data.access);
+      setUser(data.user);
+    },
+    [applyAccess],
+  );
 
   const logout = useCallback(async () => {
     try {
@@ -139,9 +151,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // best-effort, on nettoie de toute façon
     }
-    setAccessToken(null);
+    applyAccess(null);
     setUser(null);
-  }, []);
+  }, [applyAccess]);
 
   // Fetch authentifié avec retry auto sur 401 (refresh + replay une fois).
   const authFetch = useCallback(
