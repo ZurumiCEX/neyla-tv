@@ -10,6 +10,8 @@ def pytest_configure(config):  # noqa: ARG001
     settings.CELERY_TASK_EAGER_PROPAGATES = True
     settings.EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
     settings.RATELIMIT_ENABLE = False
+    # Cache local en tests (pas de dépendance à un Redis partagé).
+    settings.CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
     # Pour les tests WebSocket : pas besoin de Redis pubsub, in-memory suffit.
     settings.CHANNEL_LAYERS = {
         "default": {"BACKEND": "channels.layers.InMemoryChannelLayer"},

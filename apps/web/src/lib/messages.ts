@@ -1004,6 +1004,15 @@ const FR: Dict = {
   "admin.severity.high": "Élevé",
   "channel.notFoundDesc": "Personne ne diffuse sous ce nom.",
   "events.inDays": "dans {n} j",
+  "errors.network": "Impossible de joindre le serveur. Vérifie ta connexion et réessaie.",
+  "errors.rateLimited": "Trop de tentatives, réessaie dans quelques minutes.",
+  "errors.server": "Le serveur a rencontré un problème. Réessaie dans un instant.",
+  "verify.welcome": "Bienvenue, {name} !",
+  "verify.prompt": "Confirme ton adresse {email} grâce au lien reçu par e-mail.",
+  "verify.resend": "Renvoyer l'e-mail",
+  "verify.sent": "E-mail renvoyé ✓",
+  "verify.resendError": "Envoi impossible pour le moment.",
+  "verify.dismiss": "Masquer",
 };
 
 const EN: Dict = {
@@ -1995,6 +2004,15 @@ const EN: Dict = {
   "admin.severity.high": "High",
   "channel.notFoundDesc": "Nobody streams under this name.",
   "events.inDays": "in {n} d",
+  "errors.network": "Can't reach the server. Check your connection and try again.",
+  "errors.rateLimited": "Too many attempts, please try again in a few minutes.",
+  "errors.server": "The server ran into a problem. Please try again shortly.",
+  "verify.welcome": "Welcome, {name}!",
+  "verify.prompt": "Confirm your address {email} using the link we emailed you.",
+  "verify.resend": "Resend email",
+  "verify.sent": "Email sent ✓",
+  "verify.resendError": "Couldn't send right now.",
+  "verify.dismiss": "Dismiss",
 };
 
 const PT: Dict = {
@@ -2986,6 +3004,15 @@ const PT: Dict = {
   "admin.severity.high": "Elevado",
   "channel.notFoundDesc": "Ninguém transmite com este nome.",
   "events.inDays": "em {n} d",
+  "errors.network": "Não foi possível contactar o servidor. Verifica a ligação e tenta de novo.",
+  "errors.rateLimited": "Demasiadas tentativas, tenta de novo dentro de alguns minutos.",
+  "errors.server": "O servidor teve um problema. Tenta de novo daqui a pouco.",
+  "verify.welcome": "Bem-vindo, {name}!",
+  "verify.prompt": "Confirma o teu endereço {email} com a ligação enviada por e-mail.",
+  "verify.resend": "Reenviar e-mail",
+  "verify.sent": "E-mail enviado ✓",
+  "verify.resendError": "Não foi possível enviar agora.",
+  "verify.dismiss": "Ocultar",
 };
 
 export const DICTS: Record<Locale, Dict> = { fr: FR, en: EN, pt: PT };

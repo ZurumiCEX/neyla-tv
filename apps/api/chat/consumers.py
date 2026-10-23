@@ -152,10 +152,13 @@ def _load_subscriber_ids(channel) -> set[int]:
 
 
 def _client_ip(scope) -> str | None:
-    """IP du client : X-Forwarded-For (1er hop) sinon adresse de socket."""
-    for name, value in scope.get("headers", []):
-        if name == b"x-forwarded-for" and value:
-            return value.decode().split(",")[0].strip() or None
+    """IP réelle du client derrière les proxys (même règle que config.client_ip)."""
+    headers = {name.decode().lower(): value.decode() for name, value in scope.get("headers", [])}
+    for header in ("cf-connecting-ip", "do-connecting-ip"):
+        if headers.get(header):
+            return headers[header].strip() or None
+    if headers.get("x-forwarded-for"):
+        return headers["x-forwarded-for"].split(",")[0].strip() or None
     client = scope.get("client")
     return client[0] if client else None
 

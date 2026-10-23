@@ -89,8 +89,22 @@ envs:
   - key: DJANGO_DEFAULT_FROM_EMAIL
     value: no-reply@neyla.tv
     scope: RUN_TIME
+  # DÉMO : les e-mails (vérification, mot de passe oublié, code de retrait)
+  # sont seulement écrits dans les logs. Pour les envoyer vraiment : passer à
+  # django.core.mail.backends.smtp.EmailBackend et renseigner EMAIL_HOST,
+  # EMAIL_PORT, EMAIL_HOST_USER, EMAIL_HOST_PASSWORD (chiffré), EMAIL_USE_TLS.
   - key: DJANGO_EMAIL_BACKEND
     value: django.core.mail.backends.console.EmailBackend
+    scope: RUN_TIME
+  - key: EMAIL_HOST
+    value: ""
+    scope: RUN_TIME
+  - key: EMAIL_HOST_USER
+    value: ""
+    scope: RUN_TIME
+  - key: EMAIL_HOST_PASSWORD
+    value: ""
+    type: SECRET
     scope: RUN_TIME
   - key: BUNNY_STREAM_LIBRARY_ID
     value: ""

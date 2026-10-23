@@ -32,6 +32,8 @@ en console :
 | `BUNNY_STREAM_API_KEY` | AccessKey de la bibliothèque (chiffrée) | idem |
 | `BUNNY_STREAM_CDN_HOSTNAME` | `vz-xxx.b-cdn.net` | lecture HLS des vidéos « Instant » |
 | `BUNNY_STREAM_WEBHOOK_KEY` | clé de signature (chiffrée) | cf. [runbook Bunny](bunny-stream-setup.md) |
+| `DJANGO_EMAIL_BACKEND` + `EMAIL_HOST`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD` | SMTP (Brevo, Mailgun, SES…) | sinon les e-mails (vérification, mot de passe oublié, code de retrait) restent dans les logs |
+| `PAYMENTS_ALLOW_FAKE` | `1` en démo, `0` en prod réelle | paiements simulés |
 | `SENTRY_DSN` | optionnel | vide = Sentry désactivé |
 
 > Les variables liées aux bases (`POSTGRES_*`, `REDIS_URL`, `CELERY_*`) sont
@@ -212,3 +214,11 @@ components detected" (layout monorepo, aucun manifeste à la racine), un
 > que DO **n'a réellement pas accès au repo** (permission). Dans ce cas, seules
 > les voies "source git publique" (ci-dessus) ou la résolution de l'accès
 > GitHub fonctionneront.
+
+### Limites de débit derrière le load balancer
+
+Les limites par IP (inscription, connexion…) utilisent l'IP réelle du visiteur
+(`CF-Connecting-IP`, `DO-Connecting-IP`, puis `X-Forwarded-For`, cf.
+`config/client_ip.py`) et un cache Redis partagé. Sans cela, tous les visiteurs
+partageaient l'adresse du load balancer : quelques tentatives suffisaient à
+bloquer l'inscription et la connexion pour tout le site (erreur 403/429).

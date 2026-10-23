@@ -190,6 +190,14 @@ EMAIL_BACKEND = env(
     default="django.core.mail.backends.console.EmailBackend",
 )
 DEFAULT_FROM_EMAIL = env("DJANGO_DEFAULT_FROM_EMAIL", default="no-reply@neyla.tv")
+# SMTP (Brevo, Mailgun, SendGrid, Amazon SES…) — utilisé quand
+# DJANGO_EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend.
+EMAIL_HOST = env("EMAIL_HOST", default="localhost")
+EMAIL_PORT = env.int("EMAIL_PORT", default=587)
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
+EMAIL_TIMEOUT = env.int("EMAIL_TIMEOUT", default=10)
 FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:3000")
 
 # --- Web Push (VAPID) ---
@@ -225,6 +233,20 @@ def _with_cert_reqs(url: str) -> str:
 
 
 REDIS_URL = _with_cert_reqs(env("REDIS_URL", default="redis://redis:6379/0"))
+
+# Cache partagé (Redis, tolérant aux pannes) : compteurs des limites de débit
+# cohérents entre instances.
+CACHES = {
+    "default": {
+        "BACKEND": "config.cache.ResilientRedisCache",
+        "LOCATION": REDIS_URL,
+    }
+}
+# Limites de débit par IP RÉELLE (derrière Cloudflare / App Platform).
+RATELIMIT_IP_META_KEY = "config.client_ip.client_ip"
+RATELIMIT_USE_CACHE = "default"
+# Redis indisponible : on laisse passer plutôt que de bloquer toute connexion.
+RATELIMIT_FAIL_OPEN = True
 
 CHANNEL_LAYERS = {
     "default": {

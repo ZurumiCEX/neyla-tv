@@ -38,6 +38,10 @@ type AuthState = {
   login: (email: string, password: string) => Promise<LoginResult>;
   loginTwoFactor: (token: string, code: string) => Promise<void>;
   logout: () => Promise<void>;
+  /** Adopte une session déjà ouverte côté serveur (ex. réponse d'inscription). */
+  adoptSession: (access: string, user: AuthUser) => void;
+  /** Recharge le profil (ex. après vérification de l'e-mail). */
+  reloadUser: () => Promise<void>;
   authFetch: <T>(path: string, init?: RequestInit) => Promise<T>;
   authUpload: <T>(path: string, formData: FormData) => Promise<T>;
 };
@@ -155,6 +159,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   }, [applyAccess]);
 
+  const adoptSession = useCallback(
+    (access: string, nextUser: AuthUser) => {
+      applyAccess(access);
+      setUser(nextUser);
+    },
+    [applyAccess],
+  );
+
   // Fetch authentifié avec retry auto sur 401 (refresh + replay une fois).
   const authFetch = useCallback(
     async <T,>(path: string, init: RequestInit = {}): Promise<T> => {
@@ -199,6 +211,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [refresh],
   );
 
+  const reloadUser = useCallback(async () => {
+    const token = accessRef.current;
+    if (!token) return;
+    try {
+      setUser(
+        await apiFetch<AuthUser>("/api/auth/me", { headers: { Authorization: `Bearer ${token}` } }),
+      );
+    } catch {
+      /* profil inchangé */
+    }
+  }, []);
+
   const value = useMemo<AuthState>(
     () => ({
       user,
@@ -207,10 +231,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       login,
       loginTwoFactor,
       logout,
+      adoptSession,
+      reloadUser,
       authFetch,
       authUpload,
     }),
-    [user, accessToken, loading, login, loginTwoFactor, logout, authFetch, authUpload],
+    [
+      user,
+      accessToken,
+      loading,
+      login,
+      loginTwoFactor,
+      logout,
+      adoptSession,
+      reloadUser,
+      authFetch,
+      authUpload,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { AnnouncementBar } from "@/components/AnnouncementBar";
+import { EmailVerifyBanner } from "@/components/EmailVerifyBanner";
 import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
 import { Sidebar } from "@/components/Sidebar";
@@ -14,6 +15,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <>
       <Navbar />
       <AnnouncementBar />
+      <EmailVerifyBanner />
       <div className="flex">
         <Sidebar />
         <div className="flex min-h-screen min-w-0 flex-1 flex-col">

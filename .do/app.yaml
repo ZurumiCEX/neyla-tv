@@ -98,8 +98,22 @@ envs:
     scope: RUN_TIME
   # Backend console par défaut. Pour de vrais emails : passer en SMTP
   # (django.core.mail.backends.smtp.EmailBackend) + variables EMAIL_HOST/...
+  # DÉMO : les e-mails (vérification, mot de passe oublié, code de retrait)
+  # sont seulement écrits dans les logs. Pour les envoyer vraiment : passer à
+  # django.core.mail.backends.smtp.EmailBackend et renseigner EMAIL_HOST,
+  # EMAIL_PORT, EMAIL_HOST_USER, EMAIL_HOST_PASSWORD (chiffré), EMAIL_USE_TLS.
   - key: DJANGO_EMAIL_BACKEND
     value: django.core.mail.backends.console.EmailBackend
+    scope: RUN_TIME
+  - key: EMAIL_HOST
+    value: ""
+    scope: RUN_TIME
+  - key: EMAIL_HOST_USER
+    value: ""
+    scope: RUN_TIME
+  - key: EMAIL_HOST_PASSWORD
+    value: ""
+    type: SECRET
     scope: RUN_TIME
   # Bunny Stream — BUNNY_STREAM_API_KEY vide active le mode FAKE (aucun live réel).
   # Renseigner en console (type chiffré) pour activer l'ingest RTMP réel.
