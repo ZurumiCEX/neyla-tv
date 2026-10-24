@@ -9,9 +9,10 @@ import { fmt, fmtFcfa } from "@/lib/format";
 import { useFormat } from "@/lib/use-format";
 import { notifyWalletChanged } from "@/lib/wallet-events";
 import { CardsLogo, OrangeMoneyLogo, WaveLogo } from "@/components/PaymentLogos";
-import { AuraBadge, auraTier } from "@/components/AuraBadge";
+import { GiftBadgesCard } from "@/components/GiftBadgesCard";
+import { LevelBadge, LevelLadder } from "@/components/LevelBadge";
+import { useMyLevel } from "@/lib/use-level";
 import { AuraLedger } from "@/components/AuraLedger";
-import { AuraTierLadder } from "@/components/AuraTierLadder";
 
 type Ledger = {
   amount: number;
@@ -82,6 +83,7 @@ export default function WalletPage() {
   const [purchases, setPurchases] = useState<Purchase[] | null>(null);
   const [method, setMethod] = useState<Method>("card");
   const [masked, setMasked] = useState(false);
+  const level = useMyLevel();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -202,10 +204,7 @@ export default function WalletPage() {
           </button>
         </div>
         <div className="flex items-center gap-3">
-          {(() => {
-            const tier = auraTier(wallet.aura_balance);
-            return tier ? <AuraBadge tier={tier} size={48} /> : null;
-          })()}
+          {level && <LevelBadge level={level.level} size={48} />}
           <p className="text-4xl font-bold text-emerald-400">
             {masked ? "••••••" : fmt(wallet.aura_balance)}{" "}
             <span className="text-lg text-neutral-400">Aura</span>
@@ -222,7 +221,10 @@ export default function WalletPage() {
       </div>
 
       <div className="mb-6">
-        <AuraTierLadder balance={wallet.aura_balance} masked={masked} />
+        {level && <LevelLadder data={level} masked={masked} />}
+        <div className="mt-4">
+          <GiftBadgesCard />
+        </div>
       </div>
 
       {returnNotice && (

@@ -89,6 +89,14 @@ def donate(
     CharityEvent.objects.filter(pk=event.pk).update(
         total_aura_cached=F("total_aura_cached") + aura_amount
     )
+
+    def _after_donation() -> None:
+        from gamification.services import check_and_award
+
+        check_and_award(user, "charity")
+        check_and_award(user, "spend")
+
+    transaction.on_commit(_after_donation)
     return donation
 
 

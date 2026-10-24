@@ -145,6 +145,16 @@ def _flag_chat_bot(user_id: int, channel_id: int, reason: str) -> None:
 
 
 @database_sync_to_async
+def _chat_badges(user_id: int, channel_id: int) -> dict:
+    """Niveau (Aura dépensée à vie) + badge de don pour cette chaîne, à jour."""
+    from accounts.models import User
+    from gamification.support import chat_badges
+
+    spent = User.objects.filter(pk=user_id).values_list("lifetime_aura_spent", flat=True).first()
+    return chat_badges(user_id, channel_id, spent or 0)
+
+
+@database_sync_to_async
 def _load_subscriber_ids(channel) -> set[int]:
     from subscriptions.services import subscriber_user_ids
 
@@ -265,6 +275,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             await self.send_json({"type": "error", "detail": "Tu vas trop vite."})
             return
 
+        badges = await _chat_badges(user.pk, self.channel_obj.id)
         msg = {
             "id": str(uuid.uuid4()),
             "user": {
@@ -272,6 +283,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 "display_name": user.display_name or user.username,
                 "role": user.role,
                 "is_subscriber": user.pk in self.subscriber_ids,
+                **badges,
             },
             "content": text,
             "ts": int(time.time() * 1000),

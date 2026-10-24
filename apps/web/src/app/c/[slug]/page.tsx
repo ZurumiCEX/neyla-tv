@@ -94,6 +94,7 @@ export default async function ChannelPage({ params }: { params: Promise<{ slug: 
         <div className="grid gap-4 p-4 sm:p-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,420px)]">
           <ChannelAbout
             name={displayName}
+            username={channel.streamer.username}
             followers={followers}
             bio={channel.streamer.bio}
             socialLinks={channel.social_links}

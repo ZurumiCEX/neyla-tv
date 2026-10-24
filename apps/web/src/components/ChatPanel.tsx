@@ -8,12 +8,23 @@ import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useT } from "@/lib/i18n";
 import { EmojiPicker } from "@/components/EmojiPicker";
+import { GiftBadge, giftTierByKey } from "@/components/GiftBadge";
+import { LevelBadge } from "@/components/LevelBadge";
 import { RoleBadge } from "@/components/RoleBadge";
+import Link from "next/link";
 import { ChatAuraFooter } from "@/components/channel/ChatAuraFooter";
 
 type ChatMessage = {
   id: string;
-  user: { username: string; display_name: string; role?: string; is_subscriber?: boolean };
+  user: {
+    username: string;
+    display_name: string;
+    role?: string;
+    is_subscriber?: boolean;
+    /** Niveau (Aura dépensée à vie) et badge de don pour CETTE chaîne. */
+    level?: string;
+    gift_tier?: string | null;
+  };
   content: string;
   ts: number;
 };
@@ -204,9 +215,14 @@ export function ChatPanel({ slug, isLive, variant = "card", onCollapse }: Props)
                   ★
                 </span>
               )}
-              <span className="chat-name font-bold" style={{ color: nameColor(m.user.username) }}>
+              <ChatBadges user={m.user} t={t} />
+              <Link
+                href={`/u/${m.user.username}`}
+                className="chat-name font-bold hover:underline"
+                style={{ color: nameColor(m.user.username) }}
+              >
                 {m.user.display_name || m.user.username}
-              </span>
+              </Link>
               <span className="text-neutral-500">: </span>
               <span className="text-neutral-100">{m.content}</span>
             </span>
@@ -284,6 +300,33 @@ export function ChatPanel({ slug, isLive, variant = "card", onCollapse }: Props)
         </div>
       </form>
     </section>
+  );
+}
+
+/** Badges avant le pseudo : badge de don (cette chaîne) puis niveau (hors débutant). */
+function ChatBadges({
+  user,
+  t,
+}: {
+  user: ChatMessage["user"];
+  t: (key: string, params?: Record<string, string | number>) => string;
+}) {
+  const gift = giftTierByKey(user.gift_tier);
+  const level = user.level && user.level !== "rookie" ? user.level : null;
+  if (!gift && !level) return null;
+  return (
+    <span className="mr-1 inline-flex translate-y-[3px] items-center gap-0.5">
+      {gift && (
+        <span title={t("gift.tierTitle", { tier: t(`gift.tier.${gift.key}`) })}>
+          <GiftBadge tier={gift} size={16} animated={false} />
+        </span>
+      )}
+      {level && (
+        <span title={t("level.title", { level: t(`level.${level}`) })}>
+          <LevelBadge level={level} size={16} animated={false} />
+        </span>
+      )}
+    </span>
   );
 }
 

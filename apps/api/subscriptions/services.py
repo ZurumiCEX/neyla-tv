@@ -121,6 +121,7 @@ def _after_subscribe(channel: Channel, user) -> None:
         from gamification.services import check_and_award
 
         check_and_award(user, "subscription")
+        check_and_award(user, "spend")
     with contextlib.suppress(Exception):
         from safety.anticheat import evaluate_self_deal, evaluate_subscription
 
@@ -172,6 +173,14 @@ def gift_subscription(gifter, channel_slug: str, recipient_username: str) -> Sub
         },
     )
     charge_subscription(gifter, channel.user, tier.price_aura, related=sub)
+    from gamification.support import record_support
+
+    from .models import SubscriptionGift
+
+    SubscriptionGift.objects.create(
+        gifter=gifter, recipient=recipient, channel=channel, price_aura=tier.price_aura
+    )
+    record_support(gifter, channel, tier.price_aura)
     transaction.on_commit(lambda: _after_gift(recipient, gifter, channel))
     return sub
 
@@ -189,6 +198,12 @@ def _after_gift(recipient, gifter, channel) -> None:
             actor=gifter,
             payload={"username": recipient.username, "gifted": True, "gifter": gifter.username},
         )
+    with contextlib.suppress(Exception):
+        from gamification.services import check_and_award
+
+        check_and_award(gifter, "gift_sub")
+        check_and_award(gifter, "support", channel=channel)
+        check_and_award(gifter, "spend")
     with contextlib.suppress(Exception):
         # Destinataire : notification dédiée, sans alerte overlay sur sa propre chaîne.
         create_notification(

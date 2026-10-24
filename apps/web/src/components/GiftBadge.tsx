@@ -1,11 +1,9 @@
 "use client";
 
-import { useT } from "@/lib/i18n";
-
-// Paliers Aura basés sur le solde courant. `min` = solde minimal pour atteindre
-// le palier. Chaque emblème a une face claire (`light`) et une face sombre
-// (`dark`) pour l'effet facetté de la charte AURA BADGES.
-export type AuraTier = {
+// Badges de don : total d'Aura offert par un follower à UNE chaîne (tips +
+// abonnements offerts). `min` = total minimal. Chaque emblème a une face claire
+// (`light`) et une face sombre (`dark`) pour l'effet facetté de la charte.
+export type GiftTier = {
   index: number;
   key: string;
   min: number;
@@ -16,7 +14,7 @@ export type AuraTier = {
   glow: string;
 };
 
-export const AURA_TIERS: AuraTier[] = [
+export const GIFT_TIERS: GiftTier[] = [
   {
     index: 0,
     key: "spark",
@@ -64,18 +62,18 @@ export const AURA_TIERS: AuraTier[] = [
   },
 ];
 
-/** Renvoie le palier atteint pour un solde, ou null si < premier seuil. */
-export function auraTier(balance: number): AuraTier | null {
-  let current: AuraTier | null = null;
-  for (const tier of AURA_TIERS) {
-    if (balance >= tier.min) current = tier;
+/** Badge atteint pour un total offert, ou null si rien offert. */
+export function giftTierFor(total: number): GiftTier | null {
+  let current: GiftTier | null = null;
+  for (const tier of GIFT_TIERS) {
+    if (total >= tier.min) current = tier;
   }
   return current;
 }
 
-/** Prochain palier à atteindre (pour la barre de progression), ou null si max. */
-export function nextAuraTier(balance: number): AuraTier | null {
-  return AURA_TIERS.find((t) => balance < t.min) ?? null;
+/** Badge à partir de sa clé (renvoyée par l'API : chat, profil). */
+export function giftTierByKey(key?: string | null): GiftTier | null {
+  return GIFT_TIERS.find((t) => t.key === key) ?? null;
 }
 
 const ROT5 = [0, 72, 144, 216, 288];
@@ -84,7 +82,7 @@ const ROT12 = Array.from({ length: 12 }, (_, i) => i * 30);
 
 // Emblèmes facettés, viewBox 48x48 centré en (24, 24). Les classes `aura-*`
 // portent les animations en boucle (globals.css).
-function Emblem({ tier }: { tier: AuraTier }) {
+function Emblem({ tier }: { tier: GiftTier }) {
   const { light: L, dark: D } = tier;
   switch (tier.key) {
     case "spark":
@@ -175,13 +173,13 @@ function Emblem({ tier }: { tier: AuraTier }) {
   }
 }
 
-export function AuraBadge({
+export function GiftBadge({
   tier,
   size = 40,
   locked = false,
   animated = true,
 }: {
-  tier: AuraTier;
+  tier: GiftTier;
   size?: number;
   locked?: boolean;
   /** Animation en boucle (désactivée dans les listes denses). */
@@ -201,27 +199,5 @@ export function AuraBadge({
     >
       <Emblem tier={tier} />
     </svg>
-  );
-}
-
-/** Pastille compacte palier + libellé (réutilisée header wallet / studio). */
-export function AuraTierPill({ balance }: { balance: number }) {
-  const t = useT();
-  const tier = auraTier(balance);
-  if (!tier) {
-    return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-neutral-700 px-2.5 py-1 text-xs text-neutral-400">
-        {t("aura.tier.none")}
-      </span>
-    );
-  }
-  return (
-    <span
-      className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold"
-      style={{ borderColor: tier.color, color: tier.color }}
-    >
-      <AuraBadge tier={tier} size={18} />
-      {t(`aura.tier.${tier.key}`)}
-    </span>
   );
 }

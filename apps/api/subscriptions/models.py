@@ -85,3 +85,28 @@ class Subscription(models.Model):
     @property
     def will_renew(self) -> bool:
         return self.is_active and self.auto_renew and not self.cancel_at_period_end
+
+
+class SubscriptionGift(models.Model):
+    """Historique permanent des abonnements offerts (le Subscription est écrasé)."""
+
+    gifter = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="subscription_gifts_sent"
+    )
+    recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="subscription_gifts_received",
+    )
+    channel = models.ForeignKey(
+        "channels_app.Channel", on_delete=models.CASCADE, related_name="subscription_gifts"
+    )
+    price_aura = models.PositiveIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["channel", "-created_at"], name="subgift_channel_idx")]
+
+    def __str__(self) -> str:
+        return f"gift {self.gifter_id}→{self.recipient_id} @{self.channel_id}"

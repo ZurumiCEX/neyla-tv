@@ -35,6 +35,7 @@ export function ProfileMenu() {
   const adminHref = consoleHref(user);
 
   const items: { href: string; label: string }[] = [
+    { href: `/u/${user.username}`, label: t("nav.myProfile") },
     { href: "/ma-chaine", label: t("nav.myChannel") },
     { href: "/dashboard", label: t("nav.dashboard") },
     { href: "/wallet", label: t("nav.wallet") },
@@ -58,7 +59,7 @@ export function ProfileMenu() {
       </button>
       {achCount > 0 && (
         <span
-          title={`${achCount} succès`}
+          title={t("ach.count", { n: achCount })}
           className="pointer-events-none absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-neutral-950 bg-emerald-500 px-1 text-[9px] font-bold leading-none text-neutral-950"
         >
           {achCount > 99 ? "99+" : achCount}
