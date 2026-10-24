@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useT } from "@/lib/i18n";
 import { useFormat } from "@/lib/use-format";
+import { Avatar } from "@/components/Avatar";
 
 export type LiveChannel = {
   slug: string;
@@ -19,7 +20,6 @@ export function LiveCard({ channel }: { channel: LiveChannel }) {
   const t = useT();
   const { num } = useFormat();
   const display = channel.streamer.display_name || `@${channel.slug}`;
-  const initial = display.replace(/^@/, "").charAt(0).toUpperCase();
 
   return (
     <div className="group">
@@ -55,18 +55,11 @@ export function LiveCard({ channel }: { channel: LiveChannel }) {
 
       <div className="mt-2 flex gap-2">
         <Link href={`/c/${channel.slug}`} className="shrink-0">
-          {channel.streamer.avatar_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={channel.streamer.avatar_url}
-              alt=""
-              className="h-9 w-9 rounded-full object-cover"
-            />
-          ) : (
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-neutral-800 text-sm font-semibold text-neutral-300">
-              {initial}
-            </span>
-          )}
+          <Avatar
+            src={channel.streamer.avatar_url}
+            name={channel.streamer.display_name || channel.slug}
+            size={36}
+          />
         </Link>
         <div className="min-w-0 flex-1">
           <Link

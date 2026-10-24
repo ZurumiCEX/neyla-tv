@@ -8,7 +8,7 @@ import { useT } from "@/lib/i18n";
 import { useTransparentBody, wsBase } from "@/lib/overlay";
 
 type Alert = {
-  kind: "follow" | "tip" | "subscribe" | "test";
+  kind: "follow" | "tip" | "subscribe" | "gift" | "test";
   actor: string;
   amount?: number;
   ts: number;
@@ -18,6 +18,7 @@ const ACCENTS: Record<Alert["kind"], string> = {
   follow: "#FFC81E",
   tip: "#3b82f6",
   subscribe: "#d946ef",
+  gift: "#ec4899",
   test: "#f59e0b",
 };
 
@@ -29,6 +30,8 @@ function headline(a: Alert, t: TFn): string {
       return t("overlay.tip", { actor: a.actor, n: fmt(a.amount ?? 0) });
     case "subscribe":
       return t("overlay.subscribe", { actor: a.actor });
+    case "gift":
+      return t("overlay.gift", { actor: a.actor });
     case "test":
       return t("overlay.test", { actor: a.actor });
     default:

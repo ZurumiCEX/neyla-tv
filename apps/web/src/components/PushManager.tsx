@@ -13,13 +13,14 @@ function urlBase64ToUint8Array(base64: string): Uint8Array {
   return out;
 }
 
-type State = "loading" | "unsupported" | "unconfigured" | "off" | "on" | "blocked";
+type State = "loading" | "unsupported" | "unconfigured" | "off" | "on" | "blocked" | "error";
 
 export function PushManager() {
   const t = useT();
   const { authFetch } = useAuth();
   const [state, setState] = useState<State>("loading");
   const [busy, setBusy] = useState(false);
+  const [publicKey, setPublicKey] = useState("");
 
   const init = useCallback(async () => {
     if (
@@ -30,25 +31,30 @@ export function PushManager() {
       setState("unsupported");
       return;
     }
-    let publicKey = "";
+    let key = "";
     try {
-      publicKey = (await authFetch<{ public_key: string }>("/api/notifications/push/key"))
-        .public_key;
+      key = (await authFetch<{ public_key: string }>("/api/notifications/push/key")).public_key;
     } catch {
       setState("unconfigured");
       return;
     }
-    if (!publicKey) {
+    if (!key) {
       setState("unconfigured");
       return;
     }
+    setPublicKey(key);
     if (Notification.permission === "denied") {
       setState("blocked");
       return;
     }
-    const reg = await navigator.serviceWorker.getRegistration();
-    const existing = reg ? await reg.pushManager.getSubscription() : null;
-    setState(existing ? "on" : "off");
+    try {
+      // Enregistre le service worker d'abord : sinon l'état « activé » n'est pas lisible.
+      const reg = await navigator.serviceWorker.register("/sw.js");
+      const existing = await reg.pushManager.getSubscription();
+      setState(existing ? "on" : "off");
+    } catch {
+      setState("error");
+    }
   }, [authFetch]);
 
   useEffect(() => {
@@ -58,9 +64,6 @@ export function PushManager() {
   async function enable() {
     setBusy(true);
     try {
-      const { public_key } = await authFetch<{ public_key: string }>(
-        "/api/notifications/push/key",
-      );
       const reg = await navigator.serviceWorker.register("/sw.js");
       await navigator.serviceWorker.ready;
       const permission = await Notification.requestPermission();
@@ -70,7 +73,7 @@ export function PushManager() {
       }
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(public_key),
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
       });
       const json = sub.toJSON() as { endpoint?: string; keys?: Record<string, string> };
       await authFetch("/api/notifications/push/subscribe", {
@@ -79,7 +82,7 @@ export function PushManager() {
       });
       setState("on");
     } catch {
-      setState("off");
+      setState("error");
     } finally {
       setBusy(false);
     }
@@ -98,6 +101,8 @@ export function PushManager() {
         await sub.unsubscribe();
       }
       setState("off");
+    } catch {
+      setState("error");
     } finally {
       setBusy(false);
     }
@@ -113,7 +118,8 @@ export function PushManager() {
         <p className="text-sm text-neutral-500">{t("push.unsupported")}</p>
       )}
       {state === "blocked" && <p className="text-sm text-amber-300">{t("push.blocked")}</p>}
-      {state === "off" && (
+      {state === "error" && <p className="mb-3 text-sm text-red-300">{t("push.error")}</p>}
+      {(state === "off" || state === "error") && (
         <button
           type="button"
           onClick={enable}

@@ -13,6 +13,7 @@ import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useT } from "@/lib/i18n";
 import { useFormat } from "@/lib/use-format";
+import { Avatar } from "@/components/Avatar";
 
 export type ShortItem = {
   id: number;
@@ -223,18 +224,12 @@ function ShortCard({
         <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-4">
           <div className="pointer-events-auto flex items-center gap-2">
             <Link href={`/c/${item.channel.slug}`} className="flex min-w-0 items-center gap-2">
-              {item.channel.streamer.avatar_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={item.channel.streamer.avatar_url}
-                  alt=""
-                  className="h-9 w-9 shrink-0 rounded-full object-cover ring-2 ring-white/20"
-                />
-              ) : (
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-neutral-700 text-sm text-white">
-                  {name.replace(/^@/, "").charAt(0).toUpperCase()}
-                </span>
-              )}
+              <Avatar
+                src={item.channel.streamer.avatar_url}
+                name={name}
+                size={36}
+                className="ring-2 ring-white/20"
+              />
               <span className="truncate text-sm font-semibold text-white">{name}</span>
               {item.channel.is_live && (
                 <span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-bold uppercase text-neutral-950">

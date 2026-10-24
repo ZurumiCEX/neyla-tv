@@ -53,6 +53,57 @@ def email_live_followers(channel_id: int) -> int:
     return sent
 
 
+def push_payload(notification) -> dict | None:
+    """Titre / texte / lien d'un push selon le type (français, langue par défaut)."""
+    p = notification.payload or {}
+    actor = notification.actor
+    who = (actor.display_name or actor.username) if actor else p.get("username", "")
+    kinds = Notification.Type
+    if notification.type == kinds.TIP_RECEIVED:
+        return {
+            "title": "Nouveau tip 💛",
+            "body": f"{who} t'a envoyé {p.get('aura', 0)} Aura",
+            "url": "/dashboard",
+        }
+    if notification.type == kinds.SUBSCRIPTION:
+        if p.get("gifted"):
+            body = f"{who} a offert un abonnement à @{p.get('username', '')}"
+        else:
+            body = f"{who} s'est abonné à ta chaîne"
+        return {"title": "Nouvel abonné ⭐", "body": body, "url": "/dashboard"}
+    if notification.type == kinds.SUBSCRIPTION_GIFT:
+        return {
+            "title": "Abonnement offert 🎁",
+            "body": f"@{p.get('gifter', who)} t'a offert un abonnement à @{p.get('channel', '')}",
+            "url": f"/c/{p.get('channel', '')}",
+        }
+    if notification.type == kinds.SUPPORT_MESSAGE:
+        return {
+            "title": p.get("title") or "Message du support",
+            "body": p.get("body", ""),
+            "url": "/inbox",
+        }
+    return None
+
+
+@shared_task
+def push_notification(notification_id: int) -> int:
+    """Web Push d'une notification individuelle (tips, abonnements, support)."""
+    from . import push
+
+    notification = Notification.objects.filter(id=notification_id).select_related("actor").first()
+    if notification is None or not push.is_configured():
+        return 0
+    payload = push_payload(notification)
+    if payload is None:
+        return 0
+    sent = 0
+    for sub in PushSubscription.objects.filter(user_id=notification.recipient_id):
+        if push.send_to_subscription(sub, payload):
+            sent += 1
+    return sent
+
+
 @shared_task
 def push_live_followers(channel_id: int) -> int:
     """Web Push aux followers (préférence LIVE_STARTED active) quand la chaîne passe live."""

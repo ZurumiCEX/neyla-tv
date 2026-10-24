@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { Avatar } from "@/components/Avatar";
 import { useAuth } from "@/lib/auth-context";
 import { useT } from "@/lib/i18n";
 
@@ -9,11 +10,16 @@ export function ImageUpload({
   currentUrl,
   uploadPath,
   onUploaded,
+  variant = "image",
+  name = "",
 }: {
   label: string;
   currentUrl?: string;
   uploadPath: string;
   onUploaded: (url: string) => void;
+  /** `avatar` : aperçu rond avec repli sur l'initiale. */
+  variant?: "image" | "avatar";
+  name?: string;
 }) {
   const t = useT();
   const { authUpload } = useAuth();
@@ -32,8 +38,11 @@ export function ImageUpload({
       const res = await authUpload<{ url: string }>(uploadPath, fd);
       onUploaded(res.url);
     } catch (err) {
-      const ex = err as { data?: { errors?: { file?: string }; detail?: string } };
-      setError(ex.data?.errors?.file ?? ex.data?.detail ?? t("upload.error"));
+      const ex = err as { data?: { errors?: { file?: string | string[] }; detail?: string } };
+      const fileErr = ex.data?.errors?.file;
+      setError(
+        (Array.isArray(fileErr) ? fileErr[0] : fileErr) ?? ex.data?.detail ?? t("upload.error"),
+      );
     } finally {
       setBusy(false);
       if (inputRef.current) inputRef.current.value = "";
@@ -44,7 +53,9 @@ export function ImageUpload({
     <div>
       <p className="mb-1 text-xs uppercase tracking-wider text-neutral-500">{label}</p>
       <div className="flex items-center gap-3">
-        {currentUrl ? (
+        {variant === "avatar" ? (
+          <Avatar src={currentUrl} name={name} size={56} className="border border-neutral-800" />
+        ) : currentUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={currentUrl}
@@ -62,7 +73,7 @@ export function ImageUpload({
           onClick={() => inputRef.current?.click()}
           className="rounded-lg border border-neutral-700 px-3 py-1.5 text-sm text-neutral-200 hover:border-secondary hover:text-secondary-light disabled:opacity-50"
         >
-          {busy ? "Envoi…" : "Choisir une image"}
+          {busy ? t("upload.sending") : t("upload.choose")}
         </button>
         <input
           ref={inputRef}

@@ -12,6 +12,7 @@ import { GiftSubButton } from "@/components/channel/GiftSubButton";
 import { useT } from "@/lib/i18n";
 import { useFormat } from "@/lib/use-format";
 import { useLiveStatus } from "@/lib/use-live-status";
+import { Avatar } from "@/components/Avatar";
 
 type Props = {
   slug: string;
@@ -32,7 +33,6 @@ export function ChannelHeader(props: Props) {
   const t = useT();
   const { num } = useFormat();
   const { isLive, viewers } = useLiveStatus(props.slug, props.isLive);
-  const initial = props.displayName.replace(/^@/, "").charAt(0).toUpperCase();
 
   return (
     <section className="border-b border-neutral-800 px-4 py-4 sm:px-6">
@@ -43,18 +43,12 @@ export function ChannelHeader(props: Props) {
               isLive ? "bg-emerald-500" : "bg-neutral-700"
             }`}
           >
-            {props.avatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={props.avatarUrl}
-                alt=""
-                className="h-16 w-16 rounded-full border-2 border-neutral-950 object-cover"
-              />
-            ) : (
-              <span className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-neutral-950 bg-neutral-800 text-2xl font-bold text-neutral-200">
-                {initial}
-              </span>
-            )}
+            <Avatar
+              src={props.avatarUrl}
+              name={props.displayName}
+              size={64}
+              className="border-2 border-neutral-950"
+            />
             {isLive && (
               <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 rounded bg-red-600 px-1.5 text-[10px] font-black uppercase leading-4 tracking-wider text-white">
                 {t("live.badge.on")}

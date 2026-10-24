@@ -491,7 +491,9 @@ def _after_tip(tip: Tip, from_user, channel) -> None:
             actor=from_user,
             payload={
                 "username": from_user.username,
-                "aura": tip.creator_share,
+                # Montant envoyé (alerte, palier de don) ; la part créateur à part.
+                "aura": tip.aura_amount,
+                "creator_share": tip.creator_share,
                 "slug": channel.slug,
             },
         )

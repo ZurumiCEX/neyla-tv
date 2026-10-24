@@ -144,6 +144,7 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+MEDIA_ROOT = env("MEDIA_ROOT", default=str(BASE_DIR / "media"))
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -283,7 +284,7 @@ if CELERY_RESULT_BACKEND.startswith("rediss://"):
 STREAMER_DAILY_APPROVAL_QUOTA = env.int("STREAMER_DAILY_APPROVAL_QUOTA", default=100)
 
 # --- Uploads médias (Cloudflare R2, S3-compatible) ---
-# Si non configuré → mode FAKE (URL fake.local, pas d'appel réseau).
+# Si non configuré → stockage local dans MEDIA_ROOT, servi par /api/media/.
 CLOUDFLARE_R2_ENDPOINT = env("CLOUDFLARE_R2_ENDPOINT", default="")
 CLOUDFLARE_R2_BUCKET = env("CLOUDFLARE_R2_BUCKET", default="")
 CLOUDFLARE_R2_ACCESS_KEY = env("CLOUDFLARE_R2_ACCESS_KEY", default="")

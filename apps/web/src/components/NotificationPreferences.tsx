@@ -9,6 +9,7 @@ const TYPES = [
   "new_follower",
   "application_decided",
   "subscription",
+  "subscription_gift",
   "tip_received",
   "achievement",
   "support_message",
@@ -55,7 +56,7 @@ export function NotificationPreferences() {
       <p className="text-xs text-neutral-500">{t("settings.notifDesc")}</p>
       {TYPES.map((type) => (
         <label key={type} className="flex items-center justify-between gap-3 text-sm">
-          <span className="text-neutral-300">{t(`notif.${type}`)}</span>
+          <span className="text-neutral-300">{t(`notif.pref.${type}`)}</span>
           <input
             type="checkbox"
             checked={prefs[type] ?? true}

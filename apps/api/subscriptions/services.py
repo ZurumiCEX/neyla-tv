@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import contextlib
+
 from django.db import transaction
 from django.utils import timezone
 
@@ -170,26 +172,31 @@ def gift_subscription(gifter, channel_slug: str, recipient_username: str) -> Sub
         },
     )
     charge_subscription(gifter, channel.user, tier.price_aura, related=sub)
-    transaction.on_commit(
-        lambda: (_notify(channel.user, recipient), _notify_gift(recipient, gifter, channel))
-    )
+    transaction.on_commit(lambda: _after_gift(recipient, gifter, channel))
     return sub
 
 
-def _notify_gift(recipient, gifter, channel) -> None:
+def _after_gift(recipient, gifter, channel) -> None:
+    """Notifications d'un abonnement offert — APRÈS commit, sans jamais lever."""
     from notifications.models import Notification
     from notifications.services import create_notification
 
-    create_notification(
-        recipient=recipient,
-        type=Notification.Type.SUBSCRIPTION,
-        actor=gifter,
-        payload={
-            "gifted": True,
-            "gifter": gifter.username,
-            "channel": channel.slug,
-        },
-    )
+    with contextlib.suppress(Exception):
+        # Streamer : « X a offert un abo à @Y » (+ alerte overlay « gift » sur SA chaîne).
+        create_notification(
+            recipient=channel.user,
+            type=Notification.Type.SUBSCRIPTION,
+            actor=gifter,
+            payload={"username": recipient.username, "gifted": True, "gifter": gifter.username},
+        )
+    with contextlib.suppress(Exception):
+        # Destinataire : notification dédiée, sans alerte overlay sur sa propre chaîne.
+        create_notification(
+            recipient=recipient,
+            type=Notification.Type.SUBSCRIPTION_GIFT,
+            actor=gifter,
+            payload={"gifter": gifter.username, "channel": channel.slug},
+        )
 
 
 def cancel(user, channel_slug: str) -> int:

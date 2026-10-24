@@ -8,6 +8,7 @@ import { canAccessConsole, consoleHref } from "@/lib/admin-link";
 import { onFollowsChanged } from "@/lib/follow-events";
 import { useT } from "@/lib/i18n";
 import { useFormat } from "@/lib/use-format";
+import { Avatar } from "@/components/Avatar";
 
 type FollowedChannel = {
   slug: string;
@@ -196,18 +197,11 @@ export function Sidebar() {
                   title={c.streamer.display_name || c.slug}
                 >
                   <span className="relative shrink-0">
-                    {c.streamer.avatar_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={c.streamer.avatar_url}
-                        alt=""
-                        className="h-7 w-7 rounded-full object-cover"
-                      />
-                    ) : (
-                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-neutral-800 text-xs text-neutral-400">
-                        {(c.streamer.display_name || c.slug).charAt(0).toUpperCase()}
-                      </span>
-                    )}
+                    <Avatar
+                      src={c.streamer.avatar_url}
+                      name={c.streamer.display_name || c.slug}
+                      size={28}
+                    />
                     {c.is_live && (
                       <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-[1px] border-2 border-neutral-950 bg-secondary" />
                     )}

@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth-context";
 import { canAccessConsole, consoleHref } from "@/lib/admin-link";
 import { useT } from "@/lib/i18n";
 import { RoleBadge } from "@/components/RoleBadge";
+import { Avatar } from "@/components/Avatar";
 
 export function ProfileMenu() {
   const { user, logout, authFetch } = useAuth();
@@ -31,7 +32,6 @@ export function ProfileMenu() {
 
   if (!user) return null;
 
-  const initial = (user.display_name || user.username || "?").charAt(0).toUpperCase();
   const adminHref = consoleHref(user);
 
   const items: { href: string; label: string }[] = [
@@ -52,14 +52,9 @@ export function ProfileMenu() {
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-label={user.username}
-        className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-neutral-700 bg-neutral-800 text-sm font-semibold text-neutral-100 hover:border-emerald-500"
+        className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-neutral-700 hover:border-emerald-500"
       >
-        {user.avatar_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={user.avatar_url} alt="" className="h-full w-full object-cover" />
-        ) : (
-          initial
-        )}
+        <Avatar src={user.avatar_url} name={user.display_name || user.username} size={34} />
       </button>
       {achCount > 0 && (
         <span
