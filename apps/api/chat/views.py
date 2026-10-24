@@ -71,3 +71,45 @@ def lift_ip_ban(request: Request, ip: str) -> Response:
     channel = _my_channel(request.user)
     ChatIpBan.objects.filter(channel=channel, ip=ip).delete()
     return Response(status=204)
+
+
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
+def unban_request(request: Request, slug: str) -> Response:
+    """Spectateur banni : état de son ban et demande de levée (une en attente max)."""
+    from django_ratelimit.core import is_ratelimited
+    from rest_framework import status as http
+
+    from .models import UnbanRequest
+
+    channel = Channel.objects.filter(slug=slug.lower()).first()
+    if channel is None:
+        raise NotFound("Chaîne introuvable.")
+    ban = ChatBan.objects.filter(channel=channel, user=request.user, shadow=False).first()
+    banned = bool(ban and ban.is_active())
+    pending = UnbanRequest.objects.filter(
+        channel=channel, user=request.user, status=UnbanRequest.Status.PENDING
+    ).first()
+    if request.method == "GET":
+        return Response({"banned": banned, "pending": pending is not None})
+    if not banned:
+        return Response(
+            {"detail": "Tu n'es pas banni de ce chat."}, status=http.HTTP_400_BAD_REQUEST
+        )
+    if pending is not None:
+        return Response(
+            {"detail": "Une demande est déjà en attente."}, status=http.HTTP_409_CONFLICT
+        )
+    if is_ratelimited(request, group="unban-request", key="user", rate="3/d", increment=True):
+        return Response(
+            {"detail": "Trop de demandes, réessaie demain."},
+            status=http.HTTP_429_TOO_MANY_REQUESTS,
+        )
+    message = str(request.data.get("message") or "").strip()[:500]
+    if len(message) < 10:
+        return Response(
+            {"detail": "Explique ta demande en quelques mots (10 caractères minimum)."},
+            status=http.HTTP_400_BAD_REQUEST,
+        )
+    UnbanRequest.objects.create(channel=channel, user=request.user, message=message)
+    return Response({"banned": True, "pending": True}, status=http.HTTP_201_CREATED)

@@ -10,8 +10,6 @@ from .models import RESERVED_USERNAMES, User
 from .tokens import (
     EMAIL_VERIFY_PURPOSE,
     EMAIL_VERIFY_TTL,
-    PASSWORD_RESET_PURPOSE,
-    PASSWORD_RESET_TTL,
     InvalidToken,
     read_token,
 )
@@ -80,14 +78,17 @@ def verify_email_token(token: str) -> User:
 
 @transaction.atomic
 def reset_password_with_token(token: str, new_password: str) -> User:
-    try:
-        user_id = read_token(token, PASSWORD_RESET_PURPOSE, PASSWORD_RESET_TTL)
-    except InvalidToken:
-        raise
-    user = User.objects.select_for_update().filter(pk=user_id).first()
-    if user is None:
-        raise InvalidToken("Utilisateur introuvable.")
+    """Nouveau mot de passe via le lien e-mail (usage unique), puis déconnexion partout."""
+    from .tokens import read_reset_token
+
+    user = read_reset_token(
+        token, lambda pk: User.objects.select_for_update().filter(pk=int(pk)).first()
+    )
     validate_password(new_password, user=user)
     user.set_password(new_password)
     user.save(update_fields=["password"])
+    from . import security, sessions
+
+    sessions.revoke_all(user)
+    transaction.on_commit(lambda: security.notify(user, "password_changed"))
     return user

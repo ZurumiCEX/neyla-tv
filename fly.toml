@@ -23,6 +23,11 @@ primary_region = "cdg" # Paris : la région Fly la plus proche de l'Afrique de l
   DJANGO_ALLOWED_HOSTS = "neyla-api.fly.dev"
   # Front (Vercel) et API (Fly) sur deux domaines : cookie de refresh cross-site.
   REFRESH_COOKIE_SAMESITE = "None"
+  # IP réelle : seul l'en-tête posé par le proxy Fly est cru (anti-usurpation).
+  CLIENT_IP_HEADER = "Fly-Client-IP"
+  # Console : "1" = 2FA ou passkey obligatoire pour l'équipe (recommandé en
+  # production réelle). Laissé à "0" pour la démo (compte admin@demo sans 2FA).
+  REQUIRE_STAFF_2FA = "0"
   # Démo : paiements simulés. Passer à "0" pour encaisser réellement.
   PAYMENTS_PROVIDER = "fake"
   PAYMENTS_ALLOW_FAKE = "1"

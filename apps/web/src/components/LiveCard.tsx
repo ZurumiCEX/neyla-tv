@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useT } from "@/lib/i18n";
 import { useFormat } from "@/lib/use-format";
+import { Avatar } from "@/components/Avatar";
+import { EmojiText } from "@/components/Emoji";
 
 export type LiveChannel = {
   slug: string;
@@ -12,14 +14,13 @@ export type LiveChannel = {
   viewers?: number;
   playback_url?: string;
   streamer: { username: string; display_name: string; avatar_url: string };
-  category: { slug: string; name: string } | null;
+  category: { slug: string; name: string; group?: string } | null;
 };
 
 export function LiveCard({ channel }: { channel: LiveChannel }) {
   const t = useT();
   const { num } = useFormat();
   const display = channel.streamer.display_name || `@${channel.slug}`;
-  const initial = display.replace(/^@/, "").charAt(0).toUpperCase();
 
   return (
     <div className="group">
@@ -55,18 +56,11 @@ export function LiveCard({ channel }: { channel: LiveChannel }) {
 
       <div className="mt-2 flex gap-2">
         <Link href={`/c/${channel.slug}`} className="shrink-0">
-          {channel.streamer.avatar_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={channel.streamer.avatar_url}
-              alt=""
-              className="h-9 w-9 rounded-full object-cover"
-            />
-          ) : (
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-neutral-800 text-sm font-semibold text-neutral-300">
-              {initial}
-            </span>
-          )}
+          <Avatar
+            src={channel.streamer.avatar_url}
+            name={channel.streamer.display_name || channel.slug}
+            size={36}
+          />
         </Link>
         <div className="min-w-0 flex-1">
           <Link
@@ -74,7 +68,7 @@ export function LiveCard({ channel }: { channel: LiveChannel }) {
             className="line-clamp-1 text-sm font-semibold text-neutral-100 hover:text-emerald-300"
             title={channel.title || t("card.untitled")}
           >
-            {channel.title || t("card.untitled")}
+            <EmojiText text={channel.title || t("card.untitled")} size={16} />
           </Link>
           <p className="truncate text-xs text-neutral-400">{display}</p>
           {channel.category && (

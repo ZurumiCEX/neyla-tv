@@ -6,6 +6,7 @@ import contextlib
 
 from django.conf import settings
 from django.contrib.auth import authenticate
+from django.core.cache import cache
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django_ratelimit.decorators import ratelimit
 from rest_framework import status
@@ -20,7 +21,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from . import sessions, totp, two_factor
+from . import passkeys, security, sessions, totp, two_factor
 from .models import GuideProgress, User, UserSession
 from .serializers import (
     EmailSerializer,
@@ -147,9 +148,17 @@ def login(request: Request) -> Response:
     password = request.data.get("password") or ""
     if not email or not password:
         return Response(GENERIC_AUTH_ERROR, status=status.HTTP_400_BAD_REQUEST)
+    # Limite par COMPTE (en plus de l'IP) : freine le bourrage d'identifiants distribué.
+    if _account_locked(email):
+        return Response(
+            {"detail": "Trop de tentatives sur ce compte, réessaie dans 15 minutes."},
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
+        )
     user = authenticate(request, email=email, password=password)
     if user is None or not user.is_active:
+        _record_failed_login(email)
         return Response(GENERIC_AUTH_ERROR, status=status.HTTP_401_UNAUTHORIZED)
+    cache.delete(_failed_key(email))
 
     # 2FA activée : on ne délivre pas de tokens, on demande un second facteur.
     if two_factor.is_enabled(user):
@@ -163,13 +172,39 @@ def login(request: Request) -> Response:
     return _issue_session(user, request)
 
 
+LOGIN_FAILURES_MAX = 5
+LOGIN_LOCK_SECONDS = 15 * 60
+
+
+def _failed_key(email: str) -> str:
+    import hashlib
+
+    return "login-fail:" + hashlib.sha256(email.strip().lower().encode()).hexdigest()[:32]
+
+
+def _account_locked(email: str) -> bool:
+    return (cache.get(_failed_key(email)) or 0) >= LOGIN_FAILURES_MAX
+
+
+def _record_failed_login(email: str) -> None:
+    key = _failed_key(email)
+    if not cache.add(key, 1, LOGIN_LOCK_SECONDS):
+        try:
+            cache.incr(key)
+        except ValueError:
+            cache.set(key, 1, LOGIN_LOCK_SECONDS)
+
+
 def _issue_session(user, request) -> Response:
     """Délivre access + refresh (cookie) après une authentification réussie."""
     from gamification.services import check_and_award
 
     check_and_award(user, "first_login")
     refresh = RefreshToken.for_user(user)
+    new_device = sessions.is_new_device(user, request, refresh.get("jti"))
     sessions.record_login(user, request, refresh)
+    if new_device:
+        security.notify(user, "new_login", detail=sessions.describe(request))
     response = Response(
         {"access": str(refresh.access_token), "user": MeSerializer(user).data},
         status=status.HTTP_200_OK,
@@ -189,11 +224,15 @@ def two_factor_login(request: Request) -> Response:
         user_id = read_token(token, TWO_FACTOR_PURPOSE, TWO_FACTOR_TTL)
     except InvalidTokenError:
         return Response(GENERIC_AUTH_ERROR, status=status.HTTP_401_UNAUTHORIZED)
+    used_key = f"2fa-token-used:{token[-32:]}"
+    if cache.get(used_key):
+        return Response(GENERIC_AUTH_ERROR, status=status.HTTP_401_UNAUTHORIZED)
     user = User.objects.filter(pk=user_id, is_active=True).first()
     if user is None or not two_factor.verify(user, code):
         return Response(
             {"detail": "Code de vérification invalide."}, status=status.HTTP_401_UNAUTHORIZED
         )
+    cache.set(used_key, 1, 60 * 10)  # le jeton 2FA ne sert qu'une fois
     return _issue_session(user, request)
 
 
@@ -300,35 +339,189 @@ def revoke_other_sessions(request: Request) -> Response:
     return Response({"revoked": count})
 
 
+def _check_password(request: Request) -> Response | None:
+    """Ré-authentification : le mot de passe actuel est exigé pour les actions sensibles."""
+    password = request.data.get("password") or ""
+    if not password or not request.user.check_password(password):
+        return Response(
+            {"detail": "Mot de passe incorrect.", "code": "password_required"},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+    return None
+
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
+@ratelimit(key="user", rate="10/h", method="POST", block=True)
 def two_factor_setup(request: Request) -> Response:
     if two_factor.is_enabled(request.user):
         return Response({"detail": "2FA déjà activée."}, status=status.HTTP_400_BAD_REQUEST)
-    tf = two_factor.begin_setup(request.user)
+    _, secret = two_factor.begin_setup(request.user)
     return Response(
         {
-            "secret": tf.secret,
-            "otpauth_uri": totp.provisioning_uri(tf.secret, request.user.email),
+            "secret": secret,
+            "otpauth_uri": totp.provisioning_uri(secret, request.user.email),
         }
     )
 
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
+@ratelimit(key="user", rate="10/h", method="POST", block=True)
 def two_factor_enable(request: Request) -> Response:
     recovery = two_factor.enable(request.user, (request.data.get("code") or "").strip())
     if recovery is None:
         return Response({"detail": "Code invalide."}, status=status.HTTP_400_BAD_REQUEST)
+    security.notify(request.user, "2fa_enabled")
     return Response({"enabled": True, "recovery_codes": recovery})
 
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
+@ratelimit(key="user", rate="5/h", method="POST", block=True)
 def two_factor_disable(request: Request) -> Response:
+    denied = _check_password(request)
+    if denied:
+        return denied
     if not two_factor.disable(request.user, (request.data.get("code") or "").strip()):
         return Response({"detail": "Code invalide."}, status=status.HTTP_400_BAD_REQUEST)
+    security.notify(request.user, "2fa_disabled")
     return Response({"enabled": False})
+
+
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
+@ratelimit(key="user", rate="5/h", method="POST", block=True)
+def two_factor_recovery_codes(request: Request) -> Response:
+    """GET : nombre de codes restants. POST : nouveaux codes (mot de passe + code 2FA)."""
+    if request.method == "GET":
+        return Response({"remaining": two_factor.remaining_recovery_codes(request.user)})
+    denied = _check_password(request)
+    if denied:
+        return denied
+    if not two_factor.verify(request.user, (request.data.get("code") or "").strip()):
+        return Response({"detail": "Code invalide."}, status=status.HTTP_400_BAD_REQUEST)
+    codes = two_factor.regenerate_recovery_codes(request.user)
+    return Response({"recovery_codes": codes})
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@ratelimit(key="user", rate="10/h", method="POST", block=True)
+def password_change(request: Request) -> Response:
+    """Change le mot de passe (ancien requis) et déconnecte les autres appareils."""
+    denied = _check_password(request)
+    if denied:
+        return denied
+    new_password = request.data.get("new_password") or ""
+    try:
+        from django.contrib.auth.password_validation import validate_password
+
+        validate_password(new_password, user=request.user)
+    except DjangoValidationError as exc:
+        return _password_error(exc)
+    request.user.set_password(new_password)
+    request.user.save(update_fields=["password"])
+    revoked = sessions.revoke_all(request.user, keep_jti=sessions.current_jti(request))
+    security.notify(request.user, "password_changed")
+    return Response({"changed": True, "sessions_revoked": revoked})
+
+
+# --- Passkeys (WebAuthn) ---------------------------------------------------------
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def passkey_list(request: Request) -> Response:
+    from .models import Passkey
+
+    return Response(
+        {
+            "results": [
+                {
+                    "id": p.id,
+                    "name": p.name,
+                    "created_at": p.created_at,
+                    "last_used_at": p.last_used_at,
+                }
+                for p in Passkey.objects.filter(user=request.user)
+            ]
+        }
+    )
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@ratelimit(key="user", rate="20/h", method="POST", block=True)
+def passkey_register_options(request: Request) -> Response:
+    denied = _check_password(request)
+    if denied:
+        return denied
+    return Response(passkeys.registration_options(request.user))
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@ratelimit(key="user", rate="20/h", method="POST", block=True)
+def passkey_register_verify(request: Request) -> Response:
+    credential = request.data.get("credential")
+    if not isinstance(credential, dict):
+        return Response(
+            {"detail": "Réponse WebAuthn manquante."}, status=status.HTTP_400_BAD_REQUEST
+        )
+    try:
+        passkey = passkeys.register(request.user, credential, request.data.get("name") or "")
+    except passkeys.PasskeyError as exc:
+        return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+    security.notify(request.user, "passkey_added", detail=passkey.name)
+    return Response({"id": passkey.id, "name": passkey.name}, status=status.HTTP_201_CREATED)
+
+
+@api_view(["PATCH", "DELETE"])
+@permission_classes([IsAuthenticated])
+def passkey_detail(request: Request, pk: int) -> Response:
+    from .models import Passkey
+
+    passkey = Passkey.objects.filter(user=request.user, pk=pk).first()
+    if passkey is None:
+        return Response({"detail": "Passkey introuvable."}, status=status.HTTP_404_NOT_FOUND)
+    if request.method == "PATCH":
+        name = str(request.data.get("name") or "").strip()[:60]
+        if name:
+            passkey.name = name
+            passkey.save(update_fields=["name"])
+        return Response({"id": passkey.id, "name": passkey.name})
+    denied = _check_password(request)
+    if denied:
+        return denied
+    name = passkey.name
+    passkey.delete()
+    security.notify(request.user, "passkey_removed", detail=name)
+    return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(["POST"])
+@authentication_classes([])
+@permission_classes([AllowAny])
+@ratelimit(key="ip", rate="30/10m", method="POST", block=True)
+def passkey_login_options(request: Request) -> Response:  # noqa: ARG001
+    return Response(passkeys.authentication_options())
+
+
+@api_view(["POST"])
+@authentication_classes([])
+@permission_classes([AllowAny])
+@ratelimit(key="ip", rate="20/10m", method="POST", block=True)
+def passkey_login_verify(request: Request) -> Response:
+    """Connexion par passkey : authentification forte, la 2FA TOTP n'est pas redemandée."""
+    credential = request.data.get("credential")
+    if not isinstance(credential, dict):
+        return Response(GENERIC_AUTH_ERROR, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        user = passkeys.authenticate(request.data.get("handle") or "", credential)
+    except passkeys.PasskeyError as exc:
+        return Response({"detail": str(exc)}, status=status.HTTP_401_UNAUTHORIZED)
+    return _issue_session(user, request)
 
 
 @api_view(["POST"])

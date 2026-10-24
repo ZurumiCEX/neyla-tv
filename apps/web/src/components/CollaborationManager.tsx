@@ -3,21 +3,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useT } from "@/lib/i18n";
+import { Avatar } from "@/components/Avatar";
 
 type CollabUser = { username: string; display_name: string; avatar_url: string };
 type Collab = { id: number; status: string; direction: string; user: CollabUser };
 type Data = { active: Collab[]; incoming: Collab[]; outgoing: Collab[] };
 
-function Avatar({ u }: { u: CollabUser }) {
-  if (u.avatar_url) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={u.avatar_url} alt="" className="h-8 w-8 rounded-full object-cover" />;
-  }
-  return (
-    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-800 text-sm text-neutral-300">
-      {(u.display_name || u.username).charAt(0).toUpperCase()}
-    </span>
-  );
+function UserAvatar({ u }: { u: CollabUser }) {
+  return <Avatar src={u.avatar_url} name={u.display_name || u.username} size={32} />;
 }
 
 export function CollaborationManager() {
@@ -195,7 +188,7 @@ function Row({ c, children }: { c: Collab; children: React.ReactNode }) {
   return (
     <li className="flex items-center justify-between gap-3 rounded-lg border border-neutral-800/60 bg-neutral-900/40 px-3 py-2">
       <span className="flex min-w-0 items-center gap-2">
-        <Avatar u={c.user} />
+        <UserAvatar u={c.user} />
         <span className="min-w-0">
           <span className="block truncate text-sm text-neutral-100">{c.user.display_name}</span>
           <span className="block truncate text-xs text-neutral-500">@{c.user.username}</span>

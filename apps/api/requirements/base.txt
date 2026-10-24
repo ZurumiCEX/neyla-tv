@@ -19,3 +19,4 @@ drf-spectacular==0.27.2
 django-filter==24.3
 boto3==1.35.36
 pywebpush==2.3.0
+webauthn==2.7.1

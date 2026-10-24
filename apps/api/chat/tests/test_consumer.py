@@ -238,3 +238,26 @@ async def test_ipban_command_bans_user_ip():
     connected, code = await again.connect()
     assert not connected
     assert code == 4403
+
+
+@pytest.mark.django_db(transaction=True)
+async def test_message_carries_level_and_gift_badge():
+    from gamification.models import ChannelSupport
+
+    _, channel = await _make_streamer("badges")
+    fan = await _make_user()
+
+    def _setup():
+        type(fan).objects.filter(pk=fan.pk).update(lifetime_aura_spent=60_000)
+        ChannelSupport.objects.create(user=fan, channel=channel, total_aura=1_200)
+
+    await database_sync_to_async(_setup)()
+    token = await _access_for(fan)
+    comm = WebsocketCommunicator(application, _ws_path(channel.slug, token=token))
+    connected, _ = await comm.connect()
+    assert connected
+    await comm.send_to(text_data=json.dumps({"content": "on est ensemble"}))
+    response = await comm.receive_json_from()
+    assert response["msg"]["user"]["level"] == "casual"
+    assert response["msg"]["user"]["gift_tier"] == "radiant"
+    await comm.disconnect()

@@ -21,6 +21,11 @@ def _current_code(secret: str) -> str:
     return totp._hotp(secret, int(time.time() // totp.PERIOD))
 
 
+def _next_code(secret: str) -> str:
+    """Code de la période suivante (accepté par la fenêtre ±1, mais pas déjà utilisé)."""
+    return totp._hotp(secret, int(time.time() // totp.PERIOD) + 1)
+
+
 def _auth(user) -> APIClient:
     client = APIClient()
     resp = client.post(
@@ -81,7 +86,7 @@ def test_login_with_2fa_requires_second_factor():
 
     step2 = fresh.post(
         reverse("auth-2fa-login"),
-        {"token": body["token"], "code": _current_code(secret)},
+        {"token": body["token"], "code": _next_code(secret)},
         format="json",
     )
     assert step2.status_code == 200
@@ -124,6 +129,10 @@ def test_recovery_code_consumed_on_use():
 def test_disable_with_valid_code():
     user = UserFactory()
     client, secret = _enable_2fa(user)
-    resp = client.post(reverse("auth-2fa-disable"), {"code": _current_code(secret)}, format="json")
+    resp = client.post(
+        reverse("auth-2fa-disable"),
+        {"code": _next_code(secret), "password": PASSWORD},
+        format="json",
+    )
     assert resp.status_code == 200
     assert not TwoFactor.objects.filter(user=user).exists()

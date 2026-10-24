@@ -88,8 +88,8 @@ clé (Bunny et paiements en mode simulé) :
 - chat animé (25 à 40 messages par live, abonnés et modérateurs), follows
   (3 à 8 chaînes par spectateur, quelques « stars »), tips avec message ;
 - 50 vidéos Instant, abonnements (dont offerts et renouvelés) ;
-- `viewer36` → `viewer40` : un spectateur par palier Aura (42 · 180 · 1 450 ·
-  6 200 · 12 500 Aura) pour voir chaque badge ;
+- `viewer30` → `viewer35` : un spectateur par niveau (Beginner → G.O.A.T), avec
+  des badges de don élevés sur plusieurs chaînes ; profil public sur `/u/<pseudo>` ;
 - un retrait Wave en cours, un achat en attente, un Charity Day avec dons et
   premier versement, des annonces et des événements au calendrier.
 

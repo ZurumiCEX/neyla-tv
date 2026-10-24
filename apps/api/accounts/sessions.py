@@ -74,6 +74,55 @@ def revoke_jti(jti) -> None:
             BlacklistedToken.objects.get_or_create(token=outstanding)
 
 
+def revoke_all(user, keep_jti: str | None = None) -> int:
+    """Révoque toutes les sessions (refresh tokens) de l'utilisateur, sauf `keep_jti`."""
+    from rest_framework_simplejwt.token_blacklist.models import (
+        BlacklistedToken,
+        OutstandingToken,
+    )
+
+    from .models import UserSession
+
+    count = 0
+    for token in OutstandingToken.objects.filter(user=user).exclude(jti=keep_jti or ""):
+        _, created = BlacklistedToken.objects.get_or_create(token=token)
+        count += int(created)
+    UserSession.objects.filter(user=user).exclude(jti=keep_jti or "").update(revoked=True)
+    return count
+
+
+def is_new_device(user, request, current_jti: str | None) -> bool:
+    """Vrai si l'utilisateur a déjà des sessions, mais aucune (90 j) depuis cet appareil + IP.
+
+    La toute première connexion d'un compte n'est pas signalée.
+    """
+    from django.utils import timezone
+
+    from .models import UserSession
+
+    previous = UserSession.objects.filter(user=user).exclude(jti=current_jti or "")
+    if not previous.exists():
+        return False
+    since = timezone.now() - timezone.timedelta(days=90)
+    return not (
+        UserSession.objects.filter(
+            user=user,
+            device=_device(request),
+            ip=_client_ip(request),
+            created_at__gte=since,
+        )
+        .exclude(jti=current_jti or "")
+        .exists()
+    )
+
+
+def describe(request) -> str:
+    """« Navigateur / système · IP » pour les e-mails de sécurité."""
+    device = _device(request) or "appareil inconnu"
+    ip = _client_ip(request) or "IP inconnue"
+    return f"{device[:80]} · {ip}"
+
+
 def current_jti(request) -> str | None:
     """Récupère le jti du refresh token courant depuis le cookie (sans le révoquer)."""
     from django.conf import settings

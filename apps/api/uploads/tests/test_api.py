@@ -60,3 +60,31 @@ def test_game_upload_as_admin(auth_client_factory):
     )
     assert resp.status_code == 201
     assert Game.objects.get(slug="cs2").box_art_url == resp.json()["url"]
+
+
+def test_local_upload_is_served_and_replaces_previous(auth_client_factory, api_client):
+    user = UserFactory()
+    client = auth_client_factory(user)
+    first = client.post(reverse("upload-avatar"), {"file": _png()}, format="multipart").json()[
+        "url"
+    ]
+    assert first.startswith("http://testserver/api/media/uploads/avatars/")
+    path = first.split("/api/media/", 1)[1]
+    served = api_client.get(reverse("media", kwargs={"path": path}))
+    assert served.status_code == 200
+    assert b"".join(served.streaming_content).startswith(b"\x89PNG")
+
+    second = client.post(reverse("upload-avatar"), {"file": _png()}, format="multipart").json()
+    assert second["url"] != first
+    assert api_client.get(reverse("media", kwargs={"path": path})).status_code == 404
+
+
+def test_rejects_file_whose_bytes_are_not_an_image(auth_client_factory):
+    client = auth_client_factory(UserFactory())
+    fake = SimpleUploadedFile("a.png", b"<script>alert(1)</script>", content_type="image/png")
+    resp = client.post(reverse("upload-avatar"), {"file": fake}, format="multipart")
+    assert resp.status_code == 400
+
+
+def test_media_rejects_path_traversal(api_client):
+    assert api_client.get("/api/media/uploads/../../etc/passwd").status_code == 404

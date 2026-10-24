@@ -426,6 +426,61 @@ WebSocket
 Permissions par rôle : `IsAdminRole` (hub admin / fees / transactions / users),
 `IsModerator` (signalements, mots interdits), `IsSupport` (messagerie).
 
+## Routes v4 (dashboard, gamification, sécurité)
+
+### Comptes et sécurité — `/api/auth/`
+
+| Méthode | Route | Rôle |
+|---|---|---|
+| POST | `/api/auth/password/change` | Nouveau mot de passe (`password` actuel requis) ; déconnecte les autres appareils. |
+| GET / POST | `/api/auth/2fa/recovery-codes` | Codes de secours restants / nouveaux codes (`password` + `code`). |
+| POST | `/api/auth/2fa/disable` | Désactive la 2FA : `password` **et** `code` requis. |
+| GET | `/api/auth/passkeys` | Passkeys du compte. |
+| POST | `/api/auth/passkeys/register/options` | Options WebAuthn d'enregistrement (`password` requis). |
+| POST | `/api/auth/passkeys/register/verify` | `{credential, name}` → passkey créée. |
+| PATCH / DELETE | `/api/auth/passkeys/<id>` | Renommer (`name`) / supprimer (`password`). |
+| POST | `/api/auth/passkeys/login/options` | `{handle, options}` (défi 5 min, usage unique). |
+| POST | `/api/auth/passkeys/login/verify` | `{handle, credential}` → session (access + cookie). |
+
+Limites : 5 échecs de connexion par compte → 429 pendant 15 min (en plus de la
+limite par IP). Le lien de réinitialisation ne sert qu'une fois. Les retraits
+exigent `totp` en plus du code e-mail quand la 2FA est active.
+
+### Profil, niveaux et badges
+
+| Méthode | Route | Rôle |
+|---|---|---|
+| GET | `/api/users/<username>/profile` | Profil public : niveau, chaînes soutenues (badge de don), succès, compteurs. Montants visibles par le seul propriétaire. |
+| GET | `/api/users/me/level` | `{level, next_level, next_at, progress, spent}`. |
+
+Les messages du chat portent `user.level` (niveau, Aura dépensée à vie) et
+`user.gift_tier` (badge de don pour cette chaîne).
+
+### Dashboard streamer — `/api/channels/me/…`
+
+| Méthode | Route | Rôle |
+|---|---|---|
+| GET / PATCH | `/api/channels/me/chat-settings` | Followers / abonnés seulement, âge du compte, emotes seulement, mode lent, nombre de spectateurs, `automod` (catégories 0–3, `gibberish`, `spam`). |
+| GET / POST | `/api/channels/me/banned-words` | Mots interdits de la chaîne. |
+| DELETE | `/api/channels/me/banned-words/<id>` | Retirer un mot. |
+| GET | `/api/channels/me/mod-actions` | Journal de modération (bans, timeouts, suppressions, automod, réglages). |
+| GET | `/api/channels/me/unban-requests?status=` | Demandes de déban. |
+| POST | `/api/channels/me/unban-requests/<id>/decide` | `{decision: approve\|deny}`. |
+| GET | `/api/channels/me/followers`, `/api/channels/me/subscribers` | Listes paginées (`limit`, `offset`). |
+| GET / POST | `/api/c/<slug>/unban-request` | Spectateur banni : état / demande (`message`). |
+
+`/api/channels/me` (GET, PATCH, rotation de clé) renvoie aussi `follower_count`,
+`viewers` et `active_subs`. Le fil `/api/channels/me/activity` distingue
+`subscribe`, `resub` et `gift`.
+
+### Divers
+
+| Méthode | Route | Rôle |
+|---|---|---|
+| GET | `/api/media/<path>` | Images stockées localement quand R2 n'est pas configuré. |
+| GET | `/api/notifications?before=<id>&limit=` | Pagination par curseur (`next_before`). |
+| POST | `/api/notifications/read` | `{ids}` ou `{except: ["support_message"]}` → `{marked, unread}`. |
+
 ## Stockage Redis (éphémère)
 
 | Clé | Type | Rôle |

@@ -269,7 +269,13 @@ TIP_MESSAGES = [
     "Jërëjëf pour les conseils",
     "On est ensemble 💪",
 ]
-# Soldes cibles pour afficher chaque palier Aura (1 · 100 · 1 000 · 5 000 · 10 000).
+# Aura dépensée à vie visée pour viewer30 → viewer35 : un spectateur par niveau
+# (Beginner, Casual, Great, Lord, MVP, G.O.A.T).
+LEVEL_SPEND = [12_000, 60_000, 120_000, 250_000, 600_000, 1_050_000]
+# Niveaux et badges de don tirés au hasard pour les messages de chat démo.
+CHAT_LEVELS = ["rookie", "rookie", "rookie", "beginner", "casual", "great", "lord", "mvp", "goat"]
+CHAT_GIFTS = [None, None, "spark", "glow", "radiant", "nova", "supreme"]
+# Soldes cibles des derniers spectateurs (portefeuille de démo varié).
 TIER_BALANCES = [42, 180, 1_450, 6_200, 12_500]
 BANNED = ["arnaque", "spam-link", "insulte1"]
 CHARITIES = [
@@ -339,6 +345,7 @@ class Command(BaseCommand):
         self._monetization_scenarios(streamers, viewers)
         self._announcements_events()
         self._goal_activity(streamers, viewers)
+        self._levels(streamers, viewers)
         self._tier_balances(streamers, viewers)
         self.stdout.write(
             self.style.SUCCESS(
@@ -603,6 +610,8 @@ class Command(BaseCommand):
                                 "display_name": display,
                                 "role": role,
                                 "is_subscriber": sum(map(ord, username)) % 3 == 0 or role != "user",
+                                "level": CHAT_LEVELS[sum(map(ord, username)) % len(CHAT_LEVELS)],
+                                "gift_tier": random.choice(CHAT_GIFTS),
                             },
                             "content": random.choice(CHAT_LINES),
                             "ts": now_ms - (count - n) * random.randint(4_000, 20_000),
@@ -862,6 +871,32 @@ class Command(BaseCommand):
                         pay.send_tip(fan, channel.slug, amount, random.choice(TIP_MESSAGES))
                 except Exception:  # noqa: BLE001, S112 - déjà abonné, solde insuffisant…
                     continue
+
+    def _levels(self, streamers, viewers):
+        """viewer30 → viewer35 : un spectateur par niveau, via de vrais tips (grand livre).
+
+        Les tips sont répartis sur plusieurs chaînes : ces spectateurs ont aussi
+        des badges de don élevés (Légende, Grand mécène…) dans plusieurs chats.
+        """
+        from payments import services as pay
+
+        if len(viewers) < 35 or len(streamers) < 5:
+            return
+        for i, (viewer, target) in enumerate(zip(viewers[29:35], LEVEL_SPEND, strict=True)):
+            viewer.refresh_from_db(fields=["lifetime_aura_spent"])
+            remaining = target - viewer.lifetime_aura_spent
+            if remaining <= 0:
+                continue
+            channels = [streamers[(i + k) % len(streamers)][1] for k in range(5)]
+            shares = [0.5, 0.2, 0.15, 0.1, 0.05]
+            try:
+                pay.create_purchase(viewer, remaining)
+                for channel, share in zip(channels, shares, strict=True):
+                    amount = max(pay.tip_min_aura(), int(remaining * share))
+                    pay.send_tip(viewer, channel.slug, amount, random.choice(TIP_MESSAGES))
+            except Exception as exc:  # noqa: BLE001 - best effort
+                self.stdout.write(f"[niveaux] {viewer.username} ignoré : {exc}")
+        self.stdout.write("[niveaux] viewer30 → viewer35 : Beginner → G.O.A.T.")
 
     def _tier_balances(self, streamers, viewers):
         """Les 5 derniers spectateurs atteignent chacun un palier Aura différent.

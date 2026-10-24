@@ -27,6 +27,36 @@ class InvalidTokenError(Exception):
 InvalidToken = InvalidTokenError
 
 
+def _password_fingerprint(user) -> str:
+    import hashlib
+
+    return hashlib.sha256(f"{user.pk}:{user.password}".encode()).hexdigest()[:16]
+
+
+def make_reset_token(user) -> str:
+    """Token de réinitialisation lié au mot de passe actuel : inutilisable une fois changé."""
+    return TimestampSigner(salt=PASSWORD_RESET_PURPOSE).sign(
+        f"{user.pk}:{_password_fingerprint(user)}"
+    )
+
+
+def read_reset_token(token: str, user_loader) -> object:
+    """Renvoie l'utilisateur si le token est valide et le mot de passe inchangé."""
+    try:
+        payload = TimestampSigner(salt=PASSWORD_RESET_PURPOSE).unsign(
+            token, max_age=PASSWORD_RESET_TTL
+        )
+    except SignatureExpired as exc:
+        raise InvalidTokenError("Token expiré.") from exc
+    except BadSignature as exc:
+        raise InvalidTokenError("Token invalide.") from exc
+    user_id, _, fingerprint = payload.partition(":")
+    user = user_loader(user_id) if user_id.isdigit() else None
+    if user is None or not fingerprint or fingerprint != _password_fingerprint(user):
+        raise InvalidTokenError("Lien déjà utilisé ou expiré.")
+    return user
+
+
 def make_token(user_id: int, purpose: str) -> str:
     return TimestampSigner(salt=purpose).sign(str(user_id))
 

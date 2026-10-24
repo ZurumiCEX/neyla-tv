@@ -9,9 +9,11 @@ import { fmt, fmtFcfa } from "@/lib/format";
 import { useFormat } from "@/lib/use-format";
 import { notifyWalletChanged } from "@/lib/wallet-events";
 import { CardsLogo, OrangeMoneyLogo, WaveLogo } from "@/components/PaymentLogos";
-import { AuraBadge, auraTier } from "@/components/AuraBadge";
+import { GiftBadgesCard } from "@/components/GiftBadgesCard";
+import { LevelBadge, LevelLadder } from "@/components/LevelBadge";
+import { useMyLevel } from "@/lib/use-level";
 import { AuraLedger } from "@/components/AuraLedger";
-import { AuraTierLadder } from "@/components/AuraTierLadder";
+import { Eye, EyeOff } from "lucide-react";
 
 type Ledger = {
   amount: number;
@@ -63,6 +65,8 @@ type Quote = {
   fee_aura: number;
   net_aura: number;
   net_fiat: string;
+  currency: string;
+  min_aura: number;
 };
 type Paginated<T> = { results: T[] };
 
@@ -82,6 +86,7 @@ export default function WalletPage() {
   const [purchases, setPurchases] = useState<Purchase[] | null>(null);
   const [method, setMethod] = useState<Method>("card");
   const [masked, setMasked] = useState(false);
+  const level = useMyLevel();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -202,10 +207,7 @@ export default function WalletPage() {
           </button>
         </div>
         <div className="flex items-center gap-3">
-          {(() => {
-            const tier = auraTier(wallet.aura_balance);
-            return tier ? <AuraBadge tier={tier} size={48} /> : null;
-          })()}
+          {level && <LevelBadge level={level.level} size={48} />}
           <p className="text-4xl font-bold text-emerald-400">
             {masked ? "••••••" : fmt(wallet.aura_balance)}{" "}
             <span className="text-lg text-neutral-400">Aura</span>
@@ -222,7 +224,10 @@ export default function WalletPage() {
       </div>
 
       <div className="mb-6">
-        <AuraTierLadder balance={wallet.aura_balance} masked={masked} />
+        {level && <LevelLadder data={level} masked={masked} />}
+        <div className="mt-4">
+          <GiftBadgesCard />
+        </div>
       </div>
 
       {returnNotice && (
@@ -393,7 +398,9 @@ function MethodButton({
 function WithdrawTab({ onDone }: { onDone: () => void }) {
   const t = useT();
   const { num, date } = useFormat();
-  const { authFetch } = useAuth();
+  const { authFetch, user } = useAuth();
+  const needsTotp = Boolean(user?.two_factor_enabled);
+  const [totpCode, setTotpCode] = useState("");
   const [elig, setElig] = useState<Eligibility | null>(null);
   const [payouts, setPayouts] = useState<PayoutRow[] | null>(null);
   const [amount, setAmount] = useState("");
@@ -464,11 +471,12 @@ function WithdrawTab({ onDone }: { onDone: () => void }) {
     try {
       await authFetch("/api/payments/withdrawal/confirm", {
         method: "POST",
-        body: JSON.stringify({ code: code.trim() }),
+        body: JSON.stringify({ code: code.trim(), totp: totpCode.trim() }),
       });
       setStep("done");
       setAmount("");
       setCode("");
+      setTotpCode("");
       loadElig();
       onDone();
     } catch (err) {
@@ -624,9 +632,22 @@ function WithdrawTab({ onDone }: { onDone: () => void }) {
                 placeholder="123456"
                 className="flex-1 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-center text-lg tracking-widest text-neutral-100 outline-none focus:border-secondary-light"
               />
+              {needsTotp && (
+                <input
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  value={totpCode}
+                  onChange={(e) => setTotpCode(e.target.value)}
+                  placeholder={t("wallet.totpPlaceholder")}
+                  aria-label={t("wallet.totpPlaceholder")}
+                  className="w-40 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-center text-sm text-neutral-100 outline-none focus:border-secondary-light"
+                />
+              )}
               <button
                 type="button"
-                disabled={busy || code.trim().length < 6}
+                disabled={
+                  busy || code.trim().length < 6 || (needsTotp && totpCode.trim().length < 6)
+                }
                 onClick={confirm}
                 className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
               >
@@ -721,21 +742,5 @@ function StatusPill({ status }: { status: string }) {
 }
 
 function EyeIcon({ off }: { off: boolean }) {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
-      <circle cx="12" cy="12" r="3" />
-      {off && <path d="M3 3l18 18" />}
-    </svg>
-  );
+  return off ? <EyeOff size={18} aria-hidden /> : <Eye size={18} aria-hidden />;
 }

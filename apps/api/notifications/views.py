@@ -19,17 +19,41 @@ from .serializers import NotificationSerializer, SupportMessageSerializer
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def list_notifications(request: Request) -> Response:
-    qs = Notification.objects.filter(recipient=request.user)[:50]
+    """Liste paginée par curseur : `?before=<id>` pour la page suivante."""
+    try:
+        limit = max(1, min(int(request.query_params.get("limit", 30)), 50))
+    except (TypeError, ValueError):
+        limit = 30
+    qs = Notification.objects.filter(recipient=request.user).select_related("actor")
+    before = request.query_params.get("before")
+    if before and before.isdigit():
+        qs = qs.filter(id__lt=int(before))
+    items = list(qs.order_by("-id")[: limit + 1])
+    has_more = len(items) > limit
+    items = items[:limit]
     unread = Notification.objects.filter(recipient=request.user, read_at__isnull=True).count()
-    return Response({"results": NotificationSerializer(qs, many=True).data, "unread": unread})
+    return Response(
+        {
+            "results": NotificationSerializer(items, many=True).data,
+            "unread": unread,
+            "next_before": items[-1].id if has_more and items else None,
+        }
+    )
 
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def mark_read(request: Request) -> Response:
+    """`ids` : ces notifications ; sinon toutes, sauf les types listés dans `except`."""
     ids = request.data.get("ids")
-    count = services.mark_read(request.user, ids if isinstance(ids, list) else None)
-    return Response({"marked": count})
+    exclude = request.data.get("except")
+    count = services.mark_read(
+        request.user,
+        ids if isinstance(ids, list) else None,
+        exclude if isinstance(exclude, list) else None,
+    )
+    unread = Notification.objects.filter(recipient=request.user, read_at__isnull=True).count()
+    return Response({"marked": count, "unread": unread})
 
 
 @api_view(["POST"])

@@ -93,7 +93,9 @@ class TwoFactorAdmin(admin.ModelAdmin):
     list_display = ("user", "enabled", "confirmed_at", "updated_at")
     list_filter = ("enabled",)
     search_fields = ("user__username",)
-    readonly_fields = ("user", "secret", "recovery_codes", "created_at", "updated_at")
+    # Le secret (chiffré) et les codes de secours ne sont jamais affichés.
+    exclude = ("secret", "recovery_codes", "last_used_step")
+    readonly_fields = ("user", "created_at", "updated_at")
 
 
 class GuideStepInline(admin.StackedInline):

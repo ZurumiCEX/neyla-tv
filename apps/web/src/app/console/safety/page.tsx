@@ -41,18 +41,26 @@ export default function AdminSafetyPage() {
   const [flags, setFlags] = useState<ContentFlag[] | null>(null);
   const [risks, setRisks] = useState<RiskEvent[] | null>(null);
   const [busy, setBusy] = useState(false);
+  const [flagStatus, setFlagStatus] = useState("");
+  const [flagCategory, setFlagCategory] = useState("");
+  const [riskKind, setRiskKind] = useState("");
 
   const load = useCallback(() => {
     authFetch<Overview>("/api/admin/safety/overview")
       .then(setOverview)
       .catch(() => undefined);
-    authFetch<{ results: ContentFlag[] }>("/api/admin/safety/flags")
+    const fq = new URLSearchParams();
+    if (flagStatus) fq.set("status", flagStatus);
+    if (flagCategory) fq.set("category", flagCategory);
+    authFetch<{ results: ContentFlag[] }>(`/api/admin/safety/flags?${fq.toString()}`)
       .then((d) => setFlags(d.results))
       .catch(() => setFlags([]));
-    authFetch<{ results: RiskEvent[] }>("/api/admin/safety/risk-events?unresolved=1")
+    const rq = new URLSearchParams({ unresolved: "1" });
+    if (riskKind) rq.set("kind", riskKind);
+    authFetch<{ results: RiskEvent[] }>(`/api/admin/safety/risk-events?${rq.toString()}`)
       .then((d) => setRisks(d.results))
       .catch(() => setRisks([]));
-  }, [authFetch]);
+  }, [authFetch, flagStatus, flagCategory, riskKind]);
 
   useEffect(() => {
     load();
@@ -119,6 +127,44 @@ export default function AdminSafetyPage() {
             {tb === "flags" ? t("safety.tab.flags") : t("safety.tab.risk")}
           </button>
         ))}
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {tab === "flags" ? (
+          <>
+            <FilterSelect
+              label={t("safety.filter.status")}
+              value={flagStatus}
+              onChange={setFlagStatus}
+              options={["pending", "auto_blocked", "approved", "rejected"]}
+              allLabel={t("safety.filter.all")}
+            />
+            <FilterSelect
+              label={t("safety.filter.category")}
+              value={flagCategory}
+              onChange={setFlagCategory}
+              options={["sexual", "gore", "other", "safe"]}
+              allLabel={t("safety.filter.all")}
+            />
+          </>
+        ) : (
+          <FilterSelect
+            label={t("safety.filter.kind")}
+            value={riskKind}
+            onChange={setRiskKind}
+            options={[
+              "tip_velocity",
+              "self_deal",
+              "follow_velocity",
+              "multi_account",
+              "view_inflation",
+              "sub_abuse",
+              "chat_bot",
+              "chargeback",
+            ]}
+            allLabel={t("safety.filter.all")}
+          />
+        )}
       </div>
 
       {tab === "flags" && (
@@ -248,4 +294,36 @@ function CategoryPill({ category, label }: { category: string; label: string }) 
           ? "border-emerald-500/40 text-emerald-300"
           : "border-neutral-600 text-neutral-300";
   return <span className={`rounded-full border px-2 py-0.5 text-xs ${cls}`}>{label}</span>;
+}
+
+function FilterSelect({
+  label,
+  value,
+  onChange,
+  options,
+  allLabel,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: string[];
+  allLabel: string;
+}) {
+  return (
+    <label className="flex items-center gap-2 text-sm text-neutral-400">
+      {label}
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-100 outline-none focus:border-emerald-400"
+      >
+        <option value="">{allLabel}</option>
+        {options.map((o) => (
+          <option key={o} value={o}>
+            {o.replace(/_/g, " ")}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
 }

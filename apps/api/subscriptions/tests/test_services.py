@@ -198,3 +198,13 @@ def test_gifted_subscription_does_not_auto_renew():
     sub.refresh_from_db()
     assert sub.status == Subscription.Status.EXPIRED
     assert pay.get_wallet(recipient).aura_balance == 500  # jamais débité
+
+
+def test_my_tier_get_returns_inactive_tier(auth_client_factory):
+    channel = _streamer()
+    services.set_tier(channel, price_aura=150, perks=["Badge"], is_active=False)
+    from django.urls import reverse
+
+    data = auth_client_factory(channel.user).get(reverse("streamer-tier")).json()
+    assert data["is_active"] is False
+    assert data["price_aura"] == 150

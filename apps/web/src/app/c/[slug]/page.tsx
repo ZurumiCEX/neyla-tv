@@ -6,6 +6,7 @@ import { ChannelAbout } from "@/components/channel/ChannelAbout";
 import { ChannelGoalCard, type ChannelGoal } from "@/components/channel/ChannelGoalCard";
 import { ChannelHeader } from "@/components/channel/ChannelHeader";
 import { ChannelLayout } from "@/components/channel/ChannelLayout";
+import { ChannelShorts } from "@/components/channel/ChannelShorts";
 import { apiFetchServer } from "@/lib/api";
 import { getServerT } from "@/lib/i18n-server";
 
@@ -23,6 +24,7 @@ type PublicChannel = {
   tags: string[];
   follower_count: number;
   is_verified: boolean;
+  show_viewer_count?: boolean;
   goal: ChannelGoal | null;
 };
 
@@ -90,16 +92,21 @@ export default async function ChannelPage({ params }: { params: Promise<{ slug: 
           category={channel.category}
           tags={channel.tags ?? []}
           achievements={achievements.unlocked}
+          showViewers={channel.show_viewer_count !== false}
         />
         <div className="grid gap-4 p-4 sm:p-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,420px)]">
           <ChannelAbout
             name={displayName}
+            username={channel.streamer.username}
             followers={followers}
             bio={channel.streamer.bio}
             socialLinks={channel.social_links}
             achievements={achievements.results}
           />
           <ChannelGoalCard goal={channel.goal} followers={followers} />
+        </div>
+        <div className="px-4 pb-6 sm:px-6">
+          <ChannelShorts slug={channel.slug} />
         </div>
       </ChannelLayout>
     </main>

@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { AuraBadge, auraTier } from "@/components/AuraBadge";
+import { LevelBadge } from "@/components/LevelBadge";
+import { useMyLevel } from "@/lib/use-level";
 import { useAuth } from "@/lib/auth-context";
 import { useT } from "@/lib/i18n";
 import { useFormat } from "@/lib/use-format";
@@ -14,6 +15,7 @@ export function ChatAuraFooter() {
   const { num } = useFormat();
   const { user, loading, authFetch } = useAuth();
   const [balance, setBalance] = useState<number | null>(null);
+  const level = useMyLevel();
 
   const refresh = useCallback(() => {
     authFetch<{ aura_balance: number }>("/api/payments/wallet")
@@ -35,18 +37,13 @@ export function ChatAuraFooter() {
     );
   }
 
-  const tier = balance !== null ? auraTier(balance) : null;
   return (
     <Link
       href="/wallet"
-      title={tier ? t(`aura.tier.${tier.key}`) : t("nav.aura")}
+      title={level ? t("level.title", { level: t(`level.${level.level}`) }) : t("nav.aura")}
       className="flex items-center gap-1.5 rounded-md px-1.5 py-1 text-xs font-semibold text-neutral-200 hover:bg-neutral-800"
     >
-      {tier ? (
-        <AuraBadge tier={tier} size={18} />
-      ) : (
-        <span className="h-[18px] w-[18px] rounded-full border border-dashed border-neutral-600" />
-      )}
+      <LevelBadge level={level?.level} size={18} />
       <span className="tabular-nums">{balance === null ? "—" : num(balance)}</span>
       <span className="text-neutral-500">Aura</span>
     </Link>

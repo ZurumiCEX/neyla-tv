@@ -97,6 +97,12 @@ export default function CharityPage() {
       <header className="mb-6">
         <h1 className="text-3xl font-extrabold tracking-tight">{t("charity.title")}</h1>
         <p className="mt-1 text-sm text-neutral-400">{t("charity.subtitle")}</p>
+        <Link
+          href="/charity/archives"
+          className="mt-2 inline-block text-sm font-semibold text-emerald-300 hover:underline"
+        >
+          {t("charity.archives.link")}
+        </Link>
       </header>
 
       {busy && <p className="text-neutral-500">{t("common.loading")}</p>}

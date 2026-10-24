@@ -35,6 +35,16 @@ class Channel(models.Model):
     )
     goal_target = models.PositiveIntegerField(default=0)
     goal_started_at = models.DateTimeField(null=True, blank=True)
+    # --- Réglages du chat (dashboard → Modération / Actions de chaîne) ---
+    chat_followers_only = models.BooleanField(default=False)
+    chat_follow_min_minutes = models.PositiveIntegerField(default=0)
+    chat_subscribers_only = models.BooleanField(default=False)
+    chat_emotes_only = models.BooleanField(default=False)
+    chat_slow_seconds = models.PositiveIntegerField(default=0)
+    chat_min_account_age_days = models.PositiveIntegerField(default=0)
+    show_viewer_count = models.BooleanField(default=True)
+    # Modération automatique : {"sexual": 0..3, "hate": …, "gibberish": bool, "spam": bool}
+    automod = models.JSONField(default=dict, blank=True)
     category = models.ForeignKey(
         "catalog.Game",
         null=True,

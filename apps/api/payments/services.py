@@ -155,6 +155,14 @@ def _apply(
         related_id=getattr(related, "id", None),
         metadata=metadata or {},
     )
+    if amount < 0 and kind in _SPEND_KINDS:
+        from gamification.support import record_spend
+
+        record_spend(wallet.user_id, -int(amount))
+
+
+# Débits comptés dans l'Aura dépensée à vie (niveaux) : tips, abonnements, dons.
+_SPEND_KINDS = {"tip_sent", "sub_paid", "charity_donation"}
 
 
 def _record_fee(source: str, amount: int, user=None, related=None) -> None:
@@ -469,6 +477,9 @@ def send_tip(
                 related=tip,
             )
             _record_fee(PlatformRevenue.Source.TIP, platform_fee, user=from_user, related=tip)
+            from gamification.support import record_support
+
+            record_support(from_user, channel, aura_amount)
             transaction.on_commit(lambda: _after_tip(tip, from_user, channel))
     except IntegrityError:
         # Même clé d'idempotence envoyée en parallèle : renvoie le tip déjà créé.
@@ -491,7 +502,9 @@ def _after_tip(tip: Tip, from_user, channel) -> None:
             actor=from_user,
             payload={
                 "username": from_user.username,
-                "aura": tip.creator_share,
+                # Montant envoyé (alerte, palier de don) ; la part créateur à part.
+                "aura": tip.aura_amount,
+                "creator_share": tip.creator_share,
                 "slug": channel.slug,
             },
         )
@@ -499,6 +512,8 @@ def _after_tip(tip: Tip, from_user, channel) -> None:
 
         check_and_award(from_user, "tip_sent")
         check_and_award(channel.user, "tip_received")
+        check_and_award(from_user, "support", channel=channel)
+        check_and_award(from_user, "spend")
     except Exception:  # noqa: BLE001 — n'annule jamais un tip déjà encaissé
         logger.exception("after_tip side effects failed for tip %s", tip.pk)
 

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChatPanel } from "@/components/ChatPanel";
 import { useT } from "@/lib/i18n";
+import { ChevronsLeft } from "lucide-react";
 
 const STORAGE_KEY = "neyla.chat.collapsed";
 
@@ -82,19 +83,7 @@ export function ChannelLayout({
               aria-label={t("chat.expand")}
               className="absolute right-3 top-3 hidden h-9 items-center gap-1.5 rounded-md bg-neutral-950/80 px-3 text-sm font-semibold text-neutral-100 backdrop-blur hover:bg-neutral-900 lg:flex"
             >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden
-              >
-                <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5" />
-              </svg>
+              <ChevronsLeft size={16} aria-hidden />
               {t("chat.title")}
             </button>
           )}

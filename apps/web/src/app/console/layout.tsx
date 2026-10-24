@@ -17,6 +17,7 @@ const TABS: { href: string; labelKey: string; roles: string[] }[] = [
   { href: "/console/safety", labelKey: "admin.tab.safety", roles: ["admin", "moderator"] },
   { href: "/console/messages", labelKey: "admin.tab.messages", roles: ["admin", "support"] },
   { href: "/console/analytics", labelKey: "admin.tab.analytics", roles: ["admin"] },
+  { href: "/console/catalog", labelKey: "admin.tab.catalog", roles: ["admin"] },
 ];
 
 const STAFF_ROLES = ["admin", "moderator", "support"];
@@ -27,22 +28,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const t = useT();
   const { user, loading } = useAuth();
 
-  // Accès si rôle interne OU compte staff/superuser Django (is_staff).
-  const isStaff = !!user && (STAFF_ROLES.includes(user.role) || user.is_staff);
-  // Un compte staff sans rôle interne explicite est traité comme admin.
+  // Mêmes règles que l'API (accounts/permissions.py) : un rôle interne, ou
+  // superutilisateur (traité comme admin). « is_staff » seul ne donne aucun droit API.
   const effectiveRole = user
     ? STAFF_ROLES.includes(user.role)
       ? user.role
-      : user.is_staff
+      : user.is_superuser
         ? "admin"
-        : user.role
+        : ""
     : "";
+  const isStaff = Boolean(effectiveRole);
 
   useEffect(() => {
     if (loading) return;
     if (!user) {
       router.replace("/login");
-    } else if (!(STAFF_ROLES.includes(user.role) || user.is_staff)) {
+    } else if (!(STAFF_ROLES.includes(user.role) || user.is_superuser)) {
       router.replace("/");
     }
   }, [loading, user, router]);
@@ -52,6 +53,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   const visibleTabs = TABS.filter((tab) => tab.roles.includes(effectiveRole));
+
+  if (user?.strong_auth_required) {
+    return (
+      <div className="mx-auto max-w-xl px-4 py-12 text-center">
+        <h1 className="mb-2 text-2xl font-bold">{t("admin.title")}</h1>
+        <p className="mb-5 text-neutral-300">{t("security.staffRequired")}</p>
+        <Link
+          href="/settings"
+          className="inline-block rounded-lg bg-emerald-500 px-5 py-2.5 text-sm font-bold text-neutral-950 hover:bg-emerald-400"
+        >
+          {t("security.goSecure")}
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6">
@@ -64,9 +80,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               key={tab.href}
               href={tab.href}
               className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${
-                active
-                  ? "bg-emerald-500 text-neutral-950"
-                  : "text-neutral-300 hover:bg-neutral-800"
+                active ? "bg-emerald-500 text-neutral-950" : "text-neutral-300 hover:bg-neutral-800"
               }`}
             >
               {t(tab.labelKey)}

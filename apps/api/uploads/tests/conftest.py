@@ -21,3 +21,14 @@ def auth_client_factory():
         return client
 
     return _make
+
+
+@pytest.fixture(autouse=True)
+def _media_root(settings, tmp_path):
+    """Uploads écrits dans un dossier temporaire (mode local, sans R2)."""
+    settings.MEDIA_ROOT = str(tmp_path)
+    from django.core.files.storage import default_storage
+
+    default_storage.__dict__.pop("base_location", None)
+    default_storage.__dict__.pop("location", None)
+    yield

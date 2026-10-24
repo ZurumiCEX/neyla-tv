@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { KeyRound } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PasswordInput } from "@/components/PasswordInput";
@@ -10,7 +11,7 @@ import { useT } from "@/lib/i18n";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, loginTwoFactor } = useAuth();
+  const { login, loginTwoFactor, loginWithPasskey } = useAuth();
   const t = useT();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -32,6 +33,40 @@ export default function LoginPage() {
       }
     } catch (err) {
       setError(apiErrorMessage(err, t, "auth.loginFail"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Saisie automatique des passkeys (« conditional mediation ») dans le champ e-mail.
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const { browserSupportsWebAuthnAutofill } = await import("@simplewebauthn/browser");
+      if (!(await browserSupportsWebAuthnAutofill()) || !active) return;
+      try {
+        await loginWithPasskey(true);
+        if (active) router.push("/dashboard");
+      } catch {
+        /* annulé ou aucune passkey choisie : le formulaire classique reste disponible */
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [loginWithPasskey, router]);
+
+  async function passkeyLogin() {
+    setBusy(true);
+    setError(null);
+    try {
+      await loginWithPasskey(false);
+      router.push("/dashboard");
+    } catch (err) {
+      const e = err as { name?: string };
+      if (e.name !== "NotAllowedError" && e.name !== "AbortError") {
+        setError(apiErrorMessage(err, t, "auth.passkey.fail"));
+      }
     } finally {
       setBusy(false);
     }
@@ -89,7 +124,7 @@ export default function LoginPage() {
           <span className="mb-1 block text-sm text-neutral-300">{t("auth.email")}</span>
           <input
             type="email"
-            autoComplete="email"
+            autoComplete="username webauthn"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -119,6 +154,20 @@ export default function LoginPage() {
           {busy ? "..." : t("auth.signin")}
         </button>
       </form>
+      <div className="my-4 flex items-center gap-3 text-xs uppercase tracking-wider text-neutral-500">
+        <span className="h-px flex-1 bg-neutral-800" />
+        {t("auth.or")}
+        <span className="h-px flex-1 bg-neutral-800" />
+      </div>
+      <button
+        type="button"
+        onClick={passkeyLogin}
+        disabled={busy}
+        className="flex w-full items-center justify-center gap-2 rounded-lg border border-neutral-700 px-4 py-2 font-semibold text-neutral-100 hover:border-emerald-500 disabled:opacity-50"
+      >
+        <KeyRound size={18} aria-hidden />
+        {t("auth.passkey.signin")}
+      </button>
       {error && (
         <p
           role="alert"

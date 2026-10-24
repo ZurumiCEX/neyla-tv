@@ -133,3 +133,9 @@ html[data-theme="light"] .chat-name { filter: brightness(0.55) saturate(1.6); }
 @media (prefers-reduced-motion: reduce) {
   .aura-animated g { animation: none !important; }
 }
+
+/* Niveau G.O.A.T : reflets irisés en boucle. */
+.aura-animated .level-iridescent { animation: aura-breathe 2.2s ease-in-out infinite, level-hue 6s linear infinite; }
+@keyframes level-hue {
+  to { filter: hue-rotate(360deg); }
+}

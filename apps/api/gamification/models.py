@@ -56,3 +56,31 @@ class UserAchievement(models.Model):
 
     def __str__(self) -> str:
         return f"{self.user_id}:{self.achievement_id}"
+
+
+class ChannelSupport(models.Model):
+    """Total offert par un follower à UNE chaîne (tips + abonnements offerts).
+
+    Détermine le badge de don affiché à côté de son pseudo dans ce chat.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="channel_supports"
+    )
+    channel = models.ForeignKey(
+        "channels_app.Channel", on_delete=models.CASCADE, related_name="supporters"
+    )
+    total_aura = models.PositiveBigIntegerField(default=0)
+    last_gift_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-total_aura"]
+        constraints = [
+            models.UniqueConstraint(fields=["user", "channel"], name="uniq_channel_support")
+        ]
+        indexes = [
+            models.Index(fields=["channel", "-total_aura"], name="support_channel_total_idx")
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.user_id}→{self.channel_id}: {self.total_aura}"

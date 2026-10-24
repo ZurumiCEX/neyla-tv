@@ -154,3 +154,34 @@ def test_purchase_accepts_method(auth_client_factory):
         reverse("payments-purchase"), {"credits": 100, "method": "wave"}, format="json"
     )
     assert resp.status_code == 201
+
+
+def test_withdrawal_requires_totp_when_2fa_enabled(auth_client_factory):
+    import time
+
+    from accounts import totp, two_factor
+
+    creator = _streamer()
+    channel = provisioned_channel(creator)
+    fan = UserFactory()
+    services.create_purchase(fan, 500)
+    services.send_tip(fan, channel.slug, 100)
+    _, secret = two_factor.begin_setup(creator)
+    step = int(time.time() // totp.PERIOD)
+    two_factor.enable(creator, totp._hotp(secret, step - 1))
+
+    client = auth_client_factory(creator)
+    client.post(reverse("withdrawal-start"), {"aura_amount": 70, **DEST}, format="json")
+    otp = PayoutOtp.objects.filter(user=creator, consumed=False).latest("created_at")
+    otp.code_hash = services._hash_otp("123456")
+    otp.save(update_fields=["code_hash"])
+
+    missing = client.post(reverse("withdrawal-confirm"), {"code": "123456"}, format="json")
+    assert missing.status_code == 400
+    assert missing.json()["code"] == "totp"
+    ok = client.post(
+        reverse("withdrawal-confirm"),
+        {"code": "123456", "totp": totp._hotp(secret, step)},
+        format="json",
+    )
+    assert ok.status_code == 201

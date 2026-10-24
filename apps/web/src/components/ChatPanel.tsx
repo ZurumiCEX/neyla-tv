@@ -8,12 +8,25 @@ import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useT } from "@/lib/i18n";
 import { EmojiPicker } from "@/components/EmojiPicker";
+import { GiftBadge, giftTierByKey } from "@/components/GiftBadge";
+import { LevelBadge } from "@/components/LevelBadge";
 import { RoleBadge } from "@/components/RoleBadge";
+import Link from "next/link";
 import { ChatAuraFooter } from "@/components/channel/ChatAuraFooter";
+import { ChevronsRight } from "lucide-react";
+import { EmojiText } from "@/components/Emoji";
 
 type ChatMessage = {
   id: string;
-  user: { username: string; display_name: string; role?: string; is_subscriber?: boolean };
+  user: {
+    username: string;
+    display_name: string;
+    role?: string;
+    is_subscriber?: boolean;
+    /** Niveau (Aura dépensée à vie) et badge de don pour CETTE chaîne. */
+    level?: string;
+    gift_tier?: string | null;
+  };
   content: string;
   ts: number;
 };
@@ -58,15 +71,18 @@ type Props = {
   /** `sidebar` : colonne pleine hauteur de la page chaîne ; `card` : bloc encadré. */
   variant?: "card" | "sidebar";
   onCollapse?: () => void;
+  /** Masque l'en-tête « Chat » (déjà fourni par le panneau parent du dashboard). */
+  hideHeader?: boolean;
 };
 
-export function ChatPanel({ slug, isLive, variant = "card", onCollapse }: Props) {
+export function ChatPanel({ slug, isLive, variant = "card", onCollapse, hideHeader }: Props) {
   const t = useT();
   const { user, accessToken } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [system, setSystem] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [connected, setConnected] = useState(false);
+  const [banned, setBanned] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
 
@@ -89,7 +105,11 @@ export function ChatPanel({ slug, isLive, variant = "card", onCollapse }: Props)
     wsRef.current = ws;
 
     ws.onopen = () => setConnected(true);
-    ws.onclose = () => setConnected(false);
+    ws.onclose = (e) => {
+      setConnected(false);
+      // 4403 : banni de ce chat → proposer une demande de déban.
+      if (e.code === 4403) setBanned(true);
+    };
     ws.onerror = () => setConnected(false);
     ws.onmessage = (e) => {
       try {
@@ -102,6 +122,7 @@ export function ChatPanel({ slug, isLive, variant = "card", onCollapse }: Props)
         } else if (data.type === "delete") {
           setMessages((prev) => prev.filter((m) => m.id !== data.id));
         } else {
+          if (data.type === "kicked") setBanned(true);
           setSystem(data.detail);
         }
       } catch {
@@ -161,7 +182,9 @@ export function ChatPanel({ slug, isLive, variant = "card", onCollapse }: Props)
       }`}
       aria-label={t("chat.title")}
     >
-      <header className="relative flex h-11 shrink-0 items-center justify-center border-b border-neutral-800 px-3 text-sm">
+      <header
+        className={`${hideHeader ? "hidden" : "flex"} relative h-11 shrink-0 items-center justify-center border-b border-neutral-800 px-3 text-sm`}
+      >
         {onCollapse && (
           <button
             type="button"
@@ -204,11 +227,18 @@ export function ChatPanel({ slug, isLive, variant = "card", onCollapse }: Props)
                   ★
                 </span>
               )}
-              <span className="chat-name font-bold" style={{ color: nameColor(m.user.username) }}>
+              <ChatBadges user={m.user} t={t} />
+              <Link
+                href={`/u/${m.user.username}`}
+                className="chat-name font-bold hover:underline"
+                style={{ color: nameColor(m.user.username) }}
+              >
                 {m.user.display_name || m.user.username}
-              </span>
+              </Link>
               <span className="text-neutral-500">: </span>
-              <span className="text-neutral-100">{m.content}</span>
+              <span className="text-neutral-100">
+                <EmojiText text={m.content} size={20} />
+              </span>
             </span>
             {isStreamer && (
               <span className="hidden shrink-0 items-center gap-0.5 group-hover:flex">
@@ -254,55 +284,127 @@ export function ChatPanel({ slug, isLive, variant = "card", onCollapse }: Props)
         </div>
       )}
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          send();
-        }}
-        className="shrink-0 space-y-2 border-t border-neutral-800 p-3"
-      >
-        <div className="flex items-center gap-1 rounded-lg border border-neutral-700 bg-neutral-900 pl-3 pr-1 focus-within:border-emerald-400">
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={placeholder}
-            disabled={disabled}
-            maxLength={500}
-            className="h-10 min-w-0 flex-1 bg-transparent text-sm text-neutral-100 outline-none placeholder:text-neutral-500 disabled:opacity-50"
-          />
-          <EmojiPicker onSelect={addEmoji} disabled={disabled} />
-        </div>
-        <div className="flex items-center justify-between gap-2">
-          <ChatAuraFooter />
-          <button
-            type="submit"
-            disabled={disabled || !input.trim()}
-            className="rounded-md bg-emerald-500 px-4 py-1.5 text-sm font-bold text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
-          >
-            {t("chat.send")}
-          </button>
-        </div>
-      </form>
+      {banned && user && !isStreamer ? (
+        <UnbanRequestBox slug={slug} />
+      ) : (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            send();
+          }}
+          className="shrink-0 space-y-2 border-t border-neutral-800 p-3"
+        >
+          <div className="flex items-center gap-1 rounded-lg border border-neutral-700 bg-neutral-900 pl-3 pr-1 focus-within:border-emerald-400">
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder={placeholder}
+              disabled={disabled}
+              maxLength={500}
+              className="h-10 min-w-0 flex-1 bg-transparent text-sm text-neutral-100 outline-none placeholder:text-neutral-500 disabled:opacity-50"
+            />
+            <EmojiPicker onSelect={addEmoji} disabled={disabled} />
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <ChatAuraFooter />
+            <button
+              type="submit"
+              disabled={disabled || !input.trim()}
+              className="rounded-md bg-emerald-500 px-4 py-1.5 text-sm font-bold text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
+            >
+              {t("chat.send")}
+            </button>
+          </div>
+        </form>
+      )}
     </section>
   );
 }
 
-function CollapseIcon() {
+/** Spectateur banni : état de sa demande de déban, ou formulaire pour l'envoyer. */
+function UnbanRequestBox({ slug }: { slug: string }) {
+  const t = useT();
+  const { authFetch } = useAuth();
+  const [state, setState] = useState<{ banned: boolean; pending: boolean } | null>(null);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const url = `/api/c/${slug}/unban-request`;
+
+  useEffect(() => {
+    authFetch<{ banned: boolean; pending: boolean }>(url)
+      .then(setState)
+      .catch(() => setState({ banned: true, pending: false }));
+  }, [authFetch, url]);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    try {
+      setState(await authFetch(url, { method: "POST", body: JSON.stringify({ message }) }));
+    } catch (err) {
+      const ex = err as { data?: { detail?: string } };
+      setError(ex.data?.detail ?? t("chat.unban.error"));
+    }
+  }
+
   return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M13 17l5-5-5-5M6 17l5-5-5-5" />
-    </svg>
+    <div className="shrink-0 space-y-2 border-t border-neutral-800 p-3 text-sm">
+      <p className="font-semibold text-red-300">{t("chat.unban.banned")}</p>
+      {state?.pending ? (
+        <p className="text-neutral-400">{t("chat.unban.pending")}</p>
+      ) : (
+        <form onSubmit={submit} className="space-y-2">
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            rows={2}
+            maxLength={500}
+            placeholder={t("chat.unban.placeholder")}
+            className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-emerald-400"
+          />
+          {error && <p className="text-xs text-red-300">{error}</p>}
+          <button
+            type="submit"
+            disabled={message.trim().length < 10}
+            className="w-full rounded-md bg-emerald-500 py-1.5 text-sm font-bold text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
+          >
+            {t("chat.unban.send")}
+          </button>
+        </form>
+      )}
+    </div>
   );
+}
+
+/** Badges avant le pseudo : badge de don (cette chaîne) puis niveau (hors débutant). */
+function ChatBadges({
+  user,
+  t,
+}: {
+  user: ChatMessage["user"];
+  t: (key: string, params?: Record<string, string | number>) => string;
+}) {
+  const gift = giftTierByKey(user.gift_tier);
+  const level = user.level && user.level !== "rookie" ? user.level : null;
+  if (!gift && !level) return null;
+  return (
+    <span className="mr-1 inline-flex translate-y-[3px] items-center gap-0.5">
+      {gift && (
+        <span title={t("gift.tierTitle", { tier: t(`gift.tier.${gift.key}`) })}>
+          <GiftBadge tier={gift} size={16} animated={false} />
+        </span>
+      )}
+      {level && (
+        <span title={t("level.title", { level: t(`level.${level}`) })}>
+          <LevelBadge level={level} size={16} animated={false} />
+        </span>
+      )}
+    </span>
+  );
+}
+
+function CollapseIcon() {
+  return <ChevronsRight size={18} aria-hidden />;
 }
 
 function ModBtn({

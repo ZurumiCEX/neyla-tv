@@ -34,7 +34,9 @@ def channel_tier(request: Request, slug: str) -> Response:  # noqa: ARG001
 def my_tier(request: Request) -> Response:
     channel = Channel.objects.filter(user=request.user).first()
     if request.method == "GET":
-        tier = services.active_tier(channel) if channel else None
+        # Le propriétaire voit son palier même désactivé (sinon il serait rouvert
+        # par erreur au prochain enregistrement).
+        tier = channel.sub_tiers.order_by("-id").first() if channel else None
         return Response(SubTierSerializer(tier).data if tier else {"tier": None})
     if channel is None or not channel.is_provisioned:
         return Response(

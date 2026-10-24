@@ -12,10 +12,11 @@ django_asgi_app = get_asgi_application()
 # Imports après get_asgi_application() pour garantir que les apps Django sont prêtes.
 from chat.middleware import TokenAuthMiddleware  # noqa: E402
 from chat.routing import websocket_urlpatterns  # noqa: E402
+from config.ws_origin import OriginValidator  # noqa: E402
 
 application = ProtocolTypeRouter(
     {
         "http": django_asgi_app,
-        "websocket": TokenAuthMiddleware(URLRouter(websocket_urlpatterns)),
+        "websocket": OriginValidator(TokenAuthMiddleware(URLRouter(websocket_urlpatterns))),
     }
 )

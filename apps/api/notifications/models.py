@@ -12,6 +12,7 @@ class Notification(models.Model):
         NEW_FOLLOWER = "new_follower", "Nouveau follower"
         APPLICATION_DECIDED = "application_decided", "Candidature traitée"
         SUBSCRIPTION = "subscription", "Nouvel abonné"
+        SUBSCRIPTION_GIFT = "subscription_gift", "Abonnement offert"
         TIP_RECEIVED = "tip_received", "Tip reçu"
         ACHIEVEMENT = "achievement", "Succès débloqué"
         SUPPORT_MESSAGE = "support_message", "Message du support"

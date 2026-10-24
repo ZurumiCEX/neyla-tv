@@ -14,6 +14,7 @@ export function TwoFactorManager() {
   const [enabled, setEnabled] = useState(Boolean(user?.two_factor_enabled));
   const [setup, setSetup] = useState<Setup | null>(null);
   const [code, setCode] = useState("");
+  const [password, setPassword] = useState("");
   const [recovery, setRecovery] = useState<string[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,11 +57,31 @@ export function TwoFactorManager() {
     try {
       await authFetch("/api/auth/2fa/disable", {
         method: "POST",
-        body: JSON.stringify({ code: code.trim() }),
+        body: JSON.stringify({ code: code.trim(), password }),
       });
       setEnabled(false);
       setCode("");
+      setPassword("");
       setRecovery(null);
+    } catch (err) {
+      const e = err as { data?: { detail?: string } };
+      setError(e.data?.detail ?? t("auth.2fa.invalid"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function regenerate() {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await authFetch<{ recovery_codes: string[] }>("/api/auth/2fa/recovery-codes", {
+        method: "POST",
+        body: JSON.stringify({ code: code.trim(), password }),
+      });
+      setRecovery(res.recovery_codes);
+      setCode("");
+      setPassword("");
     } catch (err) {
       const e = err as { data?: { detail?: string } };
       setError(e.data?.detail ?? t("auth.2fa.invalid"));
@@ -142,22 +163,44 @@ export function TwoFactorManager() {
       )}
 
       {enabled && (
-        <div className="flex items-center gap-2">
-          <input
-            inputMode="numeric"
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            placeholder={t("twofa.codeOrRecovery")}
-            className="flex-1 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-neutral-100 outline-none focus:border-red-500"
-          />
-          <button
-            type="button"
-            onClick={disable}
-            disabled={busy}
-            className="rounded-lg border border-red-500/40 px-4 py-2 text-sm font-semibold text-red-300 hover:bg-red-500/10 disabled:opacity-50"
-          >
-            {t("twofa.disable")}
-          </button>
+        <div className="space-y-2">
+          <p className="text-xs text-neutral-500">{t("twofa.manageHint")}</p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <input
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder={t("security.currentPassword")}
+              className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-neutral-100 outline-none focus:border-emerald-400"
+            />
+            <input
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              placeholder={t("twofa.codeOrRecovery")}
+              className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-neutral-100 outline-none focus:border-emerald-400"
+            />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={regenerate}
+              disabled={busy || !password || !code}
+              className="rounded-lg border border-neutral-700 px-4 py-2 text-sm font-semibold text-neutral-200 hover:border-emerald-500 disabled:opacity-50"
+            >
+              {t("twofa.regenerate")}
+            </button>
+            <button
+              type="button"
+              onClick={disable}
+              disabled={busy || !password || !code}
+              className="rounded-lg border border-red-500/40 px-4 py-2 text-sm font-semibold text-red-300 hover:bg-red-500/10 disabled:opacity-50"
+            >
+              {t("twofa.disable")}
+            </button>
+          </div>
         </div>
       )}
     </section>

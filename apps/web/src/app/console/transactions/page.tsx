@@ -31,6 +31,7 @@ export default function AdminTransactionsPage() {
   const [count, setCount] = useState(0);
   const [type, setType] = useState("");
   const [q, setQ] = useState("");
+  const [days, setDays] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -38,6 +39,7 @@ export default function AdminTransactionsPage() {
     const params = new URLSearchParams();
     if (type) params.set("type", type);
     if (q.trim()) params.set("q", q.trim());
+    if (days) params.set("days", days);
     try {
       const data = await authFetch<Page>(`/api/admin/transactions?${params.toString()}`);
       setRows(data.results);
@@ -45,7 +47,7 @@ export default function AdminTransactionsPage() {
     } catch {
       setError(t("common.loadError"));
     }
-  }, [authFetch, type, q, t]);
+  }, [authFetch, type, q, days, t]);
 
   useEffect(() => {
     load();
@@ -74,6 +76,19 @@ export default function AdminTransactionsPage() {
           {TYPES.map((opt) => (
             <option key={opt.value} value={opt.value}>
               {t(opt.key)}
+            </option>
+          ))}
+        </select>
+        <select
+          value={days}
+          onChange={(e) => setDays(e.target.value)}
+          aria-label={t("admin.filter.period")}
+          className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-secondary-light"
+        >
+          <option value="">{t("admin.filter.allTime")}</option>
+          {["1", "7", "30", "90"].map((d) => (
+            <option key={d} value={d}>
+              {t("admin.filter.lastDays", { n: d })}
             </option>
           ))}
         </select>
