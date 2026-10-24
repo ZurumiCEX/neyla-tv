@@ -91,3 +91,84 @@ class ChatUserIp(models.Model):
 
     def __str__(self) -> str:
         return f"userip:{self.user_id}@{self.channel_id}={self.ip}"
+
+
+class ChannelBannedWord(models.Model):
+    """Mot ou expression interdit dans le chat d'une chaîne (en plus de la liste globale)."""
+
+    channel = models.ForeignKey(Channel, on_delete=models.CASCADE, related_name="banned_words")
+    word = models.CharField(max_length=60)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["word"]
+        constraints = [
+            models.UniqueConstraint(fields=["channel", "word"], name="uniq_channel_banned_word")
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.channel_id}:{self.word}"
+
+
+class ModAction(models.Model):
+    """Journal des actions de modération du chat (widget « Mod Actions »)."""
+
+    class Action(models.TextChoices):
+        BAN = "ban", "Ban"
+        TIMEOUT = "timeout", "Timeout"
+        UNBAN = "unban", "Unban"
+        SHADOW = "shadow", "Shadow ban"
+        UNSHADOW = "unshadow", "Fin du shadow ban"
+        IPBAN = "ipban", "Ban IP"
+        IPUNBAN = "ipunban", "Fin du ban IP"
+        DELETE = "delete", "Message supprimé"
+        SLOWMODE = "slowmode", "Slow mode"
+        AUTOMOD = "automod", "Message bloqué (auto)"
+        SETTINGS = "settings", "Réglages du chat"
+
+    channel = models.ForeignKey(Channel, on_delete=models.CASCADE, related_name="mod_actions")
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    target_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    action = models.CharField(max_length=12, choices=Action.choices)
+    duration_s = models.PositiveIntegerField(default=0)
+    detail = models.CharField(max_length=200, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["channel", "-created_at"], name="modaction_channel_idx")]
+
+    def __str__(self) -> str:
+        return f"{self.action}@{self.channel_id}"
+
+
+class UnbanRequest(models.Model):
+    """Demande de levée de ban envoyée par un spectateur banni."""
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "En attente"
+        APPROVED = "approved", "Acceptée"
+        DENIED = "denied", "Refusée"
+
+    channel = models.ForeignKey(Channel, on_delete=models.CASCADE, related_name="unban_requests")
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="unban_requests"
+    )
+    message = models.CharField(max_length=500)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
+    decided_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    decided_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["channel", "status"], name="unban_channel_status_idx")]
+
+    def __str__(self) -> str:
+        return f"unban:{self.user_id}@{self.channel_id}:{self.status}"

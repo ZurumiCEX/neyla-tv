@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import logging
 import time
+import unicodedata
 import uuid
 
 from channels.db import database_sync_to_async
@@ -11,7 +13,7 @@ from django.utils import timezone
 
 from channels_app.models import Channel
 
-from .models import ChatBan, ChatIpBan, ChatUserIp
+from .models import ChatBan, ChatIpBan, ChatUserIp, ModAction
 from .redis_store import (
     append_message,
     check_rate_limit,
@@ -25,6 +27,8 @@ from .redis_store import (
 CLOSE_AUTH_REQUIRED = 4001
 CLOSE_FORBIDDEN = 4403
 CLOSE_NOT_FOUND = 4404
+
+logger = logging.getLogger(__name__)
 
 MIN_INTERVAL_S = 1.5
 MAX_CONTENT_LEN = 500
@@ -144,6 +148,95 @@ def _flag_chat_bot(user_id: int, channel_id: int, reason: str) -> None:
         flag_chat_bot(user, channel, reason)
 
 
+# Rechargement des réglages du chat au plus toutes les N secondes par connexion.
+SETTINGS_TTL_S = 10
+
+
+@database_sync_to_async
+def _load_chat_settings(channel_id: int) -> dict:
+    """Réglages du chat + mots interdits de la chaîne (rechargés périodiquement)."""
+    from .models import ChannelBannedWord
+
+    row = (
+        Channel.objects.filter(pk=channel_id)
+        .values(
+            "chat_followers_only",
+            "chat_follow_min_minutes",
+            "chat_subscribers_only",
+            "chat_emotes_only",
+            "chat_slow_seconds",
+            "chat_min_account_age_days",
+            "automod",
+        )
+        .first()
+        or {}
+    )
+    row["banned_words"] = set(
+        ChannelBannedWord.objects.filter(channel_id=channel_id).values_list("word", flat=True)
+    )
+    return row
+
+
+@database_sync_to_async
+def _access_error(user, channel, conf: dict, is_subscriber: bool) -> str | None:
+    """Raison du refus d'écrire (followers / abonnés seulement, âge du compte), ou None."""
+    now = timezone.now()
+    if conf.get("chat_subscribers_only") and not is_subscriber:
+        return "Chat réservé aux abonnés."
+    if conf.get("chat_followers_only"):
+        from social.models import Follow
+
+        follow = Follow.objects.filter(follower=user, followee_id=channel.user_id).first()
+        if follow is None:
+            return "Chat réservé aux followers : suis la chaîne pour écrire."
+        minutes = conf.get("chat_follow_min_minutes") or 0
+        if minutes and follow.created_at > now - timezone.timedelta(minutes=minutes):
+            return f"Chat réservé aux followers depuis au moins {minutes} min."
+    days = conf.get("chat_min_account_age_days") or 0
+    if days and user.date_joined > now - timezone.timedelta(days=days):
+        return f"Ton compte doit avoir au moins {days} jour(s) pour écrire ici."
+    return None
+
+
+def _only_emotes(text: str) -> bool:
+    """Vrai si le message ne contient que des emojis (et des espaces)."""
+    return all(
+        ch.isspace() or ch in "\u200d\ufe0f" or unicodedata.category(ch) in ("So", "Sk")
+        for ch in text
+    )
+
+
+@database_sync_to_async
+def _log_mod(channel_id, actor_id, action, target_id=None, duration_s=0, detail="") -> None:
+    """Journal de modération (widget « Mod Actions ») + journal d'audit global."""
+    ModAction.objects.create(
+        channel_id=channel_id,
+        actor_id=actor_id,
+        target_user_id=target_id,
+        action=action,
+        duration_s=int(duration_s or 0),
+        detail=(detail or "")[:200],
+    )
+    if action != ModAction.Action.AUTOMOD:
+        try:
+            from accounts.models import User
+            from audit.services import record
+
+            record(
+                User(pk=actor_id) if actor_id else None,
+                f"chat.{action}",
+                target=Channel(pk=channel_id),
+                meta={"target_user": target_id, "detail": detail},
+            )
+        except Exception:  # noqa: BLE001 - l'audit ne bloque jamais la modération
+            logger.warning("audit chat.%s non enregistré", action)
+
+
+@database_sync_to_async
+def _save_slow_seconds(channel_id: int, seconds: int) -> None:
+    Channel.objects.filter(pk=channel_id).update(chat_slow_seconds=max(0, int(seconds)))
+
+
 @database_sync_to_async
 def _chat_badges(user_id: int, channel_id: int) -> dict:
     """Niveau (Aura dépensée à vie) + badge de don pour cette chaîne, à jour."""
@@ -182,6 +275,8 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
     client_ip: str | None = None
     _msg_log: list | None = None
     _bot_flagged: bool = False
+    _conf: dict | None = None
+    _conf_at: float = 0.0
 
     async def connect(self) -> None:
         self._msg_log = []
@@ -233,13 +328,17 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         await self.accept()
         self.banned_words = await _load_banned_words()
         self.subscriber_ids = await _load_subscriber_ids(self.channel_obj)
-        count = await incr_viewers(self.channel_obj.id)
-        await _record_peak(self.channel_obj.id, count)
+        # Le streamer (dashboard, page de sa chaîne) ne compte pas comme spectateur.
+        self._counted = not is_streamer
+        if self._counted:
+            count = await incr_viewers(self.channel_obj.id)
+            await _record_peak(self.channel_obj.id, count)
 
     async def disconnect(self, code: int) -> None:  # noqa: ARG002
         if self.group_name and self.channel_obj is not None:
             await self.channel_layer.group_discard(self.group_name, self.channel_name)
-            await decr_viewers(self.channel_obj.id)
+            if getattr(self, "_counted", False):
+                await decr_viewers(self.channel_obj.id)
 
     async def receive_json(self, content, **kwargs):  # noqa: ARG002
         user = self.scope.get("user")
@@ -263,13 +362,48 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 )
             return
 
-        # Filtre mots interdits (chargé à la connexion).
-        if self.banned_words and any(w in text.lower() for w in self.banned_words):
+        conf = await self._chat_settings()
+        # Le streamer et l'équipe Neyla ne sont pas soumis aux restrictions du chat.
+        exempt = is_streamer or getattr(user, "role", "") in ("admin", "moderator")
+        if not exempt:
+            denied = await _access_error(
+                user, self.channel_obj, conf, user.pk in self.subscriber_ids
+            )
+            if denied:
+                await self.send_json({"type": "error", "detail": denied})
+                return
+            if conf.get("chat_emotes_only") and not _only_emotes(text):
+                await self.send_json(
+                    {"type": "error", "detail": "Mode emotes : uniquement des emojis."}
+                )
+                return
+
+        # Mots interdits : liste globale (connexion) + liste de la chaîne (réglages).
+        lowered = text.lower()
+        words = self.banned_words | conf.get("banned_words", set())
+        if not is_streamer and words and any(w in lowered for w in words):
             await self.send_json({"type": "error", "detail": "Message bloqué (terme interdit)."})
             return
 
+        if not exempt:
+            from safety.automod import check as automod_check
+
+            blocked = automod_check(text, conf.get("automod"))
+            if blocked:
+                await self.send_json(
+                    {"type": "error", "detail": "Message bloqué par la modération automatique."}
+                )
+                await _log_mod(
+                    self.channel_obj.id,
+                    None,
+                    ModAction.Action.AUTOMOD,
+                    target_id=user.pk,
+                    detail=f"{blocked} : {text[:120]}",
+                )
+                return
+
         # Rate limit personnel (avec slow-mode si activé).
-        slow = await get_slowmode(self.channel_obj.id)
+        slow = max(await get_slowmode(self.channel_obj.id), conf.get("chat_slow_seconds") or 0)
         interval = max(slow, MIN_INTERVAL_S)
         if not await check_rate_limit(self.channel_obj.id, user.pk, interval):
             await self.send_json({"type": "error", "detail": "Tu vas trop vite."})
@@ -305,6 +439,13 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             if suspect:
                 self._bot_flagged = True
                 await _flag_chat_bot(user.pk, self.channel_obj.id, reason)
+
+    async def _chat_settings(self) -> dict:
+        now = time.monotonic()
+        if self._conf is None or now - self._conf_at > SETTINGS_TTL_S:
+            self._conf = await _load_chat_settings(self.channel_obj.id)
+            self._conf_at = now
+        return self._conf
 
     # Handler du group_send.
     async def chat_message(self, event):
@@ -345,6 +486,11 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             except ValueError:
                 return await self.send_json({"type": "error", "detail": "/slowmode <secondes>"})
             await set_slowmode(self.channel_obj.id, seconds)
+            await _save_slow_seconds(self.channel_obj.id, seconds)
+            self._conf = None
+            await _log_mod(
+                self.channel_obj.id, streamer.pk, ModAction.Action.SLOWMODE, duration_s=seconds
+            )
             return await self.send_json({"type": "system", "detail": f"Slow-mode → {seconds}s"})
 
         if cmd in ("/timeout", "/ban") and len(parts) >= 2:
@@ -366,6 +512,14 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 until = None
                 reason = "ban permanent"
             await _upsert_ban(self.channel_obj, target, until, streamer, reason=reason)
+            await _log_mod(
+                self.channel_obj.id,
+                streamer.pk,
+                ModAction.Action.TIMEOUT if cmd == "/timeout" else ModAction.Action.BAN,
+                target_id=target.pk,
+                duration_s=minutes * 60 if cmd == "/timeout" else 0,
+                detail=reason,
+            )
             await self.channel_layer.group_send(
                 self.group_name,
                 {"type": "chat.kick", "user_id": target.pk, "reason": reason},
@@ -392,6 +546,12 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 self.group_name,
                 {"type": "chat.shadow", "user_id": target.pk, "on": cmd == "/shadow"},
             )
+            await _log_mod(
+                self.channel_obj.id,
+                streamer.pk,
+                ModAction.Action.SHADOW if cmd == "/shadow" else ModAction.Action.UNSHADOW,
+                target_id=target.pk,
+            )
             verb = "shadow-banni" if cmd == "/shadow" else "réintégré"
             return await self.send_json({"type": "system", "detail": f"@{target.username} {verb}."})
 
@@ -417,6 +577,14 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             # Ban du compte ET de l'IP, puis fermeture des connexions concernées.
             await _upsert_ban(self.channel_obj, target, until, streamer, reason=reason)
             await _upsert_ip_ban(self.channel_obj, ip, until, streamer, reason=reason)
+            await _log_mod(
+                self.channel_obj.id,
+                streamer.pk,
+                ModAction.Action.IPBAN,
+                target_id=target.pk,
+                duration_s=minutes * 60,
+                detail=reason,
+            )
             await self.channel_layer.group_send(
                 self.group_name,
                 {"type": "chat.kick", "user_id": target.pk, "reason": reason},
@@ -430,12 +598,16 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
         if cmd == "/ipunban" and len(parts) >= 2:
             removed = await _delete_ip_ban(self.channel_obj.id, parts[1])
+            await _log_mod(
+                self.channel_obj.id, streamer.pk, ModAction.Action.IPUNBAN, detail=parts[1]
+            )
             return await self.send_json(
                 {"type": "system", "detail": f"IP {parts[1]} : {removed} ban(s) levé(s)."}
             )
 
         if cmd == "/delete" and len(parts) >= 2:
             await delete_message(self.channel_obj.id, parts[1])
+            await _log_mod(self.channel_obj.id, streamer.pk, ModAction.Action.DELETE)
             await self.channel_layer.group_send(
                 self.group_name, {"type": "chat.delete", "id": parts[1]}
             )
@@ -446,6 +618,9 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             if target is None:
                 return
             await _delete_ban(self.channel_obj.id, target.pk)
+            await _log_mod(
+                self.channel_obj.id, streamer.pk, ModAction.Action.UNBAN, target_id=target.pk
+            )
             await self.channel_layer.group_send(
                 self.group_name,
                 {"type": "chat.shadow", "user_id": target.pk, "on": False},

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 
+from django.utils import timezone
 from django_ratelimit.decorators import ratelimit
 from rest_framework import status
 from rest_framework.decorators import (
@@ -66,25 +67,36 @@ def _reconcile_provisioning(channel: Channel, user) -> None:
         logger.exception("reconcile provisioning failed for user %s", user.pk)
 
 
+def _my_channel_payload(channel, user) -> dict:
+    """Chaîne du propriétaire + compteurs (identique en GET, PATCH et rotation de clé)."""
+    from chat.redis_store import get_viewers_count
+    from social.models import Follow
+    from subscriptions.models import Subscription
+
+    data = MyChannelSerializer(channel).data
+    data["follower_count"] = Follow.objects.filter(followee=user).count()
+    data["viewers"] = get_viewers_count(channel.id)
+    data["active_subs"] = Subscription.objects.filter(
+        channel=channel,
+        status=Subscription.Status.ACTIVE,
+        current_period_end__gt=timezone.now(),
+    ).count()
+    return data
+
+
 @api_view(["GET", "PATCH"])
 @permission_classes([IsAuthenticated])
 def my_channel(request: Request) -> Response:
     channel = _get_my_channel(request.user)
     if request.method == "GET":
-        from chat.redis_store import get_viewers_count
-        from social.models import Follow
-
         _reconcile_provisioning(channel, request.user)
         _ensure_overlay_token(channel)
-        data = MyChannelSerializer(channel).data
-        data["follower_count"] = Follow.objects.filter(followee=request.user).count()
-        data["viewers"] = get_viewers_count(channel.id)
-        return Response(data)
+        return Response(_my_channel_payload(channel, request.user))
     serializer = MyChannelSerializer(channel, data=request.data, partial=True)
     serializer.is_valid(raise_exception=True)
     serializer.save()
     _scan_channel_text(channel)
-    return Response(serializer.data)
+    return Response(_my_channel_payload(channel, request.user))
 
 
 def _scan_channel_text(channel) -> None:
@@ -153,16 +165,62 @@ def my_activity(request: Request) -> Response:
                 "created_at": tp.created_at,
             }
         )
-    for sub in (
-        Subscription.objects.filter(channel=channel)
-        .select_related("subscriber")
+    # Abonnements : chaque paiement reçu (nouvel abo, renouvellement, abo offert).
+    from payments.models import LedgerEntry
+    from subscriptions.models import SubscriptionGift
+
+    gifts = list(
+        SubscriptionGift.objects.filter(channel=channel)
+        .select_related("gifter", "recipient")
         .order_by("-created_at")[:limit]
-    ):
+    )
+    for g in gifts:
         events.append(
             {
-                "type": "subscribe",
+                "type": "gift",
+                "actor": g.gifter.display_name or g.gifter.username,
+                "target": g.recipient.display_name or g.recipient.username,
+                "amount": g.price_aura,
+                "created_at": g.created_at,
+            }
+        )
+    entries = list(
+        LedgerEntry.objects.filter(
+            wallet__user=request.user,
+            kind=LedgerEntry.Kind.SUB_EARNED,
+            related_type="subscription",
+        ).order_by("-created_at")[: limit * 2]
+    )
+    subs = {
+        s.id: s
+        for s in Subscription.objects.filter(
+            id__in={e.related_id for e in entries if e.related_id}
+        ).select_related("subscriber")
+    }
+    first_payment = {}
+    for e in LedgerEntry.objects.filter(
+        wallet__user=request.user,
+        kind=LedgerEntry.Kind.SUB_EARNED,
+        related_type="subscription",
+        related_id__in=list(subs),
+    ).order_by("created_at"):
+        first_payment.setdefault(e.related_id, e.id)
+    gift_times = [(g.recipient_id, g.created_at) for g in gifts]
+    for e in entries:
+        sub = subs.get(e.related_id)
+        if sub is None:
+            continue
+        # Un paiement d'abo offert apparaît déjà en « gift ».
+        if any(
+            rid == sub.subscriber_id and abs((ts - e.created_at).total_seconds()) < 5
+            for rid, ts in gift_times
+        ):
+            continue
+        events.append(
+            {
+                "type": "subscribe" if first_payment.get(sub.id) == e.id else "resub",
                 "actor": sub.subscriber.display_name or sub.subscriber.username,
-                "created_at": sub.created_at,
+                "created_at": e.created_at,
             }
         )
 
@@ -235,7 +293,7 @@ def rotate_key(request: Request) -> Response:  # noqa: ARG001
         )
     rotate_stream_key(channel)
     channel.refresh_from_db()
-    return Response(MyChannelSerializer(channel).data)
+    return Response(_my_channel_payload(channel, request.user))
 
 
 @api_view(["GET"])
@@ -328,6 +386,7 @@ def public_channel(request: Request, slug: str) -> Response:  # noqa: ARG001
     data = PublicChannelSerializer(channel).data
     data["follower_count"] = Follow.objects.filter(followee=channel.user).count()
     data["is_verified"] = channel.is_provisioned
+    data["show_viewer_count"] = channel.show_viewer_count
     data["goal"] = (
         {
             "title": channel.goal_title,

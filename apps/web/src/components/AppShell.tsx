@@ -17,7 +17,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <AnnouncementBar />
       <EmailVerifyBanner />
       <div className="flex">
-        <Sidebar />
+        {/* Le dashboard streamer a sa propre navigation latérale. */}
+        {!pathname?.startsWith("/dashboard") && <Sidebar />}
         <div className="flex min-h-screen min-w-0 flex-1 flex-col">
           <div className="flex-1">{children}</div>
           <Footer />

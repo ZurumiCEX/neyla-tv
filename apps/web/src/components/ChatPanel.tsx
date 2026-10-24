@@ -71,15 +71,18 @@ type Props = {
   /** `sidebar` : colonne pleine hauteur de la page chaîne ; `card` : bloc encadré. */
   variant?: "card" | "sidebar";
   onCollapse?: () => void;
+  /** Masque l'en-tête « Chat » (déjà fourni par le panneau parent du dashboard). */
+  hideHeader?: boolean;
 };
 
-export function ChatPanel({ slug, isLive, variant = "card", onCollapse }: Props) {
+export function ChatPanel({ slug, isLive, variant = "card", onCollapse, hideHeader }: Props) {
   const t = useT();
   const { user, accessToken } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [system, setSystem] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [connected, setConnected] = useState(false);
+  const [banned, setBanned] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
 
@@ -102,7 +105,11 @@ export function ChatPanel({ slug, isLive, variant = "card", onCollapse }: Props)
     wsRef.current = ws;
 
     ws.onopen = () => setConnected(true);
-    ws.onclose = () => setConnected(false);
+    ws.onclose = (e) => {
+      setConnected(false);
+      // 4403 : banni de ce chat → proposer une demande de déban.
+      if (e.code === 4403) setBanned(true);
+    };
     ws.onerror = () => setConnected(false);
     ws.onmessage = (e) => {
       try {
@@ -115,6 +122,7 @@ export function ChatPanel({ slug, isLive, variant = "card", onCollapse }: Props)
         } else if (data.type === "delete") {
           setMessages((prev) => prev.filter((m) => m.id !== data.id));
         } else {
+          if (data.type === "kicked") setBanned(true);
           setSystem(data.detail);
         }
       } catch {
@@ -174,7 +182,9 @@ export function ChatPanel({ slug, isLive, variant = "card", onCollapse }: Props)
       }`}
       aria-label={t("chat.title")}
     >
-      <header className="relative flex h-11 shrink-0 items-center justify-center border-b border-neutral-800 px-3 text-sm">
+      <header
+        className={`${hideHeader ? "hidden" : "flex"} relative h-11 shrink-0 items-center justify-center border-b border-neutral-800 px-3 text-sm`}
+      >
         {onCollapse && (
           <button
             type="button"
@@ -274,36 +284,95 @@ export function ChatPanel({ slug, isLive, variant = "card", onCollapse }: Props)
         </div>
       )}
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          send();
-        }}
-        className="shrink-0 space-y-2 border-t border-neutral-800 p-3"
-      >
-        <div className="flex items-center gap-1 rounded-lg border border-neutral-700 bg-neutral-900 pl-3 pr-1 focus-within:border-emerald-400">
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={placeholder}
-            disabled={disabled}
+      {banned && user && !isStreamer ? (
+        <UnbanRequestBox slug={slug} />
+      ) : (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            send();
+          }}
+          className="shrink-0 space-y-2 border-t border-neutral-800 p-3"
+        >
+          <div className="flex items-center gap-1 rounded-lg border border-neutral-700 bg-neutral-900 pl-3 pr-1 focus-within:border-emerald-400">
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder={placeholder}
+              disabled={disabled}
+              maxLength={500}
+              className="h-10 min-w-0 flex-1 bg-transparent text-sm text-neutral-100 outline-none placeholder:text-neutral-500 disabled:opacity-50"
+            />
+            <EmojiPicker onSelect={addEmoji} disabled={disabled} />
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <ChatAuraFooter />
+            <button
+              type="submit"
+              disabled={disabled || !input.trim()}
+              className="rounded-md bg-emerald-500 px-4 py-1.5 text-sm font-bold text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
+            >
+              {t("chat.send")}
+            </button>
+          </div>
+        </form>
+      )}
+    </section>
+  );
+}
+
+/** Spectateur banni : état de sa demande de déban, ou formulaire pour l'envoyer. */
+function UnbanRequestBox({ slug }: { slug: string }) {
+  const t = useT();
+  const { authFetch } = useAuth();
+  const [state, setState] = useState<{ banned: boolean; pending: boolean } | null>(null);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const url = `/api/c/${slug}/unban-request`;
+
+  useEffect(() => {
+    authFetch<{ banned: boolean; pending: boolean }>(url)
+      .then(setState)
+      .catch(() => setState({ banned: true, pending: false }));
+  }, [authFetch, url]);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    try {
+      setState(await authFetch(url, { method: "POST", body: JSON.stringify({ message }) }));
+    } catch (err) {
+      const ex = err as { data?: { detail?: string } };
+      setError(ex.data?.detail ?? t("chat.unban.error"));
+    }
+  }
+
+  return (
+    <div className="shrink-0 space-y-2 border-t border-neutral-800 p-3 text-sm">
+      <p className="font-semibold text-red-300">{t("chat.unban.banned")}</p>
+      {state?.pending ? (
+        <p className="text-neutral-400">{t("chat.unban.pending")}</p>
+      ) : (
+        <form onSubmit={submit} className="space-y-2">
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            rows={2}
             maxLength={500}
-            className="h-10 min-w-0 flex-1 bg-transparent text-sm text-neutral-100 outline-none placeholder:text-neutral-500 disabled:opacity-50"
+            placeholder={t("chat.unban.placeholder")}
+            className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-emerald-400"
           />
-          <EmojiPicker onSelect={addEmoji} disabled={disabled} />
-        </div>
-        <div className="flex items-center justify-between gap-2">
-          <ChatAuraFooter />
+          {error && <p className="text-xs text-red-300">{error}</p>}
           <button
             type="submit"
-            disabled={disabled || !input.trim()}
-            className="rounded-md bg-emerald-500 px-4 py-1.5 text-sm font-bold text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
+            disabled={message.trim().length < 10}
+            className="w-full rounded-md bg-emerald-500 py-1.5 text-sm font-bold text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
           >
-            {t("chat.send")}
+            {t("chat.unban.send")}
           </button>
-        </div>
-      </form>
-    </section>
+        </form>
+      )}
+    </div>
   );
 }
 

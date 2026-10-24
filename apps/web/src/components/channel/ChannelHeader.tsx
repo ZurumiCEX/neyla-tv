@@ -28,6 +28,8 @@ type Props = {
   category: { slug: string; name: string } | null;
   tags: string[];
   achievements: number;
+  /** Le streamer peut masquer le nombre de spectateurs (dashboard → Affichage). */
+  showViewers?: boolean;
 };
 
 /** Bandeau sous le lecteur : identité, titre, catégorie, actions et audience. */
@@ -100,7 +102,7 @@ export function ChannelHeader(props: Props) {
             <TipButton channelSlug={props.slug} />
           </div>
           <div className="flex items-center gap-3 text-sm sm:justify-end">
-            {isLive && viewers !== null && (
+            {isLive && viewers !== null && props.showViewers !== false && (
               <span className="flex items-center gap-1.5 font-semibold text-neutral-100">
                 <UserIcon />
                 <span className="tabular-nums">{num(viewers)}</span>
