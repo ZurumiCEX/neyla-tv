@@ -22,7 +22,7 @@ Lives et vidéos courtes « Instant », soutien en **Aura** (tips, abonnements),
 ![Bunny Stream](https://img.shields.io/badge/Vid%C3%A9o-Bunny%20Stream-FFAA00)
 ![DigitalOcean](https://img.shields.io/badge/DigitalOcean-App%20Platform-0080FF?logo=digitalocean&logoColor=white)
 
-[Roadmap](ROADMAP.md) · [API](docs/api.md) · [Modules](docs/modules.md) · [ADR](docs/adr/) · [Déploiement](docs/runbooks/deploy-app-platform.md) · [Bunny Stream](docs/runbooks/bunny-stream-setup.md)
+[Roadmap](ROADMAP.md) · [API](docs/api.md) · [Modules](docs/modules.md) · [ADR](docs/adr/) · [Déploiement](docs/runbooks/deploy-app-platform.md) · [Fly.io](docs/runbooks/deploy-fly.md) · [Bunny Stream](docs/runbooks/bunny-stream-setup.md)
 
 </div>
 
@@ -152,6 +152,10 @@ docs/    # ADR (001 → 010), runbooks, api.md, modules.md
 [`.do/app.yaml`](.do/app.yaml) décrit l'API, le front, les workers Celery, le job
 de migration, Postgres et Redis managés : `doctl apps create --spec .do/app.yaml`.
 Guide : [`deploy-app-platform.md`](docs/runbooks/deploy-app-platform.md).
+
+**Option C — Fly.io + Neon + Upstash** (API, workers Celery, Postgres et Redis
+gérés) avec le front sur Vercel : [`fly.toml`](fly.toml) ·
+[runbook](docs/runbooks/deploy-fly.md).
 
 **Option B — Droplet + Docker Compose**, derrière Cloudflare (TLS + WAF) :
 [ADR 007](docs/adr/007-prod-deployment.md) · [runbook](docs/runbooks/deploy.md).

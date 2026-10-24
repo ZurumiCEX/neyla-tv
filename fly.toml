@@ -1,0 +1,70 @@
+# API Django (HTTP + WebSocket du chat) + workers Celery sur Fly.io.
+# Postgres : Neon (DATABASE_URL) · Redis : Upstash (REDIS_URL…), en secrets Fly.
+# Guide complet : docs/runbooks/deploy-fly.md
+#
+# ⚠ Remplace « neyla-api » par le nom de ton app Fly (ici ET dans
+# DJANGO_ALLOWED_HOSTS / l'en-tête Host du health check).
+
+app = "neyla-api"
+primary_region = "cdg" # Paris : la région Fly la plus proche de l'Afrique de l'Ouest
+
+[build]
+  dockerfile = "infra/docker/api.Dockerfile"
+  build-target = "prod"
+
+# Avant chaque déploiement : migrations, puis comptes démo si SEED_DEMO=1.
+# seed_demo sans --flush est idempotent : il recrée les comptes manquants et
+# remet le mot de passe démo, sans rien effacer.
+[deploy]
+  release_command = "sh -c 'python manage.py migrate --noinput && if [ \"$SEED_DEMO\" = \"1\" ]; then python manage.py seed_demo; fi'"
+
+[env]
+  DJANGO_SETTINGS_MODULE = "config.settings.prod"
+  DJANGO_ALLOWED_HOSTS = "neyla-api.fly.dev"
+  # Front (Vercel) et API (Fly) sur deux domaines : cookie de refresh cross-site.
+  REFRESH_COOKIE_SAMESITE = "None"
+  # Démo : paiements simulés. Passer à "0" pour encaisser réellement.
+  PAYMENTS_PROVIDER = "fake"
+  PAYMENTS_ALLOW_FAKE = "1"
+  STREAM_STATUS_POLL_SECONDS = "20"
+
+# Trois groupes de machines dans une seule app.
+[processes]
+  app = "daphne -b 0.0.0.0 -p 8000 --access-log - config.asgi:application"
+  worker = "celery -A config worker -l info --pool=solo"
+  beat = "celery -A config beat -l info"
+
+[http_service]
+  processes = ["app"]
+  internal_port = 8000
+  force_https = true
+  # Le chat (WebSocket) a besoin d'au moins une machine allumée en permanence.
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = "connections"
+    soft_limit = 200
+    hard_limit = 250
+
+  # /api/livez ne dépend ni de la DB ni de Redis : une panne Neon/Upstash ne
+  # redémarre pas la machine en boucle (la santé complète est sur /api/healthz).
+  [[http_service.checks]]
+    grace_period = "20s"
+    interval = "30s"
+    method = "GET"
+    path = "/api/livez"
+    timeout = "5s"
+    [http_service.checks.headers]
+      Host = "neyla-api.fly.dev"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+  processes = ["app", "worker"]
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
+  processes = ["beat"]

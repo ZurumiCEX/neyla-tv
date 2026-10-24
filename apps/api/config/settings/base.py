@@ -112,6 +112,13 @@ DATABASES = {
         "OPTIONS": {"sslmode": env("POSTGRES_SSLMODE", default="prefer")},
     }
 }
+# Postgres managé fourni sous forme d'URL (Neon, Fly…) : prioritaire sur POSTGRES_*.
+# Connexions réutilisées mais vérifiées, car Neon coupe les connexions inactives.
+if env("DATABASE_URL", default=""):
+    DATABASES["default"] = env.db_url("DATABASE_URL")
+    DATABASES["default"].setdefault("OPTIONS", {}).setdefault("sslmode", "require")
+    DATABASES["default"]["CONN_MAX_AGE"] = env.int("DATABASE_CONN_MAX_AGE", default=60)
+    DATABASES["default"]["CONN_HEALTH_CHECKS"] = True
 
 AUTH_USER_MODEL = "accounts.User"
 
@@ -181,7 +188,9 @@ REFRESH_COOKIE_NAME = "neyla_refresh"
 REFRESH_COOKIE_MAX_AGE = int(SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"].total_seconds())
 # Cookie « Secure » en prod (HTTPS) ; surchargé en dev (HTTP). Configurable.
 REFRESH_COOKIE_SECURE = env.bool("REFRESH_COOKIE_SECURE", default=not DEBUG)
-REFRESH_COOKIE_SAMESITE = "Lax"
+# "None" quand le front et l'API sont sur des domaines différents (Vercel + Fly.io) :
+# sinon le navigateur n'envoie pas le cookie et la session est perdue au rechargement.
+REFRESH_COOKIE_SAMESITE = env("REFRESH_COOKIE_SAMESITE", default="Lax")
 REFRESH_COOKIE_PATH = "/api/auth/"
 
 # --- Emails ---
@@ -214,6 +223,8 @@ CORS_ALLOWED_ORIGINS = env.list(
 # Front et API sur des origines distinctes (dev :3000/:8000, Vercel + API) :
 # le cookie de refresh exige les credentials, et l'en-tête d'idempotence des
 # paiements doit être autorisé, sinon le navigateur bloque connexion et tips.
+# Origines variables (previews Vercel) : ex. ^https://neyla-tv-.*\.vercel\.app$
+CORS_ALLOWED_ORIGIN_REGEXES = env.list("DJANGO_CORS_ALLOWED_ORIGIN_REGEXES", default=[])
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = (*default_headers, "idempotency-key")
 

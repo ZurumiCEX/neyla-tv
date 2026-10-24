@@ -4,8 +4,9 @@ Sans cela, `REMOTE_ADDR` vaut l'adresse du load balancer pour TOUS les
 visiteurs : les limites de débit par IP (inscription, connexion…) se
 déclenchent alors pour tout le site à la fois.
 
-Ordre de confiance : `CF-Connecting-IP` (Cloudflare), `DO-Connecting-IP`
-(App Platform), premier élément de `X-Forwarded-For`, puis `REMOTE_ADDR`.
+Ordre de confiance : `CF-Connecting-IP` (Cloudflare), `Fly-Client-IP`
+(Fly.io), `DO-Connecting-IP` (App Platform), premier élément de
+`X-Forwarded-For`, puis `REMOTE_ADDR`.
 Sert aussi de `RATELIMIT_IP_META_KEY` pour django-ratelimit.
 """
 
@@ -13,7 +14,7 @@ from __future__ import annotations
 
 import ipaddress
 
-_HEADERS = ("HTTP_CF_CONNECTING_IP", "HTTP_DO_CONNECTING_IP")
+_HEADERS = ("HTTP_CF_CONNECTING_IP", "HTTP_FLY_CLIENT_IP", "HTTP_DO_CONNECTING_IP")
 
 
 def _valid(value: str) -> str | None:
