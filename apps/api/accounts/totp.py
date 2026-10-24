@@ -33,18 +33,23 @@ def _hotp(secret: str, counter: int) -> str:
     return str(code).zfill(DIGITS)
 
 
-def verify(secret: str, code: str, window: int = 1, now: int | None = None) -> bool:
-    """Vérifie un code sur une fenêtre ± `window` périodes (tolérance d'horloge)."""
+def match_step(secret: str, code: str, window: int = 1, now: int | None = None) -> int | None:
+    """Période (compteur) à laquelle correspond le code, ou None s'il est invalide."""
     if not secret or not code:
-        return False
+        return None
     code = code.strip().replace(" ", "")
     if not code.isdigit():
-        return False
+        return None
     counter = int((now if now is not None else time.time()) // PERIOD)
     for drift in range(-window, window + 1):
         if hmac.compare_digest(_hotp(secret, counter + drift), code):
-            return True
-    return False
+            return counter + drift
+    return None
+
+
+def verify(secret: str, code: str, window: int = 1, now: int | None = None) -> bool:
+    """Vérifie un code sur une fenêtre ± `window` périodes (tolérance d'horloge)."""
+    return match_step(secret, code, window, now) is not None
 
 
 def provisioning_uri(secret: str, account_name: str, issuer: str = "Neyla TV") -> str:

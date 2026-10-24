@@ -53,6 +53,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const visibleTabs = TABS.filter((tab) => tab.roles.includes(effectiveRole));
 
+  if (user?.strong_auth_required) {
+    return (
+      <div className="mx-auto max-w-xl px-4 py-12 text-center">
+        <h1 className="mb-2 text-2xl font-bold">{t("admin.title")}</h1>
+        <p className="mb-5 text-neutral-300">{t("security.staffRequired")}</p>
+        <Link
+          href="/settings"
+          className="inline-block rounded-lg bg-emerald-500 px-5 py-2.5 text-sm font-bold text-neutral-950 hover:bg-emerald-400"
+        >
+          {t("security.goSecure")}
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-6">
       <h1 className="mb-4 text-2xl font-bold">{t("admin.title")}</h1>
@@ -64,9 +79,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               key={tab.href}
               href={tab.href}
               className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${
-                active
-                  ? "bg-emerald-500 text-neutral-950"
-                  : "text-neutral-300 hover:bg-neutral-800"
+                active ? "bg-emerald-500 text-neutral-950" : "text-neutral-300 hover:bg-neutral-800"
               }`}
             >
               {t(tab.labelKey)}

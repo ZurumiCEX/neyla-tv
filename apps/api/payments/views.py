@@ -181,6 +181,15 @@ def withdrawal_start(request: Request) -> Response:
 def withdrawal_confirm(request: Request) -> Response:
     serializer = WithdrawalConfirmSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
+    from accounts import two_factor
+
+    if two_factor.is_enabled(request.user) and not two_factor.verify(
+        request.user, str(request.data.get("totp") or "")
+    ):
+        return Response(
+            {"detail": "Code de double authentification requis ou invalide.", "code": "totp"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
     try:
         obj = services.confirm_withdrawal(request.user, serializer.validated_data["code"])
     except services.PaymentError as exc:

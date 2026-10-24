@@ -256,14 +256,9 @@ def _load_subscriber_ids(channel) -> set[int]:
 
 def _client_ip(scope) -> str | None:
     """IP réelle du client derrière les proxys (même règle que config.client_ip)."""
-    headers = {name.decode().lower(): value.decode() for name, value in scope.get("headers", [])}
-    for header in ("cf-connecting-ip", "do-connecting-ip"):
-        if headers.get(header):
-            return headers[header].strip() or None
-    if headers.get("x-forwarded-for"):
-        return headers["x-forwarded-for"].split(",")[0].strip() or None
-    client = scope.get("client")
-    return client[0] if client else None
+    from config.client_ip import client_ip_from_scope
+
+    return client_ip_from_scope(scope)
 
 
 class ChatConsumer(AsyncJsonWebsocketConsumer):

@@ -10,7 +10,7 @@ from django.template.loader import render_to_string
 from .models import User
 from .tokens import (
     EMAIL_VERIFY_PURPOSE,
-    PASSWORD_RESET_PURPOSE,
+    make_reset_token,
     make_token,
 )
 
@@ -38,7 +38,7 @@ def send_password_reset(user_id: int) -> None:
     user = User.objects.filter(pk=user_id).first()
     if user is None:
         return
-    token = make_token(user.pk, PASSWORD_RESET_PURPOSE)
+    token = make_reset_token(user)
     body = render_to_string(
         "accounts/emails/password_reset.txt",
         {"user": user, "token": token, "frontend_url": settings.FRONTEND_URL},

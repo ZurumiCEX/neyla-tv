@@ -14,8 +14,8 @@ from accounts.services import (
 )
 from accounts.tokens import (
     EMAIL_VERIFY_PURPOSE,
-    PASSWORD_RESET_PURPOSE,
     InvalidToken,
+    make_reset_token,
     make_token,
 )
 
@@ -108,7 +108,7 @@ def test_verify_email_with_bad_token_rejected():
 
 def test_reset_password_changes_hash():
     user = UserFactory(password="old-password-12345")
-    token = make_token(user.pk, PASSWORD_RESET_PURPOSE)
+    token = make_reset_token(user)
     reset_password_with_token(token, "new-password-67890")
     user.refresh_from_db()
     assert user.check_password("new-password-67890")
@@ -117,6 +117,6 @@ def test_reset_password_changes_hash():
 
 def test_reset_password_rejects_weak():
     user = UserFactory()
-    token = make_token(user.pk, PASSWORD_RESET_PURPOSE)
+    token = make_reset_token(user)
     with pytest.raises(ValidationError):
         reset_password_with_token(token, "short")

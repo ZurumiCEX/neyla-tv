@@ -71,12 +71,21 @@ fly secrets set \
   DJANGO_CORS_ALLOWED_ORIGIN_REGEXES='^https://neyla-tv-.*\.vercel\.app$' \
   DJANGO_CSRF_TRUSTED_ORIGINS="https://neyla-api.fly.dev" \
   FRONTEND_URL="https://<prod>.vercel.app" \
+  WEBAUTHN_RP_ID="<prod>.vercel.app" \
+  WEBAUTHN_ORIGINS="https://<prod>.vercel.app" \
   SEED_DEMO=1
 ```
 
 - `DJANGO_CORS_ALLOWED_ORIGIN_REGEXES` autorise toutes les URL de preview
   Vercel. Adapte le préfixe (`neyla-tv-`) au nom de ton projet Vercel.
 - `SEED_DEMO=1` crée les comptes démo à chaque déploiement, sans rien effacer.
+- `WEBAUTHN_RP_ID` / `WEBAUTHN_ORIGINS` : domaine **du front** pour les passkeys.
+  Une passkey créée sur un domaine ne fonctionne que sur ce domaine : les
+  previews Vercel (autres domaines) ne peuvent pas les utiliser, c'est normal.
+- `REQUIRE_STAFF_2FA` (dans `fly.toml`, `0` pour la démo) : à passer à `1` en
+  production réelle. Les comptes admin / modo / support devront alors activer
+  la 2FA ou une passkey (**Paramètres → Authentification**) avant d'ouvrir la
+  console.
 
 Optionnel, mêmes noms que dans [`.env.example`](../../.env.example) :
 

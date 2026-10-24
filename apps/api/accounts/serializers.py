@@ -99,11 +99,23 @@ class MeSerializer(serializers.ModelSerializer):
     is_email_verified = serializers.BooleanField(read_only=True)
     is_streamer = serializers.SerializerMethodField()
     two_factor_enabled = serializers.SerializerMethodField()
+    strong_auth_required = serializers.SerializerMethodField()
     social_links = serializers.JSONField(required=False)
 
     def get_two_factor_enabled(self, obj) -> bool:
         tf = getattr(obj, "two_factor", None)
         return bool(tf and tf.enabled)
+
+    def get_strong_auth_required(self, obj) -> bool:
+        """Membre de l'équipe sans 2FA ni passkey alors que la console l'exige."""
+        from django.conf import settings
+
+        from .permissions import has_strong_auth
+
+        staff = obj.role in ("admin", "moderator", "support") or obj.is_superuser
+        return bool(
+            staff and getattr(settings, "REQUIRE_STAFF_2FA", False) and not has_strong_auth(obj)
+        )
 
     _ALLOWED_SOCIAL = frozenset({"twitter", "youtube", "instagram", "tiktok", "discord", "website"})
 
@@ -147,6 +159,7 @@ class MeSerializer(serializers.ModelSerializer):
             "is_staff",
             "is_streamer",
             "two_factor_enabled",
+            "strong_auth_required",
             "role",
             "date_joined",
         )

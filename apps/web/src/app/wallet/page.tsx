@@ -396,7 +396,9 @@ function MethodButton({
 function WithdrawTab({ onDone }: { onDone: () => void }) {
   const t = useT();
   const { num, date } = useFormat();
-  const { authFetch } = useAuth();
+  const { authFetch, user } = useAuth();
+  const needsTotp = Boolean(user?.two_factor_enabled);
+  const [totpCode, setTotpCode] = useState("");
   const [elig, setElig] = useState<Eligibility | null>(null);
   const [payouts, setPayouts] = useState<PayoutRow[] | null>(null);
   const [amount, setAmount] = useState("");
@@ -467,11 +469,12 @@ function WithdrawTab({ onDone }: { onDone: () => void }) {
     try {
       await authFetch("/api/payments/withdrawal/confirm", {
         method: "POST",
-        body: JSON.stringify({ code: code.trim() }),
+        body: JSON.stringify({ code: code.trim(), totp: totpCode.trim() }),
       });
       setStep("done");
       setAmount("");
       setCode("");
+      setTotpCode("");
       loadElig();
       onDone();
     } catch (err) {
@@ -627,9 +630,22 @@ function WithdrawTab({ onDone }: { onDone: () => void }) {
                 placeholder="123456"
                 className="flex-1 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-center text-lg tracking-widest text-neutral-100 outline-none focus:border-secondary-light"
               />
+              {needsTotp && (
+                <input
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  value={totpCode}
+                  onChange={(e) => setTotpCode(e.target.value)}
+                  placeholder={t("wallet.totpPlaceholder")}
+                  aria-label={t("wallet.totpPlaceholder")}
+                  className="w-40 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-center text-sm text-neutral-100 outline-none focus:border-secondary-light"
+                />
+              )}
               <button
                 type="button"
-                disabled={busy || code.trim().length < 6}
+                disabled={
+                  busy || code.trim().length < 6 || (needsTotp && totpCode.trim().length < 6)
+                }
                 onClick={confirm}
                 className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
               >

@@ -1,20 +1,24 @@
 """URLs racine : admin + endpoints API montés sous /api/."""
 
+from django.conf import settings
 from django.contrib import admin
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAdminUser
+
+# Schéma et documentation de l'API : publics en dev, réservés au staff en production.
+_DOCS_PERMISSION = AllowAny if settings.DEBUG else IsAdminUser
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path(
         "api/schema",
-        SpectacularAPIView.as_view(permission_classes=[AllowAny]),
+        SpectacularAPIView.as_view(permission_classes=[_DOCS_PERMISSION]),
         name="schema",
     ),
     path(
         "api/docs",
-        SpectacularSwaggerView.as_view(url_name="schema", permission_classes=[AllowAny]),
+        SpectacularSwaggerView.as_view(url_name="schema", permission_classes=[_DOCS_PERMISSION]),
         name="swagger-ui",
     ),
     path("api/", include("health.urls")),

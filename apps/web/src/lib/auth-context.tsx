@@ -26,6 +26,8 @@ export type AuthUser = {
   is_staff: boolean;
   is_streamer: boolean;
   two_factor_enabled?: boolean;
+  /** Équipe sans 2FA ni passkey alors que la console l'exige (REQUIRE_STAFF_2FA). */
+  strong_auth_required?: boolean;
   role: "user" | "support" | "moderator" | "admin";
 };
 
@@ -37,6 +39,8 @@ type AuthState = {
   loading: boolean;
   login: (email: string, password: string) => Promise<LoginResult>;
   loginTwoFactor: (token: string, code: string) => Promise<void>;
+  /** Connexion par passkey (WebAuthn). `autofill` : suggestion dans le champ e-mail. */
+  loginWithPasskey: (autofill?: boolean) => Promise<void>;
   logout: () => Promise<void>;
   /** Adopte une session déjà ouverte côté serveur (ex. réponse d'inscription). */
   adoptSession: (access: string, user: AuthUser) => void;
@@ -149,6 +153,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [applyAccess],
   );
 
+  const loginWithPasskey = useCallback(
+    async (autofill = false) => {
+      const { startAuthentication } = await import("@simplewebauthn/browser");
+      type Options = Parameters<typeof startAuthentication>[0]["optionsJSON"];
+      const { handle, options } = await apiFetch<{ handle: string; options: Options }>(
+        "/api/auth/passkeys/login/options",
+        { method: "POST" },
+      );
+      const credential = await startAuthentication({
+        optionsJSON: options,
+        useBrowserAutofill: autofill,
+      });
+      const data = await apiFetch<{ access: string; user: AuthUser }>(
+        "/api/auth/passkeys/login/verify",
+        { method: "POST", body: JSON.stringify({ handle, credential }) },
+      );
+      applyAccess(data.access);
+      setUser(data.user);
+    },
+    [applyAccess],
+  );
+
   const logout = useCallback(async () => {
     try {
       await apiFetch("/api/auth/logout", { method: "POST" });
@@ -230,6 +256,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading,
       login,
       loginTwoFactor,
+      loginWithPasskey,
       logout,
       adoptSession,
       reloadUser,
@@ -242,6 +269,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading,
       login,
       loginTwoFactor,
+      loginWithPasskey,
       logout,
       adoptSession,
       reloadUser,

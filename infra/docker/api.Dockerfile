@@ -33,7 +33,7 @@ USER django
 ENV DJANGO_SETTINGS_MODULE=config.settings.prod
 # Collecte les statiques (admin/DRF) dans l'image pour que WhiteNoise les serve.
 # Aucune connexion DB/Redis n'est requise à cette étape.
-RUN python manage.py collectstatic --noinput
+RUN DJANGO_BUILD_STEP=1 python manage.py collectstatic --noinput
 EXPOSE 8000
 # Daphne pour servir HTTP+WS (Channels). On a besoin d'ASGI.
 CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "--access-log", "-", "config.asgi:application"]

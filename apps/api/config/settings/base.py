@@ -280,6 +280,18 @@ if CELERY_BROKER_URL.startswith("rediss://"):
 if CELERY_RESULT_BACKEND.startswith("rediss://"):
     CELERY_REDIS_BACKEND_USE_SSL = {"ssl_cert_reqs": ssl.CERT_NONE}
 
+# --- Sécurité des comptes ---
+# Passkeys (WebAuthn) : RP ID = domaine du FRONT (ex. neyla.tv), origines du front.
+WEBAUTHN_RP_ID = env("WEBAUTHN_RP_ID", default="localhost")
+WEBAUTHN_RP_NAME = env("WEBAUTHN_RP_NAME", default="Neyla TV")
+WEBAUTHN_ORIGINS = env.list("WEBAUTHN_ORIGINS", default=["http://localhost:3000"])
+# Clé Fernet dédiée au chiffrement des secrets 2FA (sinon dérivée de SECRET_KEY).
+FIELD_ENCRYPTION_KEY = env("FIELD_ENCRYPTION_KEY", default="")
+# Console d'administration : 2FA (ou passkey) obligatoire pour l'équipe.
+REQUIRE_STAFF_2FA = env.bool("REQUIRE_STAFF_2FA", default=False)
+# En-tête d'IP client de confiance unique (ex. Fly-Client-IP) ; vide = détection auto.
+CLIENT_IP_HEADER = env("CLIENT_IP_HEADER", default="")
+
 # --- Streamers : quota quotidien d'approbations (gating, maîtrise des coûts) ---
 STREAMER_DAILY_APPROVAL_QUOTA = env.int("STREAMER_DAILY_APPROVAL_QUOTA", default=100)
 

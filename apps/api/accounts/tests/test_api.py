@@ -9,7 +9,7 @@ from django.urls import reverse
 from accounts.factories import UserFactory
 from accounts.tokens import (
     EMAIL_VERIFY_PURPOSE,
-    PASSWORD_RESET_PURPOSE,
+    make_reset_token,
     make_token,
 )
 
@@ -181,7 +181,7 @@ def test_password_reset_request_does_not_leak(api_client):
 
 
 def test_password_reset_confirm_updates_password(api_client, user):
-    token = make_token(user.pk, PASSWORD_RESET_PURPOSE)
+    token = make_reset_token(user)
     response = api_client.post(
         reverse("auth-password-reset-confirm"),
         {"token": token, "password": "brand-new-pass-456"},

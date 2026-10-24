@@ -6,9 +6,19 @@ import json
 import logging
 
 from .base import *  # noqa: F401,F403
-from .base import env
+from .base import SECRET_KEY, env
 
 DEBUG = False
+
+# Clé secrète obligatoire en production : elle signe les sessions, les liens de
+# réinitialisation et les jetons 2FA. Seul le build de l'image (collectstatic)
+# peut s'en passer.
+if SECRET_KEY == "dev-insecure-key" and not env.bool(  # noqa: S105 - valeur par défaut de dev
+    "DJANGO_BUILD_STEP", default=False
+):
+    from django.core.exceptions import ImproperlyConfigured
+
+    raise ImproperlyConfigured("DJANGO_SECRET_KEY doit être défini en production.")
 # default=[] : permet le `collectstatic` au build de l'image (aucun host
 # requis), tout en restant fail-closed au runtime si la variable est absente.
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=[])

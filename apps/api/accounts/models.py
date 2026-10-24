@@ -120,8 +120,11 @@ class TwoFactor(models.Model):
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="two_factor"
     )
-    secret = models.CharField(max_length=64)
+    # Chiffré au repos (accounts.crypto) : ne jamais lire ce champ directement.
+    secret = models.CharField(max_length=255)
     enabled = models.BooleanField(default=False)
+    # Dernière période TOTP acceptée : un même code ne peut pas resservir (rejeu).
+    last_used_step = models.BigIntegerField(null=True, blank=True)
     confirmed_at = models.DateTimeField(null=True, blank=True)
     # Codes de secours : liste de SHA-256 (hex). Consommés à l'usage.
     recovery_codes = models.JSONField(default=list, blank=True)
@@ -130,6 +133,28 @@ class TwoFactor(models.Model):
 
     def __str__(self) -> str:
         return f"2fa:{self.user_id}:{'on' if self.enabled else 'off'}"
+
+
+class Passkey(models.Model):
+    """Clé d'accès WebAuthn (passkey) : connexion sans mot de passe, résistante au phishing."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="passkeys"
+    )
+    # Identifiant et clé publique encodés en base64url (sans padding).
+    credential_id = models.CharField(max_length=512, unique=True)
+    public_key = models.TextField()
+    sign_count = models.PositiveBigIntegerField(default=0)
+    transports = models.JSONField(default=list, blank=True)
+    name = models.CharField(max_length=60, default="Passkey")
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"passkey:{self.user_id}:{self.name}"
 
 
 class GuideProgress(models.Model):

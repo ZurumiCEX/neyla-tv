@@ -8,6 +8,8 @@ import { ImageUpload } from "@/components/ImageUpload";
 import { NotificationPreferences } from "@/components/NotificationPreferences";
 import { PushManager } from "@/components/PushManager";
 import { SessionsManager } from "@/components/SessionsManager";
+import { ChangePasswordForm } from "@/components/ChangePasswordForm";
+import { PasskeysManager } from "@/components/PasskeysManager";
 import { TwoFactorManager } from "@/components/TwoFactorManager";
 
 const SOCIAL_KEYS = ["twitter", "youtube", "instagram", "tiktok", "discord", "website"] as const;
@@ -206,7 +208,13 @@ export default function SettingsPage() {
           <PushManager />
         </div>
       )}
-      {tab === "auth" && <TwoFactorManager />}
+      {tab === "auth" && (
+        <>
+          <PasskeysManager />
+          <TwoFactorManager />
+          <ChangePasswordForm />
+        </>
+      )}
       {tab === "devices" && <SessionsManager />}
     </main>
   );

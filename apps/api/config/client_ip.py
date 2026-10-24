@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import ipaddress
 
-_HEADERS = ("HTTP_CF_CONNECTING_IP", "HTTP_FLY_CLIENT_IP", "HTTP_DO_CONNECTING_IP")
+_HEADERS = ("cf-connecting-ip", "fly-client-ip", "do-connecting-ip")
 
 
 def _valid(value: str) -> str | None:
@@ -28,15 +28,41 @@ def _valid(value: str) -> str | None:
     return value
 
 
-def client_ip(request) -> str:
-    meta = request.META
+def ip_from_headers(get, remote: str | None) -> str:
+    """IP client à partir d'un accès aux en-têtes (`get("x-forwarded-for")`).
+
+    Si CLIENT_IP_HEADER est défini (ex. « Fly-Client-IP »), SEUL cet en-tête posé
+    par le proxy est cru : impossible de falsifier son IP via X-Forwarded-For.
+    """
+    from django.conf import settings
+
+    trusted = (getattr(settings, "CLIENT_IP_HEADER", "") or "").strip().lower()
+    if trusted:
+        return _valid(get(trusted)) or (remote or "")
     for header in _HEADERS:
-        ip = _valid(meta.get(header, ""))
+        ip = _valid(get(header))
         if ip:
             return ip
-    forwarded = meta.get("HTTP_X_FORWARDED_FOR", "")
+    forwarded = get("x-forwarded-for")
     if forwarded:
         ip = _valid(forwarded.split(",")[0])
         if ip:
             return ip
-    return meta.get("REMOTE_ADDR", "") or ""
+    return remote or ""
+
+
+def client_ip(request) -> str:
+    meta = request.META
+    return ip_from_headers(
+        lambda name: meta.get("HTTP_" + name.upper().replace("-", "_"), ""),
+        meta.get("REMOTE_ADDR", ""),
+    )
+
+
+def client_ip_from_scope(scope) -> str | None:
+    """Même règle pour une connexion WebSocket (scope ASGI)."""
+    headers = {k.decode().lower(): v.decode() for k, v in scope.get("headers", [])}
+    client = scope.get("client")
+    return (
+        ip_from_headers(lambda name: headers.get(name, ""), client[0] if client else None) or None
+    )
