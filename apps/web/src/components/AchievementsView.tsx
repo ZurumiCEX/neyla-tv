@@ -5,6 +5,7 @@ import { AchievementIcon } from "@/components/AchievementIcon";
 import { useAuth } from "@/lib/auth-context";
 import { achText } from "@/lib/achievements";
 import { useT } from "@/lib/i18n";
+import { Emoji } from "@/components/Emoji";
 
 type Achievement = {
   key: string;
@@ -52,7 +53,7 @@ export function AchievementsView() {
               {a.unlocked ? (
                 <AchievementIcon achievement={a} size={32} />
               ) : (
-                <span className="text-3xl">🔒</span>
+                <Emoji emoji="🔒" size={30} className="opacity-70" />
               )}
             </span>
             <div className="min-w-0">
@@ -60,7 +61,11 @@ export function AchievementsView() {
               {achText(t, a).description && (
                 <p className="text-xs text-neutral-400">{achText(t, a).description}</p>
               )}
-              {a.criteria && <p className="mt-0.5 text-xs text-neutral-500">🎯 {a.criteria}</p>}
+              {a.criteria && (
+                <p className="mt-0.5 text-xs text-neutral-500">
+                  <Emoji emoji="🎯" size={14} /> {a.criteria}
+                </p>
+              )}
             </div>
           </div>
         ))}

@@ -11,6 +11,8 @@ import {
   type Notif,
   type NotifPage,
 } from "@/lib/notifications";
+import { Bell } from "lucide-react";
+import { Emoji } from "@/components/Emoji";
 
 const POLL_MS = 20_000;
 
@@ -99,16 +101,7 @@ export function NotificationBell() {
         className="relative flex h-8 w-8 items-center justify-center rounded-md text-neutral-300 hover:bg-neutral-900"
         aria-label={t("notif.title")}
       >
-        <svg
-          viewBox="0 0 24 24"
-          className="h-5 w-5"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-        >
-          <path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
-          <path d="M13.7 21a2 2 0 01-3.4 0" />
-        </svg>
+        <Bell size={20} aria-hidden />
         {unread > 0 && (
           <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-neutral-950">
             {unread > 9 ? "9+" : unread}
@@ -133,9 +126,7 @@ export function NotificationBell() {
                       n.read_at ? "text-neutral-400" : "text-neutral-100"
                     } hover:bg-neutral-800`}
                   >
-                    <span aria-hidden className="w-5 shrink-0 text-center">
-                      {icon}
-                    </span>
+                    <Emoji emoji={icon} size={18} className="mt-0.5 shrink-0" />
                     <span className="min-w-0 flex-1">{text}</span>
                     {!n.read_at && (
                       <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-emerald-500" />

@@ -1135,6 +1135,11 @@ const FR: Dict = {
   "ach.level_mvp.desc": "500 000 Aura dépensées sur Neyla",
   "ach.level_goat.name": "G.O.A.T",
   "ach.level_goat.desc": "1 000 000 Aura dépensées sur Neyla",
+  "emoji.open": "Emojis",
+  "emoji.cat.smileys": "Visages",
+  "emoji.cat.gestures": "Gestes",
+  "emoji.cat.hearts": "Cœurs et effets",
+  "emoji.cat.objects": "Objets et jeux",
 };
 
 const EN: Dict = {
@@ -2255,6 +2260,11 @@ const EN: Dict = {
   "ach.level_mvp.desc": "500,000 Aura spent on Neyla",
   "ach.level_goat.name": "G.O.A.T",
   "ach.level_goat.desc": "1,000,000 Aura spent on Neyla",
+  "emoji.open": "Emojis",
+  "emoji.cat.smileys": "Faces",
+  "emoji.cat.gestures": "Gestures",
+  "emoji.cat.hearts": "Hearts & effects",
+  "emoji.cat.objects": "Objects & games",
 };
 
 const PT: Dict = {
@@ -3376,6 +3386,11 @@ const PT: Dict = {
   "ach.level_mvp.desc": "500 000 Aura gastas na Neyla",
   "ach.level_goat.name": "G.O.A.T",
   "ach.level_goat.desc": "1 000 000 Aura gastas na Neyla",
+  "emoji.open": "Emojis",
+  "emoji.cat.smileys": "Rostos",
+  "emoji.cat.gestures": "Gestos",
+  "emoji.cat.hearts": "Corações e efeitos",
+  "emoji.cat.objects": "Objetos e jogos",
 };
 
 export const DICTS: Record<Locale, Dict> = { fr: FR, en: EN, pt: PT };

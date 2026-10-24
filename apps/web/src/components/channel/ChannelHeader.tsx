@@ -13,6 +13,8 @@ import { useT } from "@/lib/i18n";
 import { useFormat } from "@/lib/use-format";
 import { useLiveStatus } from "@/lib/use-live-status";
 import { Avatar } from "@/components/Avatar";
+import { BadgeCheck, User } from "lucide-react";
+import { EmojiText } from "@/components/Emoji";
 
 type Props = {
   slug: string;
@@ -57,7 +59,7 @@ export function ChannelHeader(props: Props) {
           </span>
         </AvatarBadge>
 
-        <div className="min-w-0 flex-1">
+        <div className="min-w-[240px] flex-1">
           <div className="flex items-center gap-1.5">
             <h1 className="truncate text-xl font-bold">{props.displayName}</h1>
             {props.isVerified && (
@@ -67,7 +69,7 @@ export function ChannelHeader(props: Props) {
             )}
           </div>
           <p className="mt-0.5 line-clamp-2 text-[15px] font-semibold text-neutral-100">
-            {props.title || t("card.untitled")}
+            <EmojiText text={props.title || t("card.untitled")} size={18} />
           </p>
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             {props.category && (
@@ -134,28 +136,9 @@ function Uptime({ since }: { since: string }) {
 }
 
 function VerifiedIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden className="text-emerald-400">
-      <path
-        fill="currentColor"
-        d="M12 1l2.6 2.2 3.4-.4.9 3.3 3 1.7-1.2 3.2 1.2 3.2-3 1.7-.9 3.3-3.4-.4L12 23l-2.6-2.2-3.4.4-.9-3.3-3-1.7L3.3 13 2.1 9.8l3-1.7.9-3.3 3.4.4z"
-      />
-      <path
-        d="M8 12.5l2.7 2.7L16.5 9"
-        fill="none"
-        stroke="#0a0a0a"
-        strokeWidth="2.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
+  return <BadgeCheck size={20} className="fill-emerald-400 text-neutral-950" aria-hidden />;
 }
 
 function UserIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path d="M12 12a5 5 0 100-10 5 5 0 000 10zm0 2c-4.4 0-8 2.2-8 5v3h16v-3c0-2.8-3.6-5-8-5z" />
-    </svg>
-  );
+  return <User size={16} aria-hidden />;
 }

@@ -1,5 +1,7 @@
 // Rendu d'icône de succès : image (icon_url) si présente, sinon emoji.
 
+import { Emoji } from "@/components/Emoji";
+
 export type AchievementItem = {
   key: string;
   name: string;
@@ -29,9 +31,5 @@ export function AchievementIcon({
       />
     );
   }
-  return (
-    <span style={{ fontSize: size * 0.85, lineHeight: 1 }} aria-hidden>
-      {achievement.icon}
-    </span>
-  );
+  return <Emoji emoji={achievement.icon} size={size} />;
 }

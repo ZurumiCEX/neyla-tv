@@ -8,6 +8,7 @@ import { useFormat } from "@/lib/use-format";
 import { onWalletChanged } from "@/lib/wallet-events";
 import { LevelBadge } from "@/components/LevelBadge";
 import { useMyLevel } from "@/lib/use-level";
+import { Sparkles } from "lucide-react";
 
 export function AuraBalance() {
   const { user, loading, authFetch } = useAuth();
@@ -45,9 +46,5 @@ export function AuraBalance() {
 }
 
 function AuraIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path d="M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4L12 2z" />
-    </svg>
-  );
+  return <Sparkles size={16} aria-hidden />;
 }

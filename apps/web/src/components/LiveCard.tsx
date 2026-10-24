@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useT } from "@/lib/i18n";
 import { useFormat } from "@/lib/use-format";
 import { Avatar } from "@/components/Avatar";
+import { EmojiText } from "@/components/Emoji";
 
 export type LiveChannel = {
   slug: string;
@@ -67,7 +68,7 @@ export function LiveCard({ channel }: { channel: LiveChannel }) {
             className="line-clamp-1 text-sm font-semibold text-neutral-100 hover:text-emerald-300"
             title={channel.title || t("card.untitled")}
           >
-            {channel.title || t("card.untitled")}
+            <EmojiText text={channel.title || t("card.untitled")} size={16} />
           </Link>
           <p className="truncate text-xs text-neutral-400">{display}</p>
           {channel.category && (

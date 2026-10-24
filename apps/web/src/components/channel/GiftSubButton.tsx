@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useT } from "@/lib/i18n";
 import { apiErrorMessage } from "@/lib/api-errors";
 import { notifyWalletChanged } from "@/lib/wallet-events";
+import { Gift } from "lucide-react";
 
 /** « Offrir un abonnement » : pseudo du destinataire → POST /api/subscriptions/gift. */
 export function GiftSubButton({ channelSlug }: { channelSlug: string }) {
@@ -111,20 +112,5 @@ export function GiftSubButton({ channelSlug }: { channelSlug: string }) {
 }
 
 function GiftIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <rect x="3" y="8" width="18" height="4" rx="1" />
-      <path d="M12 8v13M19 12v9H5v-9M7.5 8a2.5 2.5 0 010-5C10 3 12 8 12 8s2-5 4.5-5a2.5 2.5 0 010 5" />
-    </svg>
-  );
+  return <Gift size={16} aria-hidden />;
 }

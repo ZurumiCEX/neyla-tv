@@ -13,6 +13,8 @@ import { LevelBadge } from "@/components/LevelBadge";
 import { RoleBadge } from "@/components/RoleBadge";
 import Link from "next/link";
 import { ChatAuraFooter } from "@/components/channel/ChatAuraFooter";
+import { ChevronsRight } from "lucide-react";
+import { EmojiText } from "@/components/Emoji";
 
 type ChatMessage = {
   id: string;
@@ -224,7 +226,9 @@ export function ChatPanel({ slug, isLive, variant = "card", onCollapse }: Props)
                 {m.user.display_name || m.user.username}
               </Link>
               <span className="text-neutral-500">: </span>
-              <span className="text-neutral-100">{m.content}</span>
+              <span className="text-neutral-100">
+                <EmojiText text={m.content} size={20} />
+              </span>
             </span>
             {isStreamer && (
               <span className="hidden shrink-0 items-center gap-0.5 group-hover:flex">
@@ -331,21 +335,7 @@ function ChatBadges({
 }
 
 function CollapseIcon() {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M13 17l5-5-5-5M6 17l5-5-5-5" />
-    </svg>
-  );
+  return <ChevronsRight size={18} aria-hidden />;
 }
 
 function ModBtn({

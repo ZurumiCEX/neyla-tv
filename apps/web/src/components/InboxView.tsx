@@ -12,6 +12,7 @@ import {
   type NotifPage,
 } from "@/lib/notifications";
 import { useFormat } from "@/lib/use-format";
+import { Emoji } from "@/components/Emoji";
 
 export function InboxView() {
   const t = useT();
@@ -155,9 +156,7 @@ export function InboxView() {
             const { text, href, icon } = describeNotif(n, t);
             const row = (
               <div className="flex items-start gap-3 px-3 py-2.5 text-sm hover:bg-neutral-800/60">
-                <span aria-hidden className="w-6 shrink-0 text-center text-base">
-                  {icon}
-                </span>
+                <Emoji emoji={icon} size={22} className="shrink-0" />
                 <div className="min-w-0 flex-1">
                   <p className={n.read_at ? "text-neutral-400" : "font-medium text-neutral-100"}>
                     {text}

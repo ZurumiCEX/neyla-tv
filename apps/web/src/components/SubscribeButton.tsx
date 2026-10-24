@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useT } from "@/lib/i18n";
 import { useFormat } from "@/lib/use-format";
 import { notifyWalletChanged } from "@/lib/wallet-events";
+import { Sparkles } from "lucide-react";
 
 type TierResp = { price_aura?: number; perks?: string[] };
 type StatusResp = {
@@ -188,10 +189,5 @@ export function SubscribeButton({ channelSlug }: { channelSlug: string }) {
 }
 
 function SparkleIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path d="M12 2l1.8 5.2L19 9l-5.2 1.8L12 16l-1.8-5.2L5 9l5.2-1.8L12 2z" />
-      <path d="M19 14l.9 2.6L22 17.5l-2.1.9L19 21l-.9-2.6L16 17.5l2.1-.9L19 14z" />
-    </svg>
-  );
+  return <Sparkles size={14} aria-hidden />;
 }

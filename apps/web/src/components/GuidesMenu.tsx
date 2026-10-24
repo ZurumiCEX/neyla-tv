@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useI18n, useT } from "@/lib/i18n";
 import { useGuides } from "@/lib/use-guides";
 import { useGuideProgress } from "@/lib/use-guide-progress";
+import { BookOpen } from "lucide-react";
 
 export function GuidesMenu() {
   const { locale } = useI18n();
@@ -38,10 +39,7 @@ export function GuidesMenu() {
         title={t("guides.menu")}
         className="flex h-9 w-9 items-center justify-center rounded-full text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100"
       >
-        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <path d="M4 5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2H6a2 2 0 01-2-2z" />
-          <path d="M13 3v5h5M8 13h6M8 17h6" />
-        </svg>
+        <BookOpen size={20} aria-hidden />
       </button>
 
       {open && (
@@ -51,7 +49,10 @@ export function GuidesMenu() {
             <p className="mt-0.5 text-xs text-neutral-500">{t("guides.subtitle")}</p>
             <div className="mt-2 flex items-center gap-2">
               <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-neutral-800">
-                <div className="h-full rounded-full bg-emerald-500" style={{ width: `${globalPct}%` }} />
+                <div
+                  className="h-full rounded-full bg-emerald-500"
+                  style={{ width: `${globalPct}%` }}
+                />
               </div>
               <span className="text-xs font-semibold text-emerald-300">{globalPct}%</span>
             </div>
