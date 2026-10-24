@@ -6,6 +6,7 @@ import { ChannelAbout } from "@/components/channel/ChannelAbout";
 import { ChannelGoalCard, type ChannelGoal } from "@/components/channel/ChannelGoalCard";
 import { ChannelHeader } from "@/components/channel/ChannelHeader";
 import { ChannelLayout } from "@/components/channel/ChannelLayout";
+import { ChannelShorts } from "@/components/channel/ChannelShorts";
 import { apiFetchServer } from "@/lib/api";
 import { getServerT } from "@/lib/i18n-server";
 
@@ -103,6 +104,9 @@ export default async function ChannelPage({ params }: { params: Promise<{ slug: 
             achievements={achievements.results}
           />
           <ChannelGoalCard goal={channel.goal} followers={followers} />
+        </div>
+        <div className="px-4 pb-6 sm:px-6">
+          <ChannelShorts slug={channel.slug} />
         </div>
       </ChannelLayout>
     </main>

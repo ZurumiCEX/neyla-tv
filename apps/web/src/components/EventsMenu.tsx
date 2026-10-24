@@ -68,7 +68,7 @@ export function EventsMenu() {
               events.map((e) => (
                 <Link
                   key={e.slug}
-                  href={e.link_url || `/calendrier#${e.slug}`}
+                  href={`/calendrier/${e.slug}`}
                   onClick={() => setOpen(false)}
                   className="flex items-center gap-3 px-4 py-2.5 hover:bg-neutral-800"
                 >

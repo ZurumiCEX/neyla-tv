@@ -214,3 +214,12 @@ def test_trusted_client_ip_header_ignores_spoofed_forwarded_for(settings):
     assert client_ip(req) == "41.82.10.20"
     spoof = RequestFactory().get("/", HTTP_X_FORWARDED_FOR="1.2.3.4", REMOTE_ADDR="10.0.0.1")
     assert client_ip(spoof) == "10.0.0.1"
+
+
+def test_me_cannot_escalate_to_superuser():
+    user = UserFactory()
+    client = _login(user)
+    client.patch(reverse("auth-me"), {"is_superuser": True, "role": "admin"}, format="json")
+    user.refresh_from_db()
+    assert user.is_superuser is False
+    assert user.role == "user"

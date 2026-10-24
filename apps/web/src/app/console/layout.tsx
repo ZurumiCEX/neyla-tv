@@ -17,6 +17,7 @@ const TABS: { href: string; labelKey: string; roles: string[] }[] = [
   { href: "/console/safety", labelKey: "admin.tab.safety", roles: ["admin", "moderator"] },
   { href: "/console/messages", labelKey: "admin.tab.messages", roles: ["admin", "support"] },
   { href: "/console/analytics", labelKey: "admin.tab.analytics", roles: ["admin"] },
+  { href: "/console/catalog", labelKey: "admin.tab.catalog", roles: ["admin"] },
 ];
 
 const STAFF_ROLES = ["admin", "moderator", "support"];
@@ -27,22 +28,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const t = useT();
   const { user, loading } = useAuth();
 
-  // Accès si rôle interne OU compte staff/superuser Django (is_staff).
-  const isStaff = !!user && (STAFF_ROLES.includes(user.role) || user.is_staff);
-  // Un compte staff sans rôle interne explicite est traité comme admin.
+  // Mêmes règles que l'API (accounts/permissions.py) : un rôle interne, ou
+  // superutilisateur (traité comme admin). « is_staff » seul ne donne aucun droit API.
   const effectiveRole = user
     ? STAFF_ROLES.includes(user.role)
       ? user.role
-      : user.is_staff
+      : user.is_superuser
         ? "admin"
-        : user.role
+        : ""
     : "";
+  const isStaff = Boolean(effectiveRole);
 
   useEffect(() => {
     if (loading) return;
     if (!user) {
       router.replace("/login");
-    } else if (!(STAFF_ROLES.includes(user.role) || user.is_staff)) {
+    } else if (!(STAFF_ROLES.includes(user.role) || user.is_superuser)) {
       router.replace("/");
     }
   }, [loading, user, router]);

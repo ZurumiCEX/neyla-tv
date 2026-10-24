@@ -28,6 +28,7 @@ export type AuthUser = {
   two_factor_enabled?: boolean;
   /** Équipe sans 2FA ni passkey alors que la console l'exige (REQUIRE_STAFF_2FA). */
   strong_auth_required?: boolean;
+  is_superuser?: boolean;
   role: "user" | "support" | "moderator" | "admin";
 };
 

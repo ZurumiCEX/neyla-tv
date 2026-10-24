@@ -157,6 +157,7 @@ class MeSerializer(serializers.ModelSerializer):
             "social_links",
             "is_email_verified",
             "is_staff",
+            "is_superuser",
             "is_streamer",
             "two_factor_enabled",
             "strong_auth_required",
@@ -169,8 +170,10 @@ class MeSerializer(serializers.ModelSerializer):
             "username",
             "is_email_verified",
             "is_staff",
+            "is_superuser",
             "is_streamer",
             "two_factor_enabled",
+            "strong_auth_required",
             "role",
             "date_joined",
         )

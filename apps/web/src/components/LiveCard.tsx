@@ -14,7 +14,7 @@ export type LiveChannel = {
   viewers?: number;
   playback_url?: string;
   streamer: { username: string; display_name: string; avatar_url: string };
-  category: { slug: string; name: string } | null;
+  category: { slug: string; name: string; group?: string } | null;
 };
 
 export function LiveCard({ channel }: { channel: LiveChannel }) {

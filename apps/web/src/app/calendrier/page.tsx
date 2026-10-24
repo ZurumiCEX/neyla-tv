@@ -71,7 +71,7 @@ export default function CalendrierPage() {
           {events.map((e) => (
             <li key={e.slug}>
               <Link
-                href={e.link_url || `#${e.slug}`}
+                href={`/calendrier/${e.slug}`}
                 className="flex items-center gap-4 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-4 transition hover:border-neutral-700"
               >
                 <span

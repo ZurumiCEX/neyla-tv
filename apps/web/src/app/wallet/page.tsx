@@ -65,6 +65,8 @@ type Quote = {
   fee_aura: number;
   net_aura: number;
   net_fiat: string;
+  currency: string;
+  min_aura: number;
 };
 type Paginated<T> = { results: T[] };
 
