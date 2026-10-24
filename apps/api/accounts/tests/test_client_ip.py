@@ -96,3 +96,32 @@ def test_resilient_cache_survives_redis_outage():
     assert cache.get("k", "default") == "default"
     with pytest.raises(ValueError):
         cache.incr("k")
+
+
+def test_fly_client_ip_header_is_trusted():
+    req = _req(
+        REMOTE_ADDR="172.16.0.2",
+        HTTP_X_FORWARDED_FOR="172.16.0.9",
+        HTTP_FLY_CLIENT_IP="41.214.5.6",
+    )
+    assert client_ip(req) == "41.214.5.6"
+
+
+def test_cross_site_refresh_cookie_is_secure(api_client, settings):
+    """Front et API sur deux domaines : SameSite=None impose Secure."""
+    from django.contrib.auth import get_user_model
+
+    settings.REFRESH_COOKIE_SAMESITE = "None"
+    settings.REFRESH_COOKIE_SECURE = False
+    get_user_model().objects.create_user(
+        email="cross@example.com", username="cross", password="Kpx7#mQz-Dakar"
+    )
+    resp = api_client.post(
+        reverse("auth-login"),
+        {"email": "cross@example.com", "password": "Kpx7#mQz-Dakar"},
+        format="json",
+    )
+    assert resp.status_code == 200
+    cookie = resp.cookies[settings.REFRESH_COOKIE_NAME]
+    assert cookie["samesite"] == "None"
+    assert cookie["secure"] is True

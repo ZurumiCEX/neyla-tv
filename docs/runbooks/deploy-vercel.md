@@ -3,8 +3,9 @@
 > ⚠ **Vercel n'héberge que le frontend Next.js** (`apps/web`). Le backend
 > Django (REST + WebSocket Channels + Celery + Postgres + Redis) **ne peut pas
 > tourner sur Vercel** : il doit être déployé ailleurs (DigitalOcean App
-> Platform — voir [`deploy-app-platform.md`](deploy-app-platform.md) — ou un
-> Droplet via Docker). Vercel appellera ce backend via son URL publique.
+> Platform — voir [`deploy-app-platform.md`](deploy-app-platform.md) —, Fly.io
+> — voir [`deploy-fly.md`](deploy-fly.md) — ou un Droplet via Docker). Vercel
+> appellera ce backend via son URL publique.
 
 ## Cause du `404: NOT_FOUND` au premier déploiement
 

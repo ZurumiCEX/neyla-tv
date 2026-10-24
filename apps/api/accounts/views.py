@@ -50,13 +50,18 @@ GENERIC_AUTH_ERROR = {"detail": "Identifiants invalides."}
 GENERIC_RESET_OK = {"detail": "Si un compte existe, un email a été envoyé."}
 
 
+def _refresh_cookie_secure() -> bool:
+    # Les navigateurs rejettent un cookie SameSite=None sans Secure.
+    return settings.REFRESH_COOKIE_SECURE or settings.REFRESH_COOKIE_SAMESITE.lower() == "none"
+
+
 def _set_refresh_cookie(response: Response, refresh_token: str) -> Response:
     response.set_cookie(
         key=settings.REFRESH_COOKIE_NAME,
         value=refresh_token,
         max_age=settings.REFRESH_COOKIE_MAX_AGE,
         httponly=True,
-        secure=settings.REFRESH_COOKIE_SECURE,
+        secure=_refresh_cookie_secure(),
         samesite=settings.REFRESH_COOKIE_SAMESITE,
         path=settings.REFRESH_COOKIE_PATH,
     )
@@ -64,10 +69,14 @@ def _set_refresh_cookie(response: Response, refresh_token: str) -> Response:
 
 
 def _clear_refresh_cookie(response: Response) -> Response:
+    # Mêmes attributs que le dépôt, sinon un navigateur cross-site ignore la suppression.
     response.delete_cookie(
         key=settings.REFRESH_COOKIE_NAME,
         path=settings.REFRESH_COOKIE_PATH,
+        samesite=settings.REFRESH_COOKIE_SAMESITE,
     )
+    if _refresh_cookie_secure():
+        response.cookies[settings.REFRESH_COOKIE_NAME]["secure"] = True
     return response
 
 
