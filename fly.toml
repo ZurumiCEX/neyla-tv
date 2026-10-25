@@ -1,72 +1,58 @@
-# API Django (HTTP + WebSocket du chat) + workers Celery sur Fly.io.
-# Postgres : Neon (DATABASE_URL) · Redis : Upstash (REDIS_URL…), en secrets Fly.
-# Guide complet : docs/runbooks/deploy-fly.md
+# fly.toml app configuration file generated for neyla-tv on 2026-10-25T23:59:31Z
 #
-# Seule la ligne « app » dépend du nom de ton app Fly : le domaine
-# <app>.fly.dev est autorisé automatiquement (FLY_APP_NAME).
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
 
-app = "neyla-tv"
-primary_region = "cdg" # Paris : la région Fly la plus proche de l'Afrique de l'Ouest
+app = 'neyla-tv'
+primary_region = 'cdg'
 
 [build]
-  dockerfile = "infra/docker/api.Dockerfile"
-  build-target = "prod"
+  dockerfile = 'infra/docker/api.Dockerfile'
+  build-target = 'prod'
 
-# Avant chaque déploiement : vérification des secrets et de la base, migrations,
-# puis comptes démo si SEED_DEMO=1 (seed_demo sans --flush : rien n'est effacé).
-# En cas d'échec, « fly logs -a neyla-tv --no-tail » indique ce qui manque.
 [deploy]
-  release_command = "sh /app/scripts/release.sh"
+  release_command = 'sh /app/scripts/release.sh'
 
 [env]
-  DJANGO_SETTINGS_MODULE = "config.settings.prod"
-  # Front (Vercel) et API (Fly) sur deux domaines : cookie de refresh cross-site.
-  REFRESH_COOKIE_SAMESITE = "None"
-  # IP réelle : seul l'en-tête posé par le proxy Fly est cru (anti-usurpation).
-  CLIENT_IP_HEADER = "Fly-Client-IP"
-  # Console : "1" = 2FA ou passkey obligatoire pour l'équipe (recommandé en
-  # production réelle). Laissé à "0" pour la démo (compte admin@demo sans 2FA).
-  REQUIRE_STAFF_2FA = "0"
-  # Démo : paiements simulés. Passer à "0" pour encaisser réellement.
-  PAYMENTS_PROVIDER = "fake"
-  PAYMENTS_ALLOW_FAKE = "1"
-  STREAM_STATUS_POLL_SECONDS = "20"
+  CLIENT_IP_HEADER = 'Fly-Client-IP'
+  DJANGO_SETTINGS_MODULE = 'config.settings.prod'
+  PAYMENTS_ALLOW_FAKE = '1'
+  PAYMENTS_PROVIDER = 'fake'
+  REFRESH_COOKIE_SAMESITE = 'None'
+  REQUIRE_STAFF_2FA = '0'
+  STREAM_STATUS_POLL_SECONDS = '20'
 
-# Trois groupes de machines dans une seule app.
 [processes]
-  app = "daphne -b 0.0.0.0 -p 8000 --access-log - config.asgi:application"
-  worker = "celery -A config worker -l info --pool=solo"
-  beat = "celery -A config beat -l info"
+  app = 'daphne -b 0.0.0.0 -p 8000 --access-log - config.asgi:application'
+  beat = 'celery -A config beat -l info'
+  worker = 'celery -A config worker -l info --pool=solo'
 
 [http_service]
-  processes = ["app"]
   internal_port = 8000
   force_https = true
-  # Le chat (WebSocket) a besoin d'au moins une machine allumée en permanence.
-  auto_stop_machines = "stop"
+  auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 1
+  processes = ['app']
 
   [http_service.concurrency]
-    type = "connections"
-    soft_limit = 200
+    type = 'connections'
     hard_limit = 250
+    soft_limit = 200
 
-  # /api/livez ne dépend ni de la DB ni de Redis : une panne Neon/Upstash ne
-  # redémarre pas la machine en boucle (la santé complète est sur /api/healthz).
   [[http_service.checks]]
-    grace_period = "20s"
-    interval = "30s"
-    method = "GET"
-    path = "/api/livez"
-    timeout = "5s"
+    interval = '30s'
+    timeout = '5s'
+    grace_period = '20s'
+    method = 'GET'
+    path = '/api/livez'
 
 [[vm]]
-  size = "shared-cpu-1x"
-  memory = "512mb"
-  processes = ["app", "worker"]
+  size = 'shared-cpu-1x'
+  memory = '512mb'
+  processes = ['app', 'worker']
 
 [[vm]]
-  size = "shared-cpu-1x"
-  memory = "256mb"
-  processes = ["beat"]
+  size = 'shared-cpu-1x'
+  memory = '256mb'
+  processes = ['beat']
