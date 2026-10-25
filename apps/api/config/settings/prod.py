@@ -16,8 +16,17 @@ DEBUG = False
 if SECRET_KEY == "dev-insecure-key" and not env.bool(  # noqa: S105 - valeur par défaut de dev
     "DJANGO_BUILD_STEP", default=False
 ):
+    import sys
+
     from django.core.exceptions import ImproperlyConfigured
 
+    # Message lisible dans les logs de la plateforme (fly logs) avant l'arrêt.
+    print(
+        "ERREUR : DJANGO_SECRET_KEY n'est pas défini. "
+        "fly secrets set DJANGO_SECRET_KEY=\"$(python3 -c 'import secrets; "
+        "print(secrets.token_urlsafe(50))')\"",
+        file=sys.stderr,
+    )
     raise ImproperlyConfigured("DJANGO_SECRET_KEY doit être défini en production.")
 # default=[] : permet le `collectstatic` au build de l'image (aucun host
 # requis), tout en restant fail-closed au runtime si la variable est absente.
@@ -25,6 +34,13 @@ ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=[])
 
 # Origines de confiance pour le CSRF (admin Django derrière HTTPS).
 CSRF_TRUSTED_ORIGINS = env.list("DJANGO_CSRF_TRUSTED_ORIGINS", default=[])
+
+# Fly.io fournit FLY_APP_NAME : le domaine <app>.fly.dev est autorisé d'office,
+# quel que soit le nom choisi pour l'app (plus rien à modifier dans fly.toml).
+_fly_app = env("FLY_APP_NAME", default="")
+if _fly_app:
+    ALLOWED_HOSTS = [*ALLOWED_HOSTS, f"{_fly_app}.fly.dev"]
+    CSRF_TRUSTED_ORIGINS = [*CSRF_TRUSTED_ORIGINS, f"https://{_fly_app}.fly.dev"]
 
 # WhiteNoise : compression + manifest hashé. Servi sous /django-static/ pour
 # ne pas entrer en collision avec les assets Next.js (/_next/...).

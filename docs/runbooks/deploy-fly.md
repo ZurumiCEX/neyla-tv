@@ -22,8 +22,11 @@ départ, Upstash ~0–10 $/mois (voir l'avertissement en 2).
 
 1. Crée un compte sur [neon.tech](https://neon.tech), puis un projet en région
    **AWS Europe Central (Frankfurt)**, la plus proche de Paris.
-2. Dans **Connection Details**, coche **Pooled connection** et copie l'URL :
-   `postgresql://user:motdepasse@ep-xxx-pooler.eu-central-1.aws.neon.tech/neondb?sslmode=require`
+2. Dans **Connection Details**, **décoche** « Pooled connection » et copie l'URL
+   **directe** (sans `-pooler` dans le nom d'hôte) :
+   `postgresql://user:motdepasse@ep-xxx.eu-central-1.aws.neon.tech/neondb?sslmode=require`
+   L'URL directe est la plus fiable pour les migrations et les connexions
+   persistantes de Django. `&channel_binding=require` (ajouté par Neon) est accepté.
 
 C'est ton `DATABASE_URL`. L'API la lit en priorité sur les variables `POSTGRES_*`.
 
@@ -49,12 +52,12 @@ le chat et Celery.
 ```bash
 # Installer flyctl : https://fly.io/docs/flyctl/install/
 fly auth login
-fly launch --no-deploy --copy-config --name neyla-api   # garde le fly.toml du dépôt
+fly launch --no-deploy --copy-config --name neyla-tv   # garde le fly.toml du dépôt
 ```
 
-Si le nom `neyla-api` est déjà pris, choisis-en un autre et remplace
-`neyla-api` partout dans `fly.toml` (3 endroits : `app`, `DJANGO_ALLOWED_HOSTS`,
-l'en-tête `Host` du health check).
+Si le nom `neyla-tv` est déjà pris, choisis-en un autre et change **seulement**
+la ligne `app` de `fly.toml` : le domaine `<app>.fly.dev` est autorisé
+automatiquement. Remplace aussi `neyla-tv` dans les commandes ci-dessous.
 
 ## 4. Secrets
 
@@ -69,7 +72,6 @@ fly secrets set \
   CELERY_RESULT_BACKEND="<url Upstash rediss://…>" \
   DJANGO_CORS_ALLOWED_ORIGINS="https://<prod>.vercel.app" \
   DJANGO_CORS_ALLOWED_ORIGIN_REGEXES='^https://neyla-tv-.*\.vercel\.app$' \
-  DJANGO_CSRF_TRUSTED_ORIGINS="https://neyla-api.fly.dev" \
   FRONTEND_URL="https://<prod>.vercel.app" \
   WEBAUTHN_RP_ID="<prod>.vercel.app" \
   WEBAUTHN_ORIGINS="https://<prod>.vercel.app" \
@@ -103,8 +105,9 @@ fly deploy
 fly scale count app=1 worker=1 beat=1
 ```
 
-À chaque `fly deploy`, la `release_command` applique les migrations puis, si
-`SEED_DEMO=1`, lance `seed_demo`. **Garde une seule machine `beat`**, sinon les
+À chaque `fly deploy`, la `release_command` (`apps/api/scripts/release.sh`)
+vérifie les secrets et la connexion à la base, applique les migrations puis,
+si `SEED_DEMO=1`, lance `seed_demo`. Chaque étape est écrite dans les logs. **Garde une seule machine `beat`**, sinon les
 tâches planifiées s'exécutent en double.
 
 ## 6. Brancher Vercel
@@ -113,18 +116,18 @@ Vercel → ton projet → **Settings → Environment Variables** :
 
 | Variable | Valeur |
 |---|---|
-| `NEXT_PUBLIC_API_URL` | `https://neyla-api.fly.dev` |
-| `API_URL_INTERNAL` | `https://neyla-api.fly.dev` |
+| `NEXT_PUBLIC_API_URL` | `https://neyla-tv.fly.dev` |
+| `API_URL_INTERNAL` | `https://neyla-tv.fly.dev` |
 
 Puis **Deployments → ⋯ → Redeploy**. `NEXT_PUBLIC_*` est figé au build : un
 redéploiement est obligatoire. Le chat se connecte alors en
-`wss://neyla-api.fly.dev/ws/…`.
+`wss://neyla-tv.fly.dev/ws/…`.
 
 ## 7. Vérifier
 
 ```bash
-curl https://neyla-api.fly.dev/api/livez     # {"status": "ok"}
-curl https://neyla-api.fly.dev/api/healthz   # db + redis "ok"
+curl https://neyla-tv.fly.dev/api/livez     # {"status": "ok"}
+curl https://neyla-tv.fly.dev/api/healthz   # db + redis "ok"
 fly logs                                     # en cas d'erreur
 fly ssh console -C "python manage.py reconcile_wallets"
 ```
@@ -138,6 +141,47 @@ Pour créer ton propre compte admin :
 fly ssh console -C "python manage.py createsuperuser"
 ```
 
+## Dépannage du premier déploiement
+
+**« Failed to provision IP addresses … org_slug is only supported with
+private_v6 type »** : bug connu de flyctl au premier déploiement, sans lien avec
+le code. Mets flyctl à jour et attribue les adresses à la main :
+
+```bash
+fly version update
+fly ips allocate-v6 -a neyla-tv
+fly ips allocate-v4 --shared -a neyla-tv
+fly ips list -a neyla-tv
+```
+
+**« release_command failed … exit code 1 »** : la vérification ou les
+migrations ont échoué. Lis la raison :
+
+```bash
+fly logs -a neyla-tv --no-tail          # lignes « [release] » et « [preflight] »
+fly secrets list -a neyla-tv            # noms des secrets définis (jamais les valeurs)
+```
+
+Si les logs restent vides (« timeout waiting for release command logs »),
+relance l'étape à la main avec l'image affichée par `fly deploy` :
+
+```bash
+fly machine run registry.fly.io/neyla-tv:<tag> sh /app/scripts/release.sh --rm -a neyla-tv
+```
+
+Messages possibles :
+
+| Message | Correction |
+|---|---|
+| `secret(s) manquant(s) : DJANGO_SECRET_KEY` | `fly secrets set DJANGO_SECRET_KEY="$(python3 -c 'import secrets; print(secrets.token_urlsafe(50))')"` |
+| `secret(s) manquant(s) : DATABASE_URL` | `fly secrets set DATABASE_URL="<URL directe Neon>"` |
+| `Connexion à la base impossible` | URL Neon erronée, mot de passe changé, ou URL « -pooler » : reprends l'URL directe. |
+| `seed_demo a échoué` | Démo seulement, le déploiement continue ; vérifie `PAYMENTS_ALLOW_FAKE=1`. |
+
+Secrets minimum avant `fly deploy` : `DJANGO_SECRET_KEY`, `DATABASE_URL`,
+`REDIS_URL`, `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND`,
+`DJANGO_CORS_ALLOWED_ORIGINS`, `FRONTEND_URL`, `WEBAUTHN_RP_ID`, `WEBAUTHN_ORIGINS`.
+
 ## Dépannage
 
 | Symptôme | Cause probable |
@@ -145,7 +189,7 @@ fly ssh console -C "python manage.py createsuperuser"
 | « Identifiants invalides » avec les comptes démo | `SEED_DEMO` n'était pas à `1` au déploiement. Lance `fly ssh console -C "python manage.py seed_demo"`. |
 | Connecté, puis déconnecté au rechargement | Le cookie de refresh doit être `SameSite=None` (déjà dans `fly.toml`), et l'origine Vercel doit être dans les variables CORS. |
 | « Impossible de joindre le serveur » | `NEXT_PUBLIC_API_URL` faux, ou Vercel pas redéployé après le changement. |
-| Erreur `400 Bad Request` sur l'API | Le domaine n'est pas dans `DJANGO_ALLOWED_HOSTS` (`fly.toml`). |
+| Erreur `400 Bad Request` sur l'API | Domaine personnalisé non déclaré : ajoute-le avec `fly secrets set DJANGO_ALLOWED_HOSTS=api.mondomaine.com` (`<app>.fly.dev` est déjà autorisé). |
 | Chat muet, tâches bloquées | Quota Upstash atteint : voir l'avertissement en 2. |
 
 Quand la démo n'est plus nécessaire : `fly secrets set SEED_DEMO=0`. Pour encaisser
