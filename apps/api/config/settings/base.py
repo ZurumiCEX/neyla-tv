@@ -57,6 +57,8 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    # Health check de la plateforme : répond avant la validation d'hôte.
+    "config.health.LivenessMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     # WhiteNoise sert les fichiers statiques (admin/DRF) sans nginx — requis

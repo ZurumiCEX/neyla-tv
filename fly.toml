@@ -2,25 +2,24 @@
 # Postgres : Neon (DATABASE_URL) · Redis : Upstash (REDIS_URL…), en secrets Fly.
 # Guide complet : docs/runbooks/deploy-fly.md
 #
-# ⚠ Remplace « neyla-api » par le nom de ton app Fly (ici ET dans
-# DJANGO_ALLOWED_HOSTS / l'en-tête Host du health check).
+# Seule la ligne « app » dépend du nom de ton app Fly : le domaine
+# <app>.fly.dev est autorisé automatiquement (FLY_APP_NAME).
 
-app = "neyla-api"
+app = "neyla-tv"
 primary_region = "cdg" # Paris : la région Fly la plus proche de l'Afrique de l'Ouest
 
 [build]
   dockerfile = "infra/docker/api.Dockerfile"
   build-target = "prod"
 
-# Avant chaque déploiement : migrations, puis comptes démo si SEED_DEMO=1.
-# seed_demo sans --flush est idempotent : il recrée les comptes manquants et
-# remet le mot de passe démo, sans rien effacer.
+# Avant chaque déploiement : vérification des secrets et de la base, migrations,
+# puis comptes démo si SEED_DEMO=1 (seed_demo sans --flush : rien n'est effacé).
+# En cas d'échec, « fly logs -a neyla-tv --no-tail » indique ce qui manque.
 [deploy]
-  release_command = "sh -c 'python manage.py migrate --noinput && if [ \"$SEED_DEMO\" = \"1\" ]; then python manage.py seed_demo; fi'"
+  release_command = "sh /app/scripts/release.sh"
 
 [env]
   DJANGO_SETTINGS_MODULE = "config.settings.prod"
-  DJANGO_ALLOWED_HOSTS = "neyla-api.fly.dev"
   # Front (Vercel) et API (Fly) sur deux domaines : cookie de refresh cross-site.
   REFRESH_COOKIE_SAMESITE = "None"
   # IP réelle : seul l'en-tête posé par le proxy Fly est cru (anti-usurpation).
@@ -61,8 +60,6 @@ primary_region = "cdg" # Paris : la région Fly la plus proche de l'Afrique de l
     method = "GET"
     path = "/api/livez"
     timeout = "5s"
-    [http_service.checks.headers]
-      Host = "neyla-api.fly.dev"
 
 [[vm]]
   size = "shared-cpu-1x"

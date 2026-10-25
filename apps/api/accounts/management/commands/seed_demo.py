@@ -325,6 +325,15 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **opts):
+        from django.core.management.base import CommandError
+
+        from payments.services import simulated_payments_allowed
+
+        if not simulated_payments_allowed():
+            raise CommandError(
+                "seed_demo crée des achats d'Aura simulés : active PAYMENTS_ALLOW_FAKE=1 "
+                "(et PAYMENTS_PROVIDER=fake) pour la démo."
+            )
         random.seed(42)
         if opts["flush"]:
             self._flush()
