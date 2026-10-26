@@ -81,3 +81,22 @@ def test_prod_without_secret_key_prints_clear_message():
     )
     assert out.returncode != 0
     assert "DJANGO_SECRET_KEY n'est pas défini" in out.stderr
+
+
+def test_release_script_reports_missing_secrets_without_values():
+    env = {k: v for k, v in os.environ.items() if k not in ("DJANGO_SECRET_KEY", "DATABASE_URL")}
+    env.update(
+        DJANGO_SETTINGS_MODULE="config.settings.prod",
+        FLY_APP_NAME="neyla-tv",
+        RELEASE_FAIL_WAIT="0",
+        POSTGRES_HOST="postgres",
+        REDIS_URL="redis://secret-host-value:6379/0",
+    )
+    out = subprocess.run(
+        ["sh", "scripts/release.sh"], cwd=API_DIR, env=env, capture_output=True, text=True
+    )
+    assert out.returncode == 1
+    assert "DJANGO_SECRET_KEY : absent" in out.stdout
+    assert "REDIS_URL : défini" in out.stdout
+    assert "secret-host-value" not in out.stdout  # jamais de valeur affichée
+    assert "ÉCHEC à l'étape : vérification de la configuration" in out.stdout

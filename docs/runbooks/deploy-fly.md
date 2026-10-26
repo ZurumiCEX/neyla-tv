@@ -154,20 +154,26 @@ fly ips allocate-v4 --shared -a neyla-tv
 fly ips list -a neyla-tv
 ```
 
-**« release_command failed … exit code 1 »** : la vérification ou les
-migrations ont échoué. Lis la raison :
+**« release_command failed … exit code 1 »** (souvent avec « timeout waiting
+for release command logs ») : la vérification ou les migrations ont échoué.
+Le plus rapide est le diagnostic, qui s'affiche **directement dans ton
+terminal** et n'écrit rien. Prends le tag `deployment-…` affiché par `fly deploy` :
 
 ```bash
-fly logs -a neyla-tv --no-tail          # lignes « [release] » et « [preflight] »
-fly secrets list -a neyla-tv            # noms des secrets définis (jamais les valeurs)
+fly machine run registry.fly.io/neyla-tv:deployment-<tag> \
+  sh /app/scripts/diagnose.sh --rm -a neyla-tv
 ```
 
-Si les logs restent vides (« timeout waiting for release command logs »),
-relance l'étape à la main avec l'image affichée par `fly deploy` :
+Il liste chaque secret (« défini » / « absent », jamais la valeur), teste la
+base et Redis, puis montre les migrations en attente. Autres pistes :
 
 ```bash
-fly machine run registry.fly.io/neyla-tv:<tag> sh /app/scripts/release.sh --rm -a neyla-tv
+fly logs -a neyla-tv --no-tail   # en cas d'échec, la release attend 15 s pour que ses logs arrivent
+fly secrets list -a neyla-tv     # noms des secrets de CETTE app
 ```
+
+Un `fly secrets set` ne compte qu'au déploiement suivant, et doit viser la bonne
+app (`-a neyla-tv`).
 
 Messages possibles :
 
