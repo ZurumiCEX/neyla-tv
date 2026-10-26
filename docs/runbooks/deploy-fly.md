@@ -68,8 +68,6 @@ fly secrets set \
   DJANGO_SECRET_KEY="$(python3 -c 'import secrets; print(secrets.token_urlsafe(50))')" \
   DATABASE_URL="<url Neon>" \
   REDIS_URL="<url Upstash rediss://…>" \
-  CELERY_BROKER_URL="<url Upstash rediss://…>" \
-  CELERY_RESULT_BACKEND="<url Upstash rediss://…>" \
   DJANGO_CORS_ALLOWED_ORIGINS="https://<prod>.vercel.app" \
   DJANGO_CORS_ALLOWED_ORIGIN_REGEXES='^https://neyla-tv-.*\.vercel\.app$' \
   FRONTEND_URL="https://<prod>.vercel.app" \
@@ -185,8 +183,17 @@ Messages possibles :
 | `seed_demo a échoué` | Démo seulement, le déploiement continue ; vérifie `PAYMENTS_ALLOW_FAKE=1`. |
 
 Secrets minimum avant `fly deploy` : `DJANGO_SECRET_KEY`, `DATABASE_URL`,
-`REDIS_URL`, `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND`,
+`REDIS_URL` (Celery le réutilise : `CELERY_BROKER_URL` est facultatif),
 `DJANGO_CORS_ALLOWED_ORIGINS`, `FRONTEND_URL`, `WEBAUTHN_RP_ID`, `WEBAUTHN_ORIGINS`.
+
+**« Trial machine stopping. To run for longer than 5m0s, add a credit card »** :
+limite du compte d'essai Fly, sans lien avec le code. Les machines s'arrêtent
+toutes les 5 minutes tant qu'aucune carte n'est enregistrée sur
+<https://fly.io/trial>. Le chat et les tâches Celery ont besoin de machines
+allumées en continu.
+
+**« Cannot connect to redis://redis:6379 »** (worker / beat) : `REDIS_URL` n'est
+pas défini. Ajoute l'URL Upstash : `fly secrets set REDIS_URL="rediss://…" -a neyla-tv`.
 
 ## Dépannage
 

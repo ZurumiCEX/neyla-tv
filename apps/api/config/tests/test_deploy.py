@@ -100,3 +100,27 @@ def test_release_script_reports_missing_secrets_without_values():
     assert "REDIS_URL : défini" in out.stdout
     assert "secret-host-value" not in out.stdout  # jamais de valeur affichée
     assert "ÉCHEC à l'étape : vérification de la configuration" in out.stdout
+
+
+def test_celery_reuses_redis_url_when_not_set():
+    code = (
+        "import json, django; from django.conf import settings; django.setup();"
+        "print(json.dumps([settings.CELERY_BROKER_URL, settings.CELERY_RESULT_BACKEND]))"
+    )
+    env = {
+        k: v
+        for k, v in os.environ.items()
+        if k not in ("CELERY_BROKER_URL", "CELERY_RESULT_BACKEND", "REDIS_URL")
+    }
+    env.update(
+        DJANGO_SETTINGS_MODULE="config.settings.prod",
+        DJANGO_SECRET_KEY="k" * 50,
+        REDIS_URL="rediss://default:pw@eu1.upstash.io:6379",
+    )
+    out = subprocess.run(
+        [sys.executable, "-c", code], cwd=API_DIR, env=env, capture_output=True, text=True
+    )
+    assert out.returncode == 0, out.stderr
+    broker, backend = json.loads(out.stdout.strip().splitlines()[-1])
+    assert broker.startswith("rediss://default:pw@eu1.upstash.io:6379")
+    assert backend == broker

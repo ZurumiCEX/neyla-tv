@@ -63,6 +63,13 @@ class Command(BaseCommand):
         else:
             self.stdout.write(f"[preflight] Redis configuré ({_host_of(redis_url)})")
 
+        broker = getattr(settings, "CELERY_BROKER_URL", "")
+        if _host_of(broker) == "redis":
+            warnings.append(
+                "Celery pointe vers « redis » (valeur locale) : définis REDIS_URL "
+                "(Celery le réutilise automatiquement)."
+            )
+
         for w in warnings:
             self.stdout.write(self.style.WARNING(f"[preflight] attention : {w}"))
         if errors:

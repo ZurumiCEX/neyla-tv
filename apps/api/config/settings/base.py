@@ -270,8 +270,15 @@ CHANNEL_LAYERS = {
 }
 
 # --- Celery ---
-CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="redis://redis:6379/1")
-CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND", default="redis://redis:6379/2")
+# Sans URL dédiée, Celery utilise le même Redis que l'app (REDIS_URL) : c'est le
+# cas d'Upstash, qui n'offre qu'une base. En local, les bases /1 et /2 du compose.
+_redis_env = env("REDIS_URL", default="")
+CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="") or (
+    REDIS_URL if _redis_env else "redis://redis:6379/1"
+)
+CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND", default="") or (
+    REDIS_URL if _redis_env else "redis://redis:6379/2"
+)
 CELERY_TASK_ALWAYS_EAGER = False
 CELERY_TIMEZONE = TIME_ZONE
 # Retry de connexion au broker au démarrage (broker managé/externe parfois lent).
